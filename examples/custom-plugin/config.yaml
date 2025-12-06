@@ -1,0 +1,29 @@
+# Custom Plugin MCP Server Configuration
+# Example: Custom plugin for a government API
+
+server_name: "My Custom API"
+description: "MCP server for custom government API"
+organization: "Your Organization"
+
+plugins:
+  # Custom plugin enabled
+  my_custom_plugin:
+    enabled: true
+    api_url: "https://api.yourcity.gov"
+    api_key: "${MY_API_KEY}"  # Use environment variable for secrets
+    timeout: 120
+
+  # Built-in plugin disabled
+  ckan:
+    enabled: false
+
+aws:
+  region: "us-east-1"
+  lambda_name: "my-custom-api-mcp"
+  lambda_memory: 512
+  lambda_timeout: 120
+
+logging:
+  level: "INFO"
+  format: "json"
+

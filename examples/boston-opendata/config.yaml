@@ -1,0 +1,28 @@
+# Boston OpenData MCP Server Configuration
+# Example: CKAN plugin for data.boston.gov
+
+server_name: "Boston OpenData"
+description: "MCP server for Boston's open data portal (CKAN)"
+organization: "City of Boston DoIT"
+
+plugins:
+  # CKAN plugin enabled for data.boston.gov
+  ckan:
+    enabled: true
+    base_url: "https://data.boston.gov"
+    portal_url: "https://data.boston.gov"
+    city_name: "Boston"
+    timeout: 120
+    # api_key: "${CKAN_API_KEY}"  # Optional: Uncomment if API key is needed
+
+
+aws:
+  region: "us-east-1"
+  lambda_name: "boston-opendata-mcp"
+  lambda_memory: 512
+  lambda_timeout: 120
+
+logging:
+  level: "INFO"
+  format: "json"
+
