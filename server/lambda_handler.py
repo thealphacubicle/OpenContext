@@ -17,9 +17,7 @@ from core.validators import ConfigurationError, load_and_validate_config
 
 # Configure structured logging for CloudWatch
 log_handler = logging.StreamHandler()
-formatter = jsonlogger.JsonFormatter(
-    "%(asctime)s %(name)s %(levelname)s %(message)s"
-)
+formatter = jsonlogger.JsonFormatter("%(asctime)s %(name)s %(levelname)s %(message)s")
 log_handler.setFormatter(formatter)
 
 logger = logging.getLogger(__name__)
@@ -111,7 +109,7 @@ async def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     Returns:
         HTTP response dictionary
     """
-    request_id = context.request_id if context else "unknown"
+    request_id = context.aws_request_id if context else "unknown"
 
     try:
         # Initialize server on first request
@@ -185,4 +183,3 @@ async def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 }
             ),
         }
-

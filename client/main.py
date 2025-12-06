@@ -113,7 +113,18 @@ def main() -> None:
         sys.exit(1)
 
     # Get timeout from environment (optional)
-    timeout = int(os.environ.get("OPENCONTEXT_TIMEOUT", "30"))
+    timeout_str = os.environ.get("OPENCONTEXT_TIMEOUT", "30")
+    try:
+        timeout = int(timeout_str)
+        if timeout <= 0:
+            raise ValueError("Timeout must be positive")
+    except ValueError as e:
+        print(
+            f"Error: Invalid OPENCONTEXT_TIMEOUT value '{timeout_str}'. "
+            f"Must be a positive integer. {e}",
+            file=sys.stderr,
+        )
+        sys.exit(1)
 
     client = OpenContextClient(lambda_url, timeout)
     asyncio.run(client.run())
@@ -121,4 +132,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
