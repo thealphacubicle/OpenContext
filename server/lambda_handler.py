@@ -4,6 +4,7 @@ This handler processes HTTP requests from Lambda Function URL and routes
 them to the MCP server for processing.
 """
 
+import asyncio
 import json
 import logging
 import os
@@ -99,8 +100,8 @@ async def _initialize_server() -> None:
         raise
 
 
-async def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
-    """AWS Lambda handler function.
+async def _handle_request(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+    """Async handler logic for processing Lambda requests.
 
     Args:
         event: Lambda event (HTTP request from Function URL)
@@ -183,3 +184,20 @@ async def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 }
             ),
         }
+
+
+def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+    """AWS Lambda handler function.
+
+    This is a synchronous wrapper that uses asyncio.run() to execute
+    the async request handling logic. AWS Lambda requires synchronous
+    handler functions.
+
+    Args:
+        event: Lambda event (HTTP request from Function URL)
+        context: Lambda context
+
+    Returns:
+        HTTP response dictionary
+    """
+    return asyncio.run(_handle_request(event, context))

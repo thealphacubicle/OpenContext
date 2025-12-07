@@ -54,6 +54,16 @@ class OpenContextClient:
                     "data": str(e),
                 },
             }
+        except json.JSONDecodeError as e:
+            return {
+                "jsonrpc": "2.0",
+                "id": request.get("id"),
+                "error": {
+                    "code": -32603,
+                    "message": "Invalid JSON response from server",
+                    "data": f"Failed to parse response: {str(e)}",
+                },
+            }
 
     async def run(self) -> None:
         """Run the client, reading from stdin and writing to stdout."""
