@@ -18,9 +18,9 @@
 # See docs/ARCHITECTURE.md for details.
 
 # Server metadata
-server_name: "MyMCP"
-description: "Description of this MCP server"
-organization: "Your Organization"
+server_name: "Boston OpenData MCP"
+description: "City of Boston's official open data MCP server - Safe, conversational access to Boston's open data"
+organization: "City of Boston Department of Innovation and Technology"
 
 # Plugin configuration
 # ====================
@@ -32,11 +32,11 @@ plugins:
   # Built-in: CKAN (for CKAN-based open data portals)
   # Examples: data.boston.gov, data.gov, data.gov.uk
   ckan:
-    enabled: false                              # Set to true to use
-    base_url: "https://data.yourcity.gov"       # CKAN API base URL
-    portal_url: "https://data.yourcity.gov"    # Public portal URL
-    city_name: "Your City"                      # City/organization name
-    timeout: 120                                # HTTP timeout in seconds
+    enabled: true # Set to true to use
+    base_url: "https://data.boston.gov" # CKAN API base URL
+    portal_url: "https://data.boston.gov" # Public portal URL
+    city_name: "Boston" # City/organization name
+    timeout: 120 # HTTP timeout in seconds
     # api_key: "${CKAN_API_KEY}"                # Optional: CKAN API key for authenticated requests
 
   # Custom: Add your own plugins here
@@ -48,13 +48,12 @@ plugins:
 
 # AWS deployment settings
 aws:
-  region: "us-east-1"                           # AWS region for Lambda
-  lambda_name: "my-mcp-server"                   # Lambda function name (will be auto-generated if not set)
-  lambda_memory: 512                             # Lambda memory in MB (128-10240)
-  lambda_timeout: 120                            # Lambda timeout in seconds (max 900)
+  region: "us-east-1" # AWS region for Lambda
+  lambda_name: "boston-opendata-mcp" # Lambda function name (will be auto-generated if not set)
+  lambda_memory: 512 # Lambda memory in MB (128-10240)
+  lambda_timeout: 120 # Lambda timeout in seconds (max 900)
 
 # Logging configuration
 logging:
-  level: "INFO"                                  # Log level: DEBUG, INFO, WARNING, ERROR
-  format: "json"                                 # Log format: json or text
-
+  level: "INFO" # Log level: DEBUG, INFO, WARNING, ERROR
+  format: "json" # Log format: json or text

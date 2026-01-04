@@ -4,15 +4,41 @@ Stdio client for connecting Claude Desktop to OpenContext MCP servers.
 
 ## Installation
 
+### Download Binary
+
+Download the latest binary for your platform from the [Releases](https://github.com/cityofboston/opencontext/releases) page.
+
+- macOS (Intel): `opencontext-client-darwin-amd64`
+- macOS (Apple Silicon): `opencontext-client-darwin-arm64`
+- Linux (Intel): `opencontext-client-linux-amd64`
+- Windows: `opencontext-client-windows-amd64.exe`
+
+Make the binary executable:
+
 ```bash
-pip install opencontext-client
+chmod +x opencontext-client-darwin-arm64
+mv opencontext-client-darwin-arm64 opencontext-client
 ```
 
-Or using `uvx` (recommended for Claude Desktop):
+### Build from Source
+
+Requirements: Go 1.21+
+
+**Build for your platform:**
 
 ```bash
-uvx opencontext-client <lambda_url>
+cd client
+make build
 ```
+
+**Build for all platforms (cross-compilation):**
+
+```bash
+cd client
+make build-all
+```
+
+This produces binaries for macOS (Intel/ARM), Linux (amd64/arm64), and Windows (amd64).
 
 ## Usage
 
@@ -24,11 +50,8 @@ Add to your Claude Desktop configuration file:
 {
   "mcpServers": {
     "my-mcp-server": {
-      "command": "uvx",
-      "args": [
-        "opencontext-client",
-        "https://your-lambda-url.lambda-url.us-east-1.on.aws"
-      ]
+      "command": "/path/to/opencontext-client",
+      "args": ["https://your-lambda-url.lambda-url.us-east-1.on.aws"]
     }
   }
 }
@@ -38,11 +61,11 @@ Add to your Claude Desktop configuration file:
 
 ```bash
 # Using Lambda URL as argument
-opencontext-client https://your-lambda-url.lambda-url.us-east-1.on.aws
+./opencontext-client https://your-lambda-url.lambda-url.us-east-1.on.aws
 
 # Using environment variable
 export OPENCONTEXT_LAMBDA_URL=https://your-lambda-url.lambda-url.us-east-1.on.aws
-opencontext-client
+./opencontext-client
 ```
 
 ## Environment Variables
@@ -55,4 +78,3 @@ opencontext-client
 The client reads MCP JSON-RPC messages from stdin and forwards them to the Lambda Function URL via HTTP POST. Responses are written to stdout in the same JSON-RPC format.
 
 This allows Claude Desktop to communicate with OpenContext MCP servers running on AWS Lambda without requiring direct HTTP access.
-

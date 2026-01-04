@@ -3,7 +3,7 @@
 from typing import Optional
 from urllib.parse import urlparse
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class CKANPluginConfig(BaseModel):
@@ -37,8 +37,5 @@ class CKANPluginConfig(BaseModel):
             raise ValueError(f"Invalid URL format: {e}")
         return v.rstrip("/")
 
-    class Config:
-        """Pydantic config."""
-
-        extra = "forbid"  # Reject unknown fields
+    model_config = ConfigDict(extra="forbid")  # Reject unknown fields
 

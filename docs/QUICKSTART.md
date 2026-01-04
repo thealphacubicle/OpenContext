@@ -48,6 +48,7 @@ Run the deployment script:
 ```
 
 The script will:
+
 1. Validate configuration (ensures ONE plugin enabled)
 2. Package Lambda code
 3. Deploy to AWS Lambda
@@ -65,32 +66,68 @@ To use with Claude Desktop, add to your Claude Desktop config:
 ...
 ```
 
-## Step 4: Use with Claude Desktop
+## Step 4: Download Client Binary
+
+Download the `opencontext-client` binary for your platform from [GitHub Releases](https://github.com/cityofboston/opencontext/releases):
+
+- **macOS (Intel):** `opencontext-client-darwin-amd64`
+- **macOS (Apple Silicon):** `opencontext-client-darwin-arm64`
+- **Linux:** `opencontext-client-linux-amd64`
+- **Windows:** `opencontext-client-windows-amd64.exe`
+
+Make it executable and move to a convenient location:
+
+```bash
+chmod +x opencontext-client-darwin-arm64  # Adjust for your platform
+mv opencontext-client-darwin-arm64 ~/bin/opencontext-client  # Or another location in PATH
+```
+
+**Or build from source:**
+
+```bash
+cd client
+make build
+```
+
+## Step 5: Use with Claude Desktop
 
 Add to your Claude Desktop configuration file:
 
-**macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`
+**macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`  
 **Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
 
 ```json
 {
   "mcpServers": {
     "boston-opendata": {
-      "command": "uvx",
-      "args": [
-        "opencontext-client",
-        "https://your-lambda-url.lambda-url.us-east-1.on.aws"
-      ]
+      "command": "/path/to/opencontext-client",
+      "args": ["https://your-lambda-url.lambda-url.us-east-1.on.aws"]
     }
   }
 }
 ```
 
+**Note:** Use the full path to the `opencontext-client` binary, or ensure it's in your PATH.
+
 Restart Claude Desktop to load the new server.
 
-## Step 5: Test
+## Step 6: Test
 
-In Claude Desktop, try:
+**Test locally first (optional):**
+
+```bash
+# Start local server
+python3 local_server.py
+
+# In another terminal, test with curl
+curl -X POST http://localhost:8000 \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"ping"}'
+```
+
+**Test in Claude Desktop:**
+
+Try asking Claude:
 
 ```
 Search for datasets about housing in Boston
@@ -107,6 +144,7 @@ Claude will use your MCP server to search the CKAN portal.
 ### Lambda URL Not Working
 
 **Check:**
+
 1. Lambda function exists in AWS Console
 2. Function URL is enabled
 3. Configuration is correct
@@ -114,9 +152,12 @@ Claude will use your MCP server to search the CKAN portal.
 ### Claude Desktop Can't Connect
 
 **Check:**
+
 1. Lambda URL is correct
-2. `opencontext-client` is installed: `pip install opencontext-client`
-3. Claude Desktop config JSON is valid
+2. `opencontext-client` binary is downloaded and executable
+3. Path to `opencontext-client` in config is correct (use full path)
+4. Claude Desktop config JSON is valid
+5. Restart Claude Desktop after config changes
 
 ## Next Steps
 
@@ -129,4 +170,3 @@ Claude will use your MCP server to search the CKAN portal.
 - [FAQ](FAQ.md)
 - [GitHub Issues](https://github.com/cityofboston/opencontext/issues)
 - [Documentation](.)
-

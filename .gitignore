@@ -205,3 +205,10 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# OpenContext deployment artifacts
+.deploy/
+lambda-deployment.zip
+terraform/.terraform/
+terraform/.terraform.lock.hcl
+terraform/lambda-deployment.zip

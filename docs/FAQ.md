@@ -27,7 +27,7 @@ Edit `config.yaml` and set `enabled: true` for ONE plugin:
 ```yaml
 plugins:
   ckan:
-    enabled: true  # Only ONE plugin should be enabled
+    enabled: true # Only ONE plugin should be enabled
 ```
 
 ### Can I use environment variables in config.yaml?
@@ -43,6 +43,7 @@ Edit `config.yaml` and run `./deploy.sh` again. Terraform will update the Lambda
 ### What plugins are available?
 
 Built-in plugins:
+
 - **CKAN** - For CKAN-based portals (data.boston.gov, data.gov, data.gov.uk)
 
 You can also create custom plugins in `custom_plugins/`.
@@ -80,18 +81,22 @@ Run `./deploy.sh` again. Terraform will update the Lambda function.
 
 ### How do I use it with Claude Desktop?
 
-Add to your Claude Desktop config:
+**First, download the client binary** from [GitHub Releases](https://github.com/cityofboston/opencontext/releases) and make it executable.
+
+Then add to your Claude Desktop config:
 
 ```json
 {
   "mcpServers": {
     "my-server": {
-      "command": "uvx",
-      "args": ["opencontext-client", "https://your-lambda-url"]
+      "command": "/path/to/opencontext-client",
+      "args": ["https://your-lambda-url"]
     }
   }
 }
 ```
+
+**Note:** Use the full path to the binary, or ensure it's in your PATH.
 
 ### Can I use it without Claude Desktop?
 
@@ -114,6 +119,7 @@ curl -X POST https://your-lambda-url \
 ### Lambda returns 500 error
 
 **Check:**
+
 1. CloudWatch logs for errors
 2. Configuration is valid
 3. Plugin initialization succeeded
@@ -121,13 +127,17 @@ curl -X POST https://your-lambda-url \
 ### Claude Desktop can't connect
 
 **Check:**
+
 1. Lambda URL is correct
-2. `opencontext-client` is installed
-3. Claude Desktop config JSON is valid
+2. `opencontext-client` binary is downloaded and executable
+3. Path to binary in config is correct (use full path)
+4. Claude Desktop config JSON is valid
+5. Restart Claude Desktop after config changes
 
 ### Plugin initialization fails
 
 **Check:**
+
 1. API URLs are correct
 2. API keys are valid (if required)
 3. Network connectivity from Lambda
@@ -135,7 +145,24 @@ curl -X POST https://your-lambda-url \
 
 ## Development
 
-### How do I test plugins locally?
+### How do I test locally?
+
+**Option 1: Use the local server**
+
+```bash
+# Install aiohttp if needed
+pip install aiohttp
+
+# Start local server
+python3 local_server.py
+
+# In another terminal, test with curl
+curl -X POST http://localhost:8000 \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
+```
+
+**Option 2: Test plugins directly**
 
 Create a test script that imports and initializes your plugin:
 
@@ -148,12 +175,21 @@ async def test():
         "base_url": "https://data.boston.gov",
         "portal_url": "https://data.boston.gov",
         "city_name": "Boston",
+        "timeout": 120,
     })
     await plugin.initialize()
     tools = plugin.get_tools()
     print(f"Tools: {[t.name for t in tools]}")
+    await plugin.shutdown()
 
 asyncio.run(test())
+```
+
+**Option 3: Run unit tests**
+
+```bash
+pip install pytest pytest-asyncio
+pytest tests/
 ```
 
 ### Can I contribute?
@@ -175,6 +211,7 @@ Yes! Contributions are welcome. Please open an issue or pull request.
 ### How do I report a bug?
 
 Open an issue on GitHub with:
+
 - Description of the problem
 - Steps to reproduce
 - Error messages/logs
@@ -183,7 +220,7 @@ Open an issue on GitHub with:
 ### How do I request a feature?
 
 Open an issue on GitHub with:
+
 - Description of the feature
 - Use case
 - Proposed implementation (if you have one)
-

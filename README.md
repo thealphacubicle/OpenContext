@@ -15,6 +15,7 @@ OpenContext is an extensible MCP (Model Context Protocol) framework template tha
 **OpenContext enforces a strict rule: Each repository fork must deploy exactly ONE MCP server with ONE plugin enabled.**
 
 This architecture keeps deployments:
+
 - ✓ **Simple and focused** - Each server has a single, clear purpose
 - ✓ **Independently scalable** - Scale each server based on its usage
 - ✓ **Easy to maintain** - Clear boundaries and responsibilities
@@ -22,9 +23,11 @@ This architecture keeps deployments:
 ### To Deploy Multiple MCP Servers
 
 1. **Fork this repository again** for each additional server
+
    - Example: `opencontext-opendata`, `opencontext-mbta`, `opencontext-311`
 
 2. **Configure ONE plugin per fork**
+
    - Fork #1: Enable `ckan` only
    - Fork #2: Enable your custom plugin only
    - Fork #3: Enable your custom plugin only
@@ -63,6 +66,7 @@ plugins:
 ```
 
 The script will:
+
 - Validate that exactly ONE plugin is enabled
 - Package your code
 - Deploy to AWS Lambda
@@ -70,25 +74,53 @@ The script will:
 
 ### 4. Use with Claude Desktop
 
-Add to your Claude Desktop configuration:
+**First, download the client binary:**
+
+Download `opencontext-client` for your platform from [GitHub Releases](https://github.com/cityofboston/opencontext/releases) and make it executable:
+
+```bash
+chmod +x opencontext-client-darwin-arm64  # Adjust for your platform
+mv opencontext-client-darwin-arm64 opencontext-client
+```
+
+**Then add to your Claude Desktop configuration:**
+
+**macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`  
+**Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
 
 ```json
 {
   "mcpServers": {
     "my-mcp-server": {
-      "command": "uvx",
-      "args": [
-        "opencontext-client",
-        "https://your-lambda-url.lambda-url.us-east-1.on.aws"
-      ]
+      "command": "/path/to/opencontext-client",
+      "args": ["https://your-lambda-url.lambda-url.us-east-1.on.aws"]
     }
   }
 }
 ```
 
-For direct HTTP access (LaunchPad/Applications), use the Lambda URL directly.
+**For direct HTTP access** (LaunchPad/Applications), use the Lambda URL directly with MCP JSON-RPC format.
 
 See [docs/QUICKSTART.md](docs/QUICKSTART.md) for detailed setup instructions.
+
+### 5. Test Locally (Optional)
+
+Before deploying, you can test locally:
+
+```bash
+# Install local server dependency
+pip install aiohttp
+
+# Start local server
+python3 local_server.py
+
+# In another terminal, test with curl
+curl -X POST http://localhost:8000 \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"ping"}'
+```
+
+See [docs/TESTING.md](docs/TESTING.md) for more testing options.
 
 ---
 
@@ -103,8 +135,8 @@ See [docs/QUICKSTART.md](docs/QUICKSTART.md) for detailed setup instructions.
 
 ### Dual Use Case Support
 
-- **Claude Desktop** - Use stdio client wrapper (`uvx opencontext-client <url>`)
-- **Applications** - Call Lambda directly via HTTP (no wrapper needed)
+- **Claude Desktop** - Use Go stdio client binary (download from [Releases](https://github.com/cityofboston/opencontext/releases))
+- **Applications** - Call Lambda directly via HTTP with MCP JSON-RPC format (no wrapper needed)
 
 ### Built-in Plugins
 
@@ -121,6 +153,7 @@ See [docs/BUILT_IN_PLUGINS.md](docs/BUILT_IN_PLUGINS.md) for plugin documentatio
 - **[Custom Plugins Guide](docs/CUSTOM_PLUGINS.md)** - How to create custom plugins
 - **[Built-in Plugins](docs/BUILT_IN_PLUGINS.md)** - CKAN reference
 - **[Deployment Guide](docs/DEPLOYMENT.md)** - Detailed deployment instructions
+- **[Testing Guide](docs/TESTING.md)** - How to test your setup
 - **[FAQ](docs/FAQ.md)** - Common questions
 
 ---
@@ -139,7 +172,6 @@ plugins:
 ```
 
 See [examples/boston-opendata/config.yaml](examples/boston-opendata/config.yaml)
-
 
 ### Custom Plugin
 
