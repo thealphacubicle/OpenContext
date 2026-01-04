@@ -47,7 +47,7 @@ The Plugin Manager:
 1. **Discovers** plugins in `plugins/` and `custom_plugins/`
 2. **Validates** exactly ONE plugin is enabled
 3. **Loads** the enabled plugin
-4. **Registers** tools with plugin name prefix (e.g., `ckan.search_datasets`)
+4. **Registers** tools with plugin name prefix (e.g., `ckan__search_datasets`)
 5. **Routes** tool calls to the correct plugin
 
 ### MCP Server

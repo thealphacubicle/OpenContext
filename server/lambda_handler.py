@@ -155,6 +155,7 @@ async def _handle_request(event: Dict[str, Any], context: Any) -> Dict[str, Any]
             "body": json.dumps(
                 {
                     "jsonrpc": "2.0",
+                    "id": None,
                     "error": {
                         "code": -32603,
                         "message": "Server configuration error",
@@ -176,6 +177,7 @@ async def _handle_request(event: Dict[str, Any], context: Any) -> Dict[str, Any]
             "body": json.dumps(
                 {
                     "jsonrpc": "2.0",
+                    "id": None,
                     "error": {
                         "code": -32603,
                         "message": "Internal error",

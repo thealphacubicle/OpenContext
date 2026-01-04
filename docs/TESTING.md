@@ -82,7 +82,7 @@ curl -X POST http://localhost:8000 \
     "id":3,
     "method":"tools/call",
     "params":{
-      "name":"ckan.search_datasets",
+      "name":"ckan__search_datasets",
       "arguments":{"query":"housing","limit":3}
     }
   }'
@@ -149,7 +149,7 @@ curl -X POST http://localhost:8000 \
     "id":4,
     "method":"tools/call",
     "params":{
-      "name":"ckan.search_datasets",
+      "name":"ckan__search_datasets",
       "arguments":{"query":"housing","limit":5}
     }
   }'
@@ -165,7 +165,7 @@ curl -X POST http://localhost:8000 \
     "id":5,
     "method":"tools/call",
     "params":{
-      "name":"ckan.get_dataset",
+      "name":"ckan__get_dataset",
       "arguments":{"dataset_id":"311-service-requests"}
     }
   }'
@@ -181,7 +181,7 @@ curl -X POST http://localhost:8000 \
     "id":6,
     "method":"tools/call",
     "params":{
-      "name":"ckan.query_data",
+      "name":"ckan__query_data",
       "arguments":{
         "resource_id":"YOUR_RESOURCE_ID",
         "limit":10

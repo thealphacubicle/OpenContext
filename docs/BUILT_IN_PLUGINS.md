@@ -21,10 +21,10 @@ plugins:
 
 ### Tools
 
-- `ckan.search_datasets(query, limit)` - Search for datasets
-- `ckan.get_dataset(dataset_id)` - Get dataset metadata
-- `ckan.query_data(resource_id, filters, limit)` - Query data from a resource
-- `ckan.get_schema(resource_id)` - Get schema for a resource
+- `ckan__search_datasets(query, limit)` - Search for datasets
+- `ckan__get_dataset(dataset_id)` - Get dataset metadata
+- `ckan__query_data(resource_id, filters, limit)` - Query data from a resource
+- `ckan__get_schema(resource_id)` - Get schema for a resource
 
 ### Examples
 

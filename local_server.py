@@ -56,7 +56,11 @@ async def handle_mcp_request(request):
     except Exception as e:
         return web.Response(
             text=json.dumps(
-                {"jsonrpc": "2.0", "error": {"code": -32603, "message": str(e)}}
+                {
+                    "jsonrpc": "2.0",
+                    "id": None,
+                    "error": {"code": -32603, "message": str(e)},
+                }
             ),
             status=500,
             headers={"Content-Type": "application/json"},

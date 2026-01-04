@@ -54,10 +54,15 @@ func NewClient(lambdaURL string, timeout time.Duration) *Client {
 }
 
 // HandleRequest processes a single JSON-RPC request
+// Returns nil for notifications (no response should be sent)
 func (c *Client) HandleRequest(req *JSONRPCRequest) *JSONRPCResponse {
 	// Marshal request
 	reqJSON, err := json.Marshal(req)
 	if err != nil {
+		// Don't send error response for notifications
+		if req.ID == nil {
+			return nil
+		}
 		return &JSONRPCResponse{
 			JSONRPC: "2.0",
 			ID:      req.ID,
@@ -72,6 +77,10 @@ func (c *Client) HandleRequest(req *JSONRPCRequest) *JSONRPCResponse {
 	// Create HTTP request
 	httpReq, err := http.NewRequest("POST", c.lambdaURL, bytes.NewBuffer(reqJSON))
 	if err != nil {
+		// Don't send error response for notifications
+		if req.ID == nil {
+			return nil
+		}
 		return &JSONRPCResponse{
 			JSONRPC: "2.0",
 			ID:      req.ID,
@@ -87,6 +96,10 @@ func (c *Client) HandleRequest(req *JSONRPCRequest) *JSONRPCResponse {
 	// Send request
 	resp, err := c.client.Do(httpReq)
 	if err != nil {
+		// Don't send error response for notifications
+		if req.ID == nil {
+			return nil
+		}
 		return &JSONRPCResponse{
 			JSONRPC: "2.0",
 			ID:      req.ID,
@@ -101,6 +114,10 @@ func (c *Client) HandleRequest(req *JSONRPCRequest) *JSONRPCResponse {
 
 	// Check status code
 	if resp.StatusCode >= 400 {
+		// Don't send error response for notifications
+		if req.ID == nil {
+			return nil
+		}
 		return &JSONRPCResponse{
 			JSONRPC: "2.0",
 			ID:      req.ID,
@@ -112,9 +129,46 @@ func (c *Client) HandleRequest(req *JSONRPCRequest) *JSONRPCResponse {
 		}
 	}
 
+	// Check if response body is empty (for notifications)
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		// Don't send error response for notifications
+		if req.ID == nil {
+			return nil
+		}
+		return &JSONRPCResponse{
+			JSONRPC: "2.0",
+			ID:      req.ID,
+			Error: &JSONRPCError{
+				Code:    -32603, // Internal error
+				Message: "Failed to read response body",
+				Data:    err.Error(),
+			},
+		}
+	}
+
+	// If body is empty and this is a notification, return nil (no response)
+	if len(bodyBytes) == 0 {
+		if req.ID == nil {
+			return nil
+		}
+		return &JSONRPCResponse{
+			JSONRPC: "2.0",
+			ID:      req.ID,
+			Error: &JSONRPCError{
+				Code:    -32603, // Internal error
+				Message: "Empty response body",
+			},
+		}
+	}
+
 	// Parse response
 	var jsonResp JSONRPCResponse
-	if err := json.NewDecoder(resp.Body).Decode(&jsonResp); err != nil {
+	if err := json.Unmarshal(bodyBytes, &jsonResp); err != nil {
+		// Don't send error response for notifications
+		if req.ID == nil {
+			return nil
+		}
 		return &JSONRPCResponse{
 			JSONRPC: "2.0",
 			ID:      req.ID,
@@ -160,6 +214,10 @@ func (c *Client) Run() error {
 		}
 
 		resp := c.HandleRequest(&req)
+		// Don't send response for notifications (nil response)
+		if resp == nil {
+			continue
+		}
 		respJSON, _ := json.Marshal(resp)
 		fmt.Println(string(respJSON))
 		os.Stdout.Sync() // Ensure immediate flush for Claude Desktop

@@ -98,7 +98,8 @@ class MCPPlugin(ABC):
         """Get list of tools provided by this plugin.
 
         Tool names should NOT include the plugin prefix (e.g., use "search_datasets"
-        not "ckan.search_datasets"). The Plugin Manager will add the prefix automatically.
+        not "ckan__search_datasets"). The Plugin Manager will add the prefix automatically
+        using double underscores (e.g., "ckan__search_datasets").
 
         Returns:
             List of tool definitions

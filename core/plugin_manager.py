@@ -203,8 +203,9 @@ class PluginManager:
         tools = plugin.get_tools()
 
         for tool_def in tools:
-            # Create prefixed tool name: plugin_name.tool_name
-            prefixed_name = f"{plugin_name}.{tool_def.name}"
+            # Create prefixed tool name: plugin_name__tool_name
+            # Using double underscore to avoid conflicts with tool names that contain underscores
+            prefixed_name = f"{plugin_name}__{tool_def.name}"
 
             if prefixed_name in self.tools:
                 logger.warning(
@@ -222,7 +223,7 @@ class PluginManager:
         """Execute a tool by name.
 
         Args:
-            tool_name: Full tool name (e.g., "ckan.search_datasets")
+            tool_name: Full tool name (e.g., "ckan__search_datasets")
             arguments: Tool input arguments
 
         Returns:
@@ -272,7 +273,8 @@ class PluginManager:
         for plugin_name, plugin in self.plugins.items():
             plugin_tools = plugin.get_tools()
             for tool_def in plugin_tools:
-                prefixed_name = f"{plugin_name}.{tool_def.name}"
+                # Use double underscore separator to match _register_tools
+                prefixed_name = f"{plugin_name}__{tool_def.name}"
                 tools.append(
                     {
                         "name": prefixed_name,

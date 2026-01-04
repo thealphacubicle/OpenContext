@@ -206,11 +206,11 @@ async def test_plugin_manager_tool_registration_with_boston_prefix(
 
         await manager.load_plugins()
 
-        # Tools should be registered with 'ckan.' prefix
-        assert "ckan.search_datasets" in manager.tools
-        assert "ckan.query_data" in manager.tools
-        assert manager.tools["ckan.search_datasets"] == ("ckan", "search_datasets")
-        assert manager.tools["ckan.query_data"] == ("ckan", "query_data")
+        # Tools should be registered with 'ckan__' prefix
+        assert "ckan__search_datasets" in manager.tools
+        assert "ckan__query_data" in manager.tools
+        assert manager.tools["ckan__search_datasets"] == ("ckan", "search_datasets")
+        assert manager.tools["ckan__query_data"] == ("ckan", "query_data")
 
 
 @pytest.mark.asyncio
@@ -243,11 +243,11 @@ async def test_plugin_manager_execute_boston_tool(boston_single_plugin_config):
         await manager.load_plugins()
 
         # Register tool manually for test
-        manager.tools["ckan.search_datasets"] = ("ckan", "search_datasets")
+        manager.tools["ckan__search_datasets"] = ("ckan", "search_datasets")
 
         # Execute tool with Boston query
         result = await manager.execute_tool(
-            "ckan.search_datasets", {"query": "311", "limit": 10}
+            "ckan__search_datasets", {"query": "311", "limit": 10}
         )
 
         assert result.success
@@ -295,12 +295,12 @@ async def test_get_all_boston_tools(boston_single_plugin_config):
 
         all_tools = manager.get_all_tools()
 
-        # Should have 3 tools, all prefixed with 'ckan.'
+        # Should have 3 tools, all prefixed with 'ckan__'
         assert len(all_tools) == 3
         tool_names = [t["name"] for t in all_tools]
-        assert "ckan.search_datasets" in tool_names
-        assert "ckan.get_dataset" in tool_names
-        assert "ckan.query_data" in tool_names
+        assert "ckan__search_datasets" in tool_names
+        assert "ckan__get_dataset" in tool_names
+        assert "ckan__query_data" in tool_names
 
         # Check descriptions mention Boston
         for tool in all_tools:
@@ -370,7 +370,7 @@ async def test_tool_not_found_error(boston_single_plugin_config):
 
         # Try to execute non-existent tool
         with pytest.raises(ValueError) as exc_info:
-            await manager.execute_tool("ckan.nonexistent_tool", {})
+            await manager.execute_tool("ckan__nonexistent_tool", {})
 
         assert "not found" in str(exc_info.value).lower()
 

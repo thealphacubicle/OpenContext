@@ -23,18 +23,21 @@ class MCPServer:
         """
         self.plugin_manager = plugin_manager
 
-    async def handle_request(self, request: Dict[str, Any]) -> Dict[str, Any]:
+    async def handle_request(self, request: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """Handle a single MCP JSON-RPC request.
 
         Args:
             request: JSON-RPC request dictionary
 
         Returns:
-            JSON-RPC response dictionary
+            JSON-RPC response dictionary, or None for notifications
         """
         request_id = request.get("id")
         method = request.get("method")
         params = request.get("params", {})
+
+        # Check if this is a notification (no id field)
+        is_notification = request_id is None
 
         try:
             if method == "initialize":
@@ -45,8 +48,19 @@ class MCPServer:
                 result = await self._handle_tools_call(params)
             elif method == "ping":
                 result = {"status": "ok"}
+            elif method == "notifications/initialized":
+                # MCP notification - no response needed
+                return None
             else:
+                # For notifications with unknown methods, silently ignore
+                if is_notification:
+                    logger.warning(f"Ignoring unknown notification method: {method}")
+                    return None
                 raise ValueError(f"Unknown method: {method}")
+
+            # Don't send response for notifications
+            if is_notification:
+                return None
 
             return {
                 "jsonrpc": "2.0",
@@ -56,6 +70,9 @@ class MCPServer:
 
         except Exception as e:
             logger.error(f"Error handling request {method}: {e}", exc_info=True)
+            # Don't send error response for notifications
+            if is_notification:
+                return None
             return {
                 "jsonrpc": "2.0",
                 "id": request_id,
@@ -95,9 +112,7 @@ class MCPServer:
         tools = self.plugin_manager.get_all_tools()
         return {"tools": tools}
 
-    async def _handle_tools_call(
-        self, params: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    async def _handle_tools_call(self, params: Dict[str, Any]) -> Dict[str, Any]:
         """Handle tools/call request.
 
         Args:
@@ -149,6 +164,7 @@ class MCPServer:
                 "body": json.dumps(
                     {
                         "jsonrpc": "2.0",
+                        "id": None,
                         "error": {
                             "code": -32700,
                             "message": "Parse error",
@@ -161,9 +177,16 @@ class MCPServer:
         # Handle the request
         response = await self.handle_request(request)
 
+        # If response is None, it was a notification - return empty response
+        if response is None:
+            return {
+                "statusCode": 200,
+                "headers": {"Content-Type": "application/json"},
+                "body": "",
+            }
+
         return {
             "statusCode": 200,
             "headers": {"Content-Type": "application/json"},
             "body": json.dumps(response),
         }
-

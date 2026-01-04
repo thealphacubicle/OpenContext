@@ -96,7 +96,7 @@ def get_tools(self) -> List[ToolDefinition]:
     ]
 ```
 
-**Important:** Tool names should NOT include plugin prefix. The Plugin Manager adds it automatically (e.g., `my_plugin.search`).
+**Important:** Tool names should NOT include plugin prefix. The Plugin Manager adds it automatically using double underscores (e.g., `my_plugin__search`).
 
 ### `async execute_tool(tool_name, arguments) -> ToolResult`
 
