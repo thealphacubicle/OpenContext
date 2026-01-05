@@ -121,15 +121,24 @@ jobs:
           cd artifacts
           echo "=== Flattening artifacts ==="
           # Find all binaries (they may be in subdirectories) and move to artifacts root
+          # We need to use a temp name because directories have the same name as files
           find . -mindepth 2 -type f -name "opencontext-client-*" | while read file; do
-            echo "Moving: $file to $(basename "$file")"
-            mv "$file" .
+            filename=$(basename "$file")
+            dirname=$(dirname "$file")
+            tempname=".tmp_${filename}"
+            echo "Moving: $file to $filename (via $tempname)"
+            # Move to temp name first to avoid conflict with directory
+            mv "$file" "$tempname"
+            # Remove the now-empty directory
+            rmdir "$dirname" 2>/dev/null || true
+            # Rename temp file to final name
+            mv "$tempname" "$filename"
           done
           # Also handle files that might already be at depth 1
           find . -mindepth 1 -maxdepth 1 -type f -name "opencontext-client-*" | while read file; do
             echo "File already at root: $file"
           done
-          # Remove empty subdirectories
+          # Remove any remaining empty subdirectories
           find . -mindepth 1 -type d -empty -delete
           echo "=== Flattening complete ==="
 
