@@ -108,6 +108,14 @@ jobs:
         with:
           path: ./artifacts
 
+      - name: Flatten artifact structure
+        run: |
+          cd artifacts
+          # Find all binaries (they may be in subdirectories) and move to artifacts root
+          find . -mindepth 2 -type f -name "opencontext-client-*" -exec sh -c 'mv "$1" .' _ {} \;
+          # Remove empty subdirectories
+          find . -mindepth 1 -type d -empty -delete
+
       - name: Generate checksums
         run: |
           cd artifacts
