@@ -11,7 +11,7 @@ Get your OpenContext MCP server running in 5 minutes.
 
 ## Step 1: Fork Repository
 
-1. Go to [OpenContext repository](https://github.com/cityofboston/opencontext)
+1. Go to [OpenContext repository](https://github.com/thealphacubicle/OpenContext)
 2. Click "Fork"
 3. Clone your fork locally
 
@@ -68,7 +68,7 @@ To use with Claude Desktop, add to your Claude Desktop config:
 
 ## Step 4: Download Client Binary
 
-Download the `opencontext-client` binary for your platform from [GitHub Releases](https://github.com/cityofboston/opencontext/releases):
+Download the `opencontext-client` binary for your platform from [GitHub Releases](https://github.com/thealphacubicle/OpenContext/releases):
 
 - **macOS (Intel):** `opencontext-client-darwin-amd64`
 - **macOS (Apple Silicon):** `opencontext-client-darwin-arm64`
@@ -168,5 +168,5 @@ Claude will use your MCP server to search the CKAN portal.
 ## Getting Help
 
 - [FAQ](FAQ.md)
-- [GitHub Issues](https://github.com/cityofboston/opencontext/issues)
+- [GitHub Issues](https://github.com/thealphacubicle/OpenContext/issues)
 - [Documentation](.)

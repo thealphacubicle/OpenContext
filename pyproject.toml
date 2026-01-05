@@ -18,9 +18,9 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/cityofboston/opencontext"
-Documentation = "https://github.com/cityofboston/opencontext/blob/main/README.md"
-Repository = "https://github.com/cityofboston/opencontext"
+Homepage = "https://github.com/thealphacubicle/OpenContext"
+Documentation = "https://github.com/thealphacubicle/OpenContext/blob/main/README.md"
+Repository = "https://github.com/thealphacubicle/OpenContext"
 
 [build-system]
 requires = ["setuptools>=61.0", "wheel"]

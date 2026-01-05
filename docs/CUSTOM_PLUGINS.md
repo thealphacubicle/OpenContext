@@ -324,6 +324,6 @@ def __init__(self, config: Dict[str, Any]) -> None:
 ## Getting Help
 
 - [FAQ](FAQ.md)
-- [GitHub Issues](https://github.com/cityofboston/opencontext/issues)
+- [GitHub Issues](https://github.com/thealphacubicle/OpenContext/issues)
 - [Architecture Guide](ARCHITECTURE.md)
 

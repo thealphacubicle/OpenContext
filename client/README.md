@@ -6,7 +6,7 @@ Stdio client for connecting Claude Desktop to OpenContext MCP servers.
 
 ### Download Binary
 
-Download the latest binary for your platform from the [Releases](https://github.com/cityofboston/opencontext/releases) page.
+Download the latest binary for your platform from the [Releases](https://github.com/thealphacubicle/OpenContext/releases) page.
 
 - macOS (Intel): `opencontext-client-darwin-amd64`
 - macOS (Apple Silicon): `opencontext-client-darwin-arm64`

@@ -81,7 +81,7 @@ Run `./deploy.sh` again. Terraform will update the Lambda function.
 
 ### How do I use it with Claude Desktop?
 
-**First, download the client binary** from [GitHub Releases](https://github.com/cityofboston/opencontext/releases) and make it executable.
+**First, download the client binary** from [GitHub Releases](https://github.com/thealphacubicle/OpenContext/releases) and make it executable.
 
 Then add to your Claude Desktop config:
 
@@ -198,13 +198,13 @@ Yes! Contributions are welcome. Please open an issue or pull request.
 
 ### Where is the code?
 
-[GitHub Repository](https://github.com/cityofboston/opencontext)
+[GitHub Repository](https://github.com/thealphacubicle/OpenContext)
 
 ## Support
 
 ### Where can I get help?
 
-- [GitHub Issues](https://github.com/cityofboston/opencontext/issues)
+- [GitHub Issues](https://github.com/thealphacubicle/OpenContext/issues)
 - [Documentation](.)
 - [FAQ](FAQ.md) (this page)
 

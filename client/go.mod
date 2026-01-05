@@ -1,3 +1,3 @@
-module github.com/cityofboston/opencontext/client
+module github.com/thealphacubicle/OpenContext/client
 
 go 1.21

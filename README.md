@@ -76,7 +76,7 @@ The script will:
 
 **First, download the client binary:**
 
-Download `opencontext-client` for your platform from [GitHub Releases](https://github.com/cityofboston/opencontext/releases) and make it executable:
+Download `opencontext-client` for your platform from [GitHub Releases](https://github.com/thealphacubicle/OpenContext/releases) and make it executable:
 
 ```bash
 chmod +x opencontext-client-darwin-arm64  # Adjust for your platform
@@ -135,7 +135,7 @@ See [docs/TESTING.md](docs/TESTING.md) for more testing options.
 
 ### Dual Use Case Support
 
-- **Claude Desktop** - Use Go stdio client binary (download from [Releases](https://github.com/cityofboston/opencontext/releases))
+- **Claude Desktop** - Use Go stdio client binary (download from [Releases](https://github.com/thealphacubicle/OpenContext/releases))
 - **Applications** - Call Lambda directly via HTTP with MCP JSON-RPC format (no wrapper needed)
 
 ### Built-in Plugins
@@ -197,7 +197,7 @@ MIT License - see [LICENSE](LICENSE) for details.
 
 ## Support
 
-- **Issues**: [GitHub Issues](https://github.com/cityofboston/opencontext/issues)
+- **Issues**: [GitHub Issues](https://github.com/thealphacubicle/OpenContext/issues)
 - **Documentation**: [docs/](docs/)
 - **FAQ**: [docs/FAQ.md](docs/FAQ.md)
 
