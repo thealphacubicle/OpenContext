@@ -1,0 +1,32 @@
+[project]
+name = "opencontext"
+version = "1.0.0"
+description = "Extensible MCP framework template for civic data platforms"
+authors = [
+    {name = "Srihari Raman", email = "srihari.raman@boston.gov"}
+]
+license = {text = "MIT"}
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "httpx>=0.27.0",
+    "pydantic>=2.0.0",
+    "pydantic-settings>=2.0.0",
+    "PyYAML>=6.0",
+    "tenacity>=8.0.0",
+    "python-json-logger>=2.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/thealphacubicle/OpenContext"
+Documentation = "https://github.com/thealphacubicle/OpenContext/blob/main/README.md"
+Repository = "https://github.com/thealphacubicle/OpenContext"
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+

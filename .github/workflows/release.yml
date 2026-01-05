@@ -1,0 +1,243 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*" # Triggers on version tags like v1.0.0, v2.1.3, etc.
+  workflow_dispatch: # Allows manual triggering
+    inputs:
+      version:
+        description: "Version tag (e.g., v1.0.0)"
+        required: true
+        type: string
+
+env:
+  BINARY_NAME: opencontext-client
+  GO_VERSION: "1.21"
+
+jobs:
+  build:
+    name: Build binaries
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # Required to create releases and upload assets
+
+    strategy:
+      matrix:
+        include:
+          - goos: darwin
+            goarch: amd64
+            output: opencontext-client-darwin-amd64
+          - goos: darwin
+            goarch: arm64
+            output: opencontext-client-darwin-arm64
+          - goos: linux
+            goarch: amd64
+            output: opencontext-client-linux-amd64
+          - goos: linux
+            goarch: arm64
+            output: opencontext-client-linux-arm64
+          - goos: windows
+            goarch: amd64
+            output: opencontext-client-windows-amd64.exe
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Fetch all history for proper versioning
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Get version from tag
+        id: get_version
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            VERSION=${GITHUB_REF#refs/tags/}
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Version: $VERSION"
+
+      - name: Build binary
+        working-directory: ./client
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: 0
+        run: |
+          go build -ldflags="-s -w -X main.version=${{ steps.get_version.outputs.version }}" \
+            -o ../${{ matrix.output }} \
+            main.go
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.output }}
+          path: ${{ matrix.output }}
+          retention-days: 7
+
+  release:
+    name: Create release
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Get version from tag
+        id: get_version
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            VERSION=${GITHUB_REF#refs/tags/}
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Version: $VERSION"
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ./artifacts
+
+      - name: Debug - Show artifact structure before flattening
+        run: |
+          echo "=== Artifact structure before flattening ==="
+          find artifacts -type f -o -type d | sort
+          echo ""
+          echo "=== Directory tree ==="
+          tree artifacts || find artifacts -print | sed -e 's;[^/]*/;|____;g;s;____|; |;g'
+
+      - name: Flatten artifact structure
+        run: |
+          cd artifacts
+          echo "=== Flattening artifacts ==="
+          # Find all binaries (they may be in subdirectories) and move to artifacts root
+          # We need to use a temp name because directories have the same name as files
+          find . -mindepth 2 -type f -name "opencontext-client-*" | while read file; do
+            filename=$(basename "$file")
+            dirname=$(dirname "$file")
+            tempname=".tmp_${filename}"
+            echo "Moving: $file to $filename (via $tempname)"
+            # Move to temp name first to avoid conflict with directory
+            mv "$file" "$tempname"
+            # Remove the now-empty directory
+            rmdir "$dirname" 2>/dev/null || true
+            # Rename temp file to final name
+            mv "$tempname" "$filename"
+          done
+          # Also handle files that might already be at depth 1
+          find . -mindepth 1 -maxdepth 1 -type f -name "opencontext-client-*" | while read file; do
+            echo "File already at root: $file"
+          done
+          # Remove any remaining empty subdirectories
+          find . -mindepth 1 -type d -empty -delete
+          echo "=== Flattening complete ==="
+
+      - name: Debug - Show artifact structure after flattening
+        run: |
+          echo "=== Artifact structure after flattening ==="
+          ls -lah artifacts/
+          echo ""
+          echo "=== Finding all binaries ==="
+          find artifacts -type f -name "opencontext-client-*"
+
+      - name: Generate checksums
+        run: |
+          cd artifacts
+          echo "=== Generating checksums ==="
+          find . -maxdepth 1 -type f -name "opencontext-client-*" -exec sha256sum {} \; > checksums.txt
+          echo "=== Checksums file contents ==="
+          cat checksums.txt
+          echo ""
+          echo "=== Verifying checksums.txt exists ==="
+          ls -lah checksums.txt
+
+      - name: Verify files before upload
+        run: |
+          echo "=== Files to be uploaded ==="
+          ls -lah artifacts/
+          echo ""
+          echo "=== Checking each binary file ==="
+          for file in artifacts/opencontext-client-darwin-amd64 \
+                      artifacts/opencontext-client-darwin-arm64 \
+                      artifacts/opencontext-client-linux-amd64 \
+                      artifacts/opencontext-client-linux-arm64 \
+                      artifacts/opencontext-client-windows-amd64.exe; do
+            if [ -f "$file" ]; then
+              echo "✅ Found: $file ($(du -h "$file" | cut -f1))"
+            else
+              echo "❌ Missing: $file"
+            fi
+          done
+          if [ -f "artifacts/checksums.txt" ]; then
+            echo "✅ Found: artifacts/checksums.txt"
+          else
+            echo "❌ Missing: artifacts/checksums.txt"
+            exit 1
+          fi
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.get_version.outputs.version }}
+          name: Release ${{ steps.get_version.outputs.version }}
+          body: |
+            ## Release ${{ steps.get_version.outputs.version }}
+
+            ### Binaries
+
+            This release includes pre-built binaries for the following platforms:
+
+            - **macOS** (Intel): `opencontext-client-darwin-amd64`
+            - **macOS** (Apple Silicon): `opencontext-client-darwin-arm64`
+            - **Linux** (amd64): `opencontext-client-linux-amd64`
+            - **Linux** (arm64): `opencontext-client-linux-arm64`
+            - **Windows** (amd64): `opencontext-client-windows-amd64.exe`
+
+            ### Installation
+
+            Download the appropriate binary for your platform and make it executable:
+
+            ```bash
+            # macOS/Linux
+            chmod +x opencontext-client-<platform>
+
+            # Windows
+            # No action needed, .exe is ready to use
+            ```
+
+            ### Checksums
+
+            Verify your download using the checksums in `checksums.txt`:
+
+            ```bash
+            sha256sum -c checksums.txt
+            ```
+
+            ### Usage
+
+            ```bash
+            opencontext-client <lambda_url>
+            # Or set OPENCONTEXT_LAMBDA_URL environment variable
+            ```
+
+            See the [README](https://github.com/${{ github.repository }}/blob/main/README.md) for more details.
+          files: |
+            artifacts/opencontext-client-darwin-amd64
+            artifacts/opencontext-client-darwin-arm64
+            artifacts/opencontext-client-linux-amd64
+            artifacts/opencontext-client-linux-arm64
+            artifacts/opencontext-client-windows-amd64.exe
+            artifacts/checksums.txt
+          draft: false
+          prerelease: ${{ contains(steps.get_version.outputs.version, '-') || contains(steps.get_version.outputs.version, 'alpha') || contains(steps.get_version.outputs.version, 'beta') || contains(steps.get_version.outputs.version, 'rc') }}
+          generate_release_notes: true
