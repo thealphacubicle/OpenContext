@@ -108,19 +108,73 @@ jobs:
         with:
           path: ./artifacts
 
+      - name: Debug - Show artifact structure before flattening
+        run: |
+          echo "=== Artifact structure before flattening ==="
+          find artifacts -type f -o -type d | sort
+          echo ""
+          echo "=== Directory tree ==="
+          tree artifacts || find artifacts -print | sed -e 's;[^/]*/;|____;g;s;____|; |;g'
+
       - name: Flatten artifact structure
         run: |
           cd artifacts
+          echo "=== Flattening artifacts ==="
           # Find all binaries (they may be in subdirectories) and move to artifacts root
-          find . -mindepth 2 -type f -name "opencontext-client-*" -exec sh -c 'mv "$1" .' _ {} \;
+          find . -mindepth 2 -type f -name "opencontext-client-*" | while read file; do
+            echo "Moving: $file to $(basename "$file")"
+            mv "$file" .
+          done
+          # Also handle files that might already be at depth 1
+          find . -mindepth 1 -maxdepth 1 -type f -name "opencontext-client-*" | while read file; do
+            echo "File already at root: $file"
+          done
           # Remove empty subdirectories
           find . -mindepth 1 -type d -empty -delete
+          echo "=== Flattening complete ==="
+
+      - name: Debug - Show artifact structure after flattening
+        run: |
+          echo "=== Artifact structure after flattening ==="
+          ls -lah artifacts/
+          echo ""
+          echo "=== Finding all binaries ==="
+          find artifacts -type f -name "opencontext-client-*"
 
       - name: Generate checksums
         run: |
           cd artifacts
-          find . -type f -name "opencontext-client-*" -exec sha256sum {} \; > checksums.txt
+          echo "=== Generating checksums ==="
+          find . -maxdepth 1 -type f -name "opencontext-client-*" -exec sha256sum {} \; > checksums.txt
+          echo "=== Checksums file contents ==="
           cat checksums.txt
+          echo ""
+          echo "=== Verifying checksums.txt exists ==="
+          ls -lah checksums.txt
+
+      - name: Verify files before upload
+        run: |
+          echo "=== Files to be uploaded ==="
+          ls -lah artifacts/
+          echo ""
+          echo "=== Checking each binary file ==="
+          for file in artifacts/opencontext-client-darwin-amd64 \
+                      artifacts/opencontext-client-darwin-arm64 \
+                      artifacts/opencontext-client-linux-amd64 \
+                      artifacts/opencontext-client-linux-arm64 \
+                      artifacts/opencontext-client-windows-amd64.exe; do
+            if [ -f "$file" ]; then
+              echo "✅ Found: $file ($(du -h "$file" | cut -f1))"
+            else
+              echo "❌ Missing: $file"
+            fi
+          done
+          if [ -f "artifacts/checksums.txt" ]; then
+            echo "✅ Found: artifacts/checksums.txt"
+          else
+            echo "❌ Missing: artifacts/checksums.txt"
+            exit 1
+          fi
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
@@ -169,7 +223,11 @@ jobs:
 
             See the [README](https://github.com/${{ github.repository }}/blob/main/README.md) for more details.
           files: |
-            artifacts/opencontext-client-*
+            artifacts/opencontext-client-darwin-amd64
+            artifacts/opencontext-client-darwin-arm64
+            artifacts/opencontext-client-linux-amd64
+            artifacts/opencontext-client-linux-arm64
+            artifacts/opencontext-client-windows-amd64.exe
             artifacts/checksums.txt
           draft: false
           prerelease: ${{ contains(steps.get_version.outputs.version, '-') || contains(steps.get_version.outputs.version, 'alpha') || contains(steps.get_version.outputs.version, 'beta') || contains(steps.get_version.outputs.version, 'rc') }}
