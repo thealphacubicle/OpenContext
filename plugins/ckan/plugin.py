@@ -11,6 +11,7 @@ from tenacity import retry, stop_after_attempt, wait_exponential
 
 from core.interfaces import DataPlugin, PluginType, ToolDefinition, ToolResult
 from plugins.ckan.config_schema import CKANPluginConfig
+from plugins.ckan.sql_validator import SQLValidator
 
 logger = logging.getLogger(__name__)
 
@@ -82,9 +83,7 @@ class CKANPlugin(DataPlugin):
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=2, max=10),
     )
-    async def _call_ckan_api(
-        self, action: str, data: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    async def _call_ckan_api(self, action: str, data: Dict[str, Any]) -> Dict[str, Any]:
         """Call CKAN API action.
 
         Args:
@@ -179,6 +178,32 @@ class CKANPlugin(DataPlugin):
                     "required": ["resource_id"],
                 },
             ),
+            ToolDefinition(
+                name="execute_sql",
+                description="""Execute raw PostgreSQL SELECT query.
+
+⚠️ Advanced users only. For complex queries requiring full SQL.
+
+Security: Only SELECT allowed. INSERT/UPDATE/DELETE blocked.
+
+Examples:
+- Window functions: RANK() OVER (...)
+- CTEs: WITH subquery AS (...)
+- Complex aggregations: PERCENTILE_CONT(0.5) WITHIN GROUP
+
+Resource IDs must be double-quoted: FROM "uuid-here"
+""",
+                input_schema={
+                    "type": "object",
+                    "properties": {
+                        "sql": {
+                            "type": "string",
+                            "description": "PostgreSQL SELECT statement",
+                        },
+                    },
+                    "required": ["sql"],
+                },
+            ),
         ]
 
     async def execute_tool(
@@ -267,6 +292,30 @@ class CKANPlugin(DataPlugin):
                     success=True,
                 )
 
+            elif tool_name == "execute_sql":
+                sql = arguments.get("sql")
+                if not sql:
+                    return ToolResult(
+                        content=[],
+                        success=False,
+                        error_message="sql parameter is required",
+                    )
+                result = await self.execute_sql(sql)
+                if result.get("error"):
+                    return ToolResult(
+                        content=[],
+                        success=False,
+                        error_message=result.get("message", "SQL execution failed"),
+                    )
+                # Format SQL results
+                records = result.get("records", [])
+                fields = result.get("fields", [])
+                formatted_text = self._format_sql_results(records, fields)
+                return ToolResult(
+                    content=[{"type": "text", "text": formatted_text}],
+                    success=True,
+                )
+
             else:
                 return ToolResult(
                     content=[],
@@ -352,6 +401,35 @@ class CKANPlugin(DataPlugin):
         )
         return response.get("result", {}).get("fields", [])
 
+    async def execute_sql(self, sql: str) -> Dict[str, Any]:
+        """Execute raw PostgreSQL SELECT query with security validation.
+
+        Args:
+            sql: PostgreSQL SELECT statement
+
+        Returns:
+            Dictionary with success flag, records, fields, or error message
+        """
+        # Validate SQL
+        is_valid, error = SQLValidator.validate_query(sql)
+        if not is_valid:
+            return {"error": True, "message": error}
+
+        # Log SQL execution (truncated for security)
+        logger.info("Executing SQL", extra={"sql": sql[:500]})
+
+        # Execute
+        try:
+            result = await self._call_ckan_api("datastore_search_sql", {"sql": sql})
+            return {
+                "success": True,
+                "records": result.get("result", {}).get("records", []),
+                "fields": result.get("result", {}).get("fields", []),
+            }
+        except Exception as e:
+            logger.error(f"SQL execution failed: {e}", exc_info=True)
+            return {"error": True, "message": str(e)}
+
     async def health_check(self) -> bool:
         """Check if CKAN API is accessible.
 
@@ -377,12 +455,18 @@ class CKANPlugin(DataPlugin):
         for i, dataset in enumerate(datasets, 1):
             title = dataset.get("title", "Untitled")
             dataset_id = dataset.get("id", "unknown")
-            notes = dataset.get("notes", "")[:100] + "..." if dataset.get("notes") else "No description"
+            notes = (
+                dataset.get("notes", "")[:100] + "..."
+                if dataset.get("notes")
+                else "No description"
+            )
 
             lines.append(f"{i}. {title}")
             lines.append(f"   ID: {dataset_id}")
             lines.append(f"   Description: {notes}")
-            lines.append(f"   Portal: {self.plugin_config.portal_url}/dataset/{dataset_id}")
+            lines.append(
+                f"   Portal: {self.plugin_config.portal_url}/dataset/{dataset_id}"
+            )
             lines.append("")
 
         lines.append(
@@ -426,16 +510,12 @@ class CKANPlugin(DataPlugin):
 
         return "\n".join(lines)
 
-    def _format_query_results(
-        self, records: List[Dict[str, Any]], limit: int
-    ) -> str:
+    def _format_query_results(self, records: List[Dict[str, Any]], limit: int) -> str:
         """Format query results for user display."""
         if not records:
             return "No records found matching the query."
 
-        lines = [
-            f"Found {len(records)} record(s) (showing up to {limit}):\n"
-        ]
+        lines = [f"Found {len(records)} record(s) (showing up to {limit}):\n"]
 
         # Show first few records as examples
         for i, record in enumerate(records[:5], 1):
@@ -468,3 +548,37 @@ class CKANPlugin(DataPlugin):
 
         return "\n".join(lines)
 
+    def _format_sql_results(
+        self, records: List[Dict[str, Any]], fields: List[Dict[str, Any]]
+    ) -> str:
+        """Format SQL query results for user display.
+
+        Args:
+            records: List of record dictionaries
+            fields: List of field metadata dictionaries
+
+        Returns:
+            Formatted string representation of results
+        """
+        if not records:
+            return "No records found matching the SQL query."
+
+        lines = [f"SQL Query Results: {len(records)} record(s)\n"]
+
+        # Show field names if available
+        if fields:
+            field_names = [field.get("id", "unknown") for field in fields]
+            lines.append(f"Fields: {', '.join(field_names)}\n")
+
+        # Show first few records as examples
+        for i, record in enumerate(records[:10], 1):
+            lines.append(f"Record {i}:")
+            for key, value in record.items():
+                if key != "_id":  # Skip internal ID
+                    lines.append(f"  {key}: {value}")
+            lines.append("")
+
+        if len(records) > 10:
+            lines.append(f"... and {len(records) - 10} more record(s)")
+
+        return "\n".join(lines)

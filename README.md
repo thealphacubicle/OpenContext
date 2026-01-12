@@ -141,6 +141,10 @@ See [docs/TESTING.md](docs/TESTING.md) for more testing options.
 ### Built-in Plugins
 
 - **CKAN** - For CKAN-based open data portals (e.g., data.boston.gov, data.gov, data.gov.uk)
+  - Dataset search and metadata retrieval
+  - Data querying with filters
+  - Schema information
+  - **SQL execution** - Execute PostgreSQL SELECT queries for advanced use cases
 
 See [docs/BUILT_IN_PLUGINS.md](docs/BUILT_IN_PLUGINS.md) for plugin documentation.
 

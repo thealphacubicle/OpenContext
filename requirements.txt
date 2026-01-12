@@ -4,4 +4,5 @@ pydantic-settings>=2.0.0
 PyYAML>=6.0
 tenacity>=8.0.0
 python-json-logger>=2.0.0
+sqlparse>=0.4.4
 

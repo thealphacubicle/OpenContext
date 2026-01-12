@@ -48,6 +48,7 @@ async def test_ckan_plugin_get_tools(ckan_config):
     assert "get_dataset" in tool_names
     assert "query_data" in tool_names
     assert "get_schema" in tool_names
+    assert "execute_sql" in tool_names
 
 
 @pytest.mark.asyncio
@@ -135,3 +136,181 @@ async def test_ckan_plugin_health_check(ckan_config):
         health = await plugin.health_check()
 
         assert health is True
+
+
+@pytest.mark.asyncio
+async def test_ckan_plugin_execute_sql_success(ckan_config):
+    """Test CKAN plugin execute_sql method with valid SQL."""
+    plugin = CKANPlugin(ckan_config)
+
+    with patch("httpx.AsyncClient") as mock_client_class:
+        mock_client = AsyncMock()
+        # First response for initialize() - status_show
+        mock_response_init = Mock()
+        mock_response_init.json.return_value = {"success": True}
+        mock_response_init.raise_for_status = Mock()
+        # Second response for execute_sql() - datastore_search_sql
+        mock_response_sql = Mock()
+        mock_response_sql.json.return_value = {
+            "result": {
+                "records": [
+                    {"id": 1, "name": "Test Record", "status": "Open"},
+                    {"id": 2, "name": "Another Record", "status": "Closed"},
+                ],
+                "fields": [
+                    {"id": "id", "type": "int"},
+                    {"id": "name", "type": "text"},
+                    {"id": "status", "type": "text"},
+                ],
+            }
+        }
+        mock_response_sql.raise_for_status = Mock()
+        # Return different responses for sequential calls
+        mock_client.post = AsyncMock(
+            side_effect=[mock_response_init, mock_response_sql]
+        )
+        mock_client_class.return_value = mock_client
+
+        await plugin.initialize()
+
+        sql = 'SELECT * FROM "abc-123-def-456-ghi-789-012-345-678-901" LIMIT 10'
+        result = await plugin.execute_sql(sql)
+
+        assert result.get("success") is True
+        assert "records" in result
+        assert len(result["records"]) == 2
+        assert "fields" in result
+
+
+@pytest.mark.asyncio
+async def test_ckan_plugin_execute_sql_validation_error(ckan_config):
+    """Test CKAN plugin execute_sql method with invalid SQL."""
+    plugin = CKANPlugin(ckan_config)
+
+    with patch("httpx.AsyncClient") as mock_client_class:
+        mock_client = AsyncMock()
+        mock_response_init = Mock()
+        mock_response_init.json.return_value = {"success": True}
+        mock_response_init.raise_for_status = Mock()
+        mock_client.post = AsyncMock(return_value=mock_response_init)
+        mock_client_class.return_value = mock_client
+
+        await plugin.initialize()
+
+        # Test with INSERT statement (should fail validation)
+        sql = 'INSERT INTO "abc-123-def-456-ghi-789-012-345-678-901" VALUES (1)'
+        result = await plugin.execute_sql(sql)
+
+        assert result.get("error") is True
+        assert "message" in result
+        assert "INSERT" in result["message"] or "SELECT" in result["message"]
+
+
+@pytest.mark.asyncio
+async def test_ckan_plugin_execute_sql_api_error(ckan_config):
+    """Test CKAN plugin execute_sql method with API error."""
+    plugin = CKANPlugin(ckan_config)
+
+    with patch("httpx.AsyncClient") as mock_client_class:
+        mock_client = AsyncMock()
+        # First response for initialize() - status_show
+        mock_response_init = Mock()
+        mock_response_init.json.return_value = {"success": True}
+        mock_response_init.raise_for_status = Mock()
+        # Second response for execute_sql() - simulate API error
+        mock_response_sql = Mock()
+        mock_response_sql.raise_for_status.side_effect = Exception("API Error")
+        # Return different responses for sequential calls
+        mock_client.post = AsyncMock(
+            side_effect=[mock_response_init, mock_response_sql]
+        )
+        mock_client_class.return_value = mock_client
+
+        await plugin.initialize()
+
+        sql = 'SELECT * FROM "abc-123-def-456-ghi-789-012-345-678-901"'
+        result = await plugin.execute_sql(sql)
+
+        assert result.get("error") is True
+        assert "message" in result
+
+
+@pytest.mark.asyncio
+async def test_ckan_plugin_execute_tool_sql(ckan_config):
+    """Test CKAN plugin execute_tool with execute_sql."""
+    plugin = CKANPlugin(ckan_config)
+
+    with patch("httpx.AsyncClient") as mock_client_class:
+        mock_client = AsyncMock()
+        # First response for initialize() - status_show
+        mock_response_init = Mock()
+        mock_response_init.json.return_value = {"success": True}
+        mock_response_init.raise_for_status = Mock()
+        # Second response for execute_tool() -> execute_sql() - datastore_search_sql
+        mock_response_sql = Mock()
+        mock_response_sql.json.return_value = {
+            "result": {
+                "records": [{"id": 1, "name": "Test"}],
+                "fields": [{"id": "id", "type": "int"}, {"id": "name", "type": "text"}],
+            }
+        }
+        mock_response_sql.raise_for_status = Mock()
+        # Return different responses for sequential calls
+        mock_client.post = AsyncMock(
+            side_effect=[mock_response_init, mock_response_sql]
+        )
+        mock_client_class.return_value = mock_client
+
+        await plugin.initialize()
+
+        result = await plugin.execute_tool(
+            "execute_sql",
+            {"sql": 'SELECT * FROM "abc-123-def-456-ghi-789-012-345-678-901" LIMIT 1'},
+        )
+
+        assert result.success
+        assert len(result.content) > 0
+
+
+@pytest.mark.asyncio
+async def test_ckan_plugin_execute_tool_sql_validation_error(ckan_config):
+    """Test CKAN plugin execute_tool with execute_sql validation error."""
+    plugin = CKANPlugin(ckan_config)
+
+    with patch("httpx.AsyncClient") as mock_client_class:
+        mock_client = AsyncMock()
+        mock_response_init = Mock()
+        mock_response_init.json.return_value = {"success": True}
+        mock_response_init.raise_for_status = Mock()
+        mock_client.post = AsyncMock(return_value=mock_response_init)
+        mock_client_class.return_value = mock_client
+
+        await plugin.initialize()
+
+        result = await plugin.execute_tool(
+            "execute_sql", {"sql": "DELETE FROM users"}
+        )
+
+        assert result.success is False
+        assert result.error_message is not None
+
+
+@pytest.mark.asyncio
+async def test_ckan_plugin_execute_tool_sql_missing_param(ckan_config):
+    """Test CKAN plugin execute_tool with execute_sql missing parameter."""
+    plugin = CKANPlugin(ckan_config)
+
+    with patch("httpx.AsyncClient") as mock_client_class:
+        mock_client = AsyncMock()
+        mock_response_init = Mock()
+        mock_response_init.json.return_value = {"success": True}
+        mock_response_init.raise_for_status = Mock()
+        mock_client.post = AsyncMock(return_value=mock_response_init)
+        mock_client_class.return_value = mock_client
+
+        await plugin.initialize()
+
+        result = await plugin.execute_tool("execute_sql", {})
+
+        assert result.success is False
+        assert "required" in result.error_message.lower()

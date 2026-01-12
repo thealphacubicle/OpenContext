@@ -94,7 +94,7 @@ Run the test suite:
 
 ```bash
 # Install test dependencies
-pip install pytest pytest-asyncio
+pip install pytest pytest-asyncio sqlparse
 
 # Run all tests
 pytest
@@ -171,6 +171,23 @@ curl -X POST http://localhost:8000 \
   }'
 ```
 
+**Execute SQL:**
+```bash
+curl -X POST http://localhost:8000 \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc":"2.0",
+    "id":7,
+    "method":"tools/call",
+    "params":{
+      "name":"ckan__execute_sql",
+      "arguments":{
+        "sql":"SELECT * FROM \"resource-uuid-here\" LIMIT 10"
+      }
+    }
+  }'
+```
+
 **Query Data:**
 
 ```bash
@@ -188,6 +205,50 @@ curl -X POST http://localhost:8000 \
       }
     }
   }'
+```
+
+## Testing SQL Execution
+
+The `execute_sql` tool includes comprehensive security validation. Test it with:
+
+**Valid SQL Query:**
+```bash
+curl -X POST http://localhost:8000 \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc":"2.0",
+    "id":7,
+    "method":"tools/call",
+    "params":{
+      "name":"ckan__execute_sql",
+      "arguments":{
+        "sql":"SELECT COUNT(*) FROM \"abc-123-def-456-ghi-789-012-345-678-901\" WHERE status = '\''Open'\''"
+      }
+    }
+  }'
+```
+
+**Test SQL Validation (should fail):**
+```bash
+# Test rejection of INSERT statement
+curl -X POST http://localhost:8000 \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc":"2.0",
+    "id":8,
+    "method":"tools/call",
+    "params":{
+      "name":"ckan__execute_sql",
+      "arguments":{
+        "sql":"INSERT INTO \"abc-123-def-456-ghi-789-012-345-678-901\" VALUES (1)"
+      }
+    }
+  }'
+```
+
+**Run SQL Validator Tests:**
+```bash
+pytest tests/test_sql_validator.py -v
 ```
 
 ## Testing Lambda Deployment

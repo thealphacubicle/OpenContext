@@ -110,6 +110,27 @@ curl -X POST https://your-lambda-url \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
 ```
 
+### Can I execute raw SQL queries?
+
+Yes! The CKAN plugin includes an `execute_sql` tool for advanced users. It allows you to execute PostgreSQL SELECT queries against CKAN datastore resources.
+
+**Security:** Only SELECT queries are allowed. INSERT, UPDATE, DELETE, DROP, and other destructive operations are automatically blocked.
+
+**Example:**
+
+```
+Execute SQL: SELECT COUNT(*) FROM "resource-uuid" WHERE status = 'Open'
+```
+
+**Requirements:**
+
+- Resource IDs must be valid UUIDs
+- Resource IDs must be double-quoted in SQL: `FROM "uuid-here"`
+- Maximum query length: 50,000 characters
+- Only SELECT statements allowed
+
+See [Built-in Plugins](BUILT_IN_PLUGINS.md) for more details.
+
 ## Troubleshooting
 
 ### Deploy script fails: "Multiple Plugins Enabled"
@@ -188,7 +209,7 @@ asyncio.run(test())
 **Option 3: Run unit tests**
 
 ```bash
-pip install pytest pytest-asyncio
+pip install pytest pytest-asyncio sqlparse
 pytest tests/
 ```
 
