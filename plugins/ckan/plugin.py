@@ -204,6 +204,36 @@ Resource IDs must be double-quoted: FROM "uuid-here"
                     "required": ["sql"],
                 },
             ),
+            ToolDefinition(
+                name="aggregate_data",
+                description="""Aggregate data with GROUP BY.
+
+Prerequisites: get_schema for field names
+
+Examples:
+- Count by field: group_by=["neighborhood"], metrics={"count": "count(*)"}
+- Multiple metrics: metrics={"total": "count(*)", "avg": "avg(field)"}
+- With filters: filters={"status": "Open"}
+
+Supports: count(*), sum(), avg(), min(), max(), stddev()
+""",
+                input_schema={
+                    "type": "object",
+                    "properties": {
+                        "resource_id": {"type": "string"},
+                        "group_by": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                        },
+                        "metrics": {"type": "object"},
+                        "filters": {"type": "object"},
+                        "having": {"type": "object"},
+                        "order_by": {"type": "string"},
+                        "limit": {"type": "integer", "default": 100},
+                    },
+                    "required": ["resource_id", "metrics"],
+                },
+            ),
         ]
 
     async def execute_tool(
@@ -314,6 +344,43 @@ Resource IDs must be double-quoted: FROM "uuid-here"
                 return ToolResult(
                     content=[{"type": "text", "text": formatted_text}],
                     success=True,
+                )
+
+            elif tool_name == "aggregate_data":
+                resource_id = arguments.get("resource_id")
+                if not resource_id:
+                    return ToolResult(
+                        content=[],
+                        success=False,
+                        error_message="resource_id parameter is required",
+                    )
+                metrics = arguments.get("metrics", {})
+                if not metrics:
+                    return ToolResult(
+                        content=[],
+                        success=False,
+                        error_message="metrics parameter is required",
+                    )
+                result = await self.aggregate_data(
+                    resource_id=resource_id,
+                    group_by=arguments.get("group_by", []),
+                    metrics=metrics,
+                    filters=arguments.get("filters"),
+                    having=arguments.get("having"),
+                    order_by=arguments.get("order_by"),
+                    limit=arguments.get("limit", 100),
+                )
+                if result.get("error"):
+                    return ToolResult(
+                        content=[],
+                        success=False,
+                        error_message=result.get("message", "Aggregation failed"),
+                    )
+                formatted = self._format_sql_results(
+                    result.get("records", []), result.get("fields", [])
+                )
+                return ToolResult(
+                    content=[{"type": "text", "text": formatted}], success=True
                 )
 
             else:
@@ -429,6 +496,71 @@ Resource IDs must be double-quoted: FROM "uuid-here"
         except Exception as e:
             logger.error(f"SQL execution failed: {e}", exc_info=True)
             return {"error": True, "message": str(e)}
+
+    async def aggregate_data(
+        self,
+        resource_id: str,
+        group_by: List[str],
+        metrics: Dict[str, str],
+        filters: Optional[Dict[str, Any]] = None,
+        having: Optional[Dict[str, Any]] = None,
+        order_by: Optional[str] = None,
+        limit: int = 100,
+    ) -> Dict[str, Any]:
+        """Aggregate data with GROUP BY.
+
+        Args:
+            resource_id: Resource ID (must be valid UUID)
+            group_by: List of fields to group by
+            metrics: Dictionary of metric_name: sql_expression (e.g., {"count": "count(*)"})
+            filters: Optional WHERE clause filters (field: value pairs)
+            having: Optional HAVING clause filters (expression: value pairs)
+            order_by: Optional field to order by
+            limit: Maximum number of results
+
+        Returns:
+            Dictionary with success flag, records, fields, or error message
+        """
+        # SELECT
+        select_fields = ", ".join(group_by) if group_by else ""
+        select_metrics = ", ".join(
+            [f"{expr} as {name}" for name, expr in metrics.items()]
+        )
+        select_clause = (
+            f"{select_fields}, {select_metrics}" if select_fields else select_metrics
+        )
+
+        # WHERE
+        where_clause = ""
+        if filters:
+            conditions = []
+            for field, value in filters.items():
+                if isinstance(value, str):
+                    # Escape single quotes in SQL strings
+                    escaped_value = value.replace("'", "''")
+                    conditions.append(f"{field} = '{escaped_value}'")
+                elif value is None:
+                    conditions.append(f"{field} IS NULL")
+                else:
+                    conditions.append(f"{field} = {value}")
+            where_clause = "WHERE " + " AND ".join(conditions)
+
+        # GROUP BY
+        group_clause = f"GROUP BY {', '.join(group_by)}" if group_by else ""
+
+        # HAVING
+        having_clause = ""
+        if having:
+            conditions = [f"{expr} > {value}" for expr, value in having.items()]
+            having_clause = "HAVING " + " AND ".join(conditions)
+
+        # ORDER BY
+        order_clause = f"ORDER BY {order_by}" if order_by else ""
+
+        # Build SQL
+        sql = f'SELECT {select_clause} FROM "{resource_id}" {where_clause} {group_clause} {having_clause} {order_clause} LIMIT {limit}'.strip()
+
+        return await self.execute_sql(sql)
 
     async def health_check(self) -> bool:
         """Check if CKAN API is accessible.
