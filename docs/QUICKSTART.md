@@ -44,7 +44,7 @@ plugins:
 Run the deployment script:
 
 ```bash
-./deploy.sh
+./scripts/deploy.sh
 ```
 
 The script will:
@@ -117,7 +117,7 @@ Restart Claude Desktop to load the new server.
 
 ```bash
 # Start local server
-python3 local_server.py
+python3 scripts/local_server.py
 
 # In another terminal, test with curl
 curl -X POST http://localhost:8000 \

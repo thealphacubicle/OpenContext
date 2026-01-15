@@ -117,7 +117,7 @@ resource "aws_lambda_function_url" "mcp_server_url" {
     allow_origins     = ["*"]
     allow_methods     = ["POST", "OPTIONS"]
     allow_headers     = ["content-type"]
-    expose_headers    = ["x-request-id"]
+    expose_headers    = ["x-request-id", "mcp-session-id"]
     max_age           = 86400
   }
 }

@@ -58,7 +58,7 @@ asyncio.run(test())
 pip install aiohttp
 
 # Start local server
-python3 local_server.py
+python3 scripts/local_server.py
 ```
 
 **Terminal 2 - Test with curl:**
@@ -253,7 +253,7 @@ pytest tests/test_sql_validator.py -v
 
 ## Testing Lambda Deployment
 
-After deploying with `./deploy.sh`, test your Lambda URL:
+After deploying with `./scripts/deploy.sh`, test your Lambda URL:
 
 ```bash
 # Replace with your actual Lambda URL

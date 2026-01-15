@@ -17,7 +17,7 @@ OpenContext is a plugin-based MCP framework where each fork deploys exactly **ON
 
 **How it's enforced:**
 
-- **deploy.sh** - Validates config before deployment
+- **scripts/deploy.sh** - Validates config before deployment
 - **plugin_manager.py** - Crashes Lambda if multiple plugins enabled
 
 ### Plugin-Based Architecture
@@ -146,14 +146,14 @@ plugins:
 
 Configuration is:
 
-- Validated at deployment time (`deploy.sh`)
+- Validated at deployment time (`scripts/deploy.sh`)
 - Validated at runtime (`plugin_manager.py`)
 
 ## Deployment
 
 1. **Fork repository**
 2. **Edit config.yaml** - Enable ONE plugin
-3. **Run deploy.sh** - Validates, packages, deploys
+3. **Run scripts/deploy.sh** - Validates, packages, deploys
 4. **Get Lambda URL** - Use with Claude Desktop or directly
 
 ## Why One Fork = One MCP Server?

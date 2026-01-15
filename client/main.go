@@ -45,8 +45,13 @@ type Client struct {
 
 // NewClient creates a new Client instance
 func NewClient(lambdaURL string, timeout time.Duration) *Client {
+	// Ensure URL ends with /mcp endpoint
+	url := strings.TrimRight(lambdaURL, "/")
+	if !strings.HasSuffix(url, "/mcp") {
+		url = url + "/mcp"
+	}
 	return &Client{
-		lambdaURL: strings.TrimRight(lambdaURL, "/"),
+		lambdaURL: url,
 		client: &http.Client{
 			Timeout: timeout,
 		},

@@ -12,9 +12,11 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
-# Script directory
+# Script directory (scripts/)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-cd "$SCRIPT_DIR"
+# Project root (parent directory)
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+cd "$PROJECT_ROOT"
 
 echo -e "${GREEN}🚀 OpenContext Deployment${NC}"
 echo "================================"
@@ -129,7 +131,7 @@ EOF
     echo "     Fork #2: Enable $SECOND_PLUGIN only"
     echo ""
     echo "  3. Deploy each fork separately"
-    echo "     ./deploy.sh (in each fork)"
+    echo "     ./scripts/deploy.sh (in each fork)"
     echo ""
     echo "See docs/ARCHITECTURE.md for details."
     exit 1

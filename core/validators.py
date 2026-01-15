@@ -69,7 +69,7 @@ def validate_plugin_count(config: Dict[str, Any]) -> Tuple[List[str], int]:
             f"     Fork #1: Enable {enabled_plugins[0]} only\n"
             f"     Fork #2: Enable {enabled_plugins[1]} only\n\n"
             f"  3. Deploy each fork separately\n"
-            f"     ./deploy.sh (in each fork)\n\n"
+            f"     ./scripts/deploy.sh (in each fork)\n\n"
             f"See docs/ARCHITECTURE.md for details."
         )
 
@@ -136,6 +136,22 @@ def load_and_validate_config(config_path: str = "config.yaml") -> Dict[str, Any]
     )
 
     return config
+
+
+def get_logging_config(config: Dict[str, Any]) -> Dict[str, Any]:
+    """Get logging configuration from config dictionary.
+
+    Args:
+        config: Parsed configuration dictionary
+
+    Returns:
+        Dictionary with logging configuration (level, format)
+    """
+    logging_config = config.get("logging", {})
+    return {
+        "level": logging_config.get("level", "INFO"),
+        "format": logging_config.get("format", "json"),
+    }
 
 
 def get_enabled_plugin_config(config: Dict[str, Any]) -> Tuple[str, Dict[str, Any]]:
