@@ -4,9 +4,15 @@
 import asyncio
 import json
 import logging
+import sys
 import time
 import uuid
 from pathlib import Path
+
+# Add project root to Python path so we can import from core
+project_root = Path(__file__).parent.parent.resolve()
+if str(project_root) not in sys.path:
+    sys.path.insert(0, str(project_root))
 
 import yaml
 from aiohttp import web
