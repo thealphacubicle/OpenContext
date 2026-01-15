@@ -33,7 +33,7 @@ This architecture keeps deployments:
    - Fork #3: Enable your custom plugin only
 
 3. **Deploy each fork separately**
-   - Run `./deploy.sh` in each fork
+   - Run `./scripts/deploy.sh` in each fork
    - Each gets its own Lambda URL
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for detailed explanation of this design decision.
@@ -62,7 +62,7 @@ plugins:
 ### 3. Deploy
 
 ```bash
-./deploy.sh
+./scripts/deploy.sh
 ```
 
 The script will:
@@ -74,24 +74,45 @@ The script will:
 
 ### 4. Use with Claude Desktop
 
-**First, download the client binary:**
+Add to your Claude Desktop configuration:
 
-Download `opencontext-client` for your platform from [GitHub Releases](https://github.com/thealphacubicle/OpenContext/releases) and make it executable:
+**macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`  
+**Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
+
+**Option 1: Streamable HTTP Transport (Recommended - No Binary Required)**
+
+```json
+{
+  "mcpServers": {
+    "Boston OpenData": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-stdio-to-http",
+        "--transport",
+        "streamable-http",
+        "https://your-lambda-url.lambda-url.us-east-1.on.aws/mcp"
+      ]
+    }
+  }
+}
+```
+
+**Option 2: Stdio Client Binary (Traditional Method)**
+
+First, download the `opencontext-client` binary from [GitHub Releases](https://github.com/thealphacubicle/OpenContext/releases) and make it executable:
 
 ```bash
 chmod +x opencontext-client-darwin-arm64  # Adjust for your platform
 mv opencontext-client-darwin-arm64 opencontext-client
 ```
 
-**Then add to your Claude Desktop configuration:**
-
-**macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`  
-**Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
+Then configure Claude Desktop:
 
 ```json
 {
   "mcpServers": {
-    "my-mcp-server": {
+    "Boston OpenData": {
       "command": "/path/to/opencontext-client",
       "args": ["https://your-lambda-url.lambda-url.us-east-1.on.aws"]
     }
@@ -99,7 +120,7 @@ mv opencontext-client-darwin-arm64 opencontext-client
 }
 ```
 
-**For direct HTTP access** (LaunchPad/Applications), use the Lambda URL directly with MCP JSON-RPC format.
+**Note:** Replace `https://your-lambda-url.lambda-url.us-east-1.on.aws` with your actual Lambda Function URL. The Go client will automatically append `/mcp` to the URL.
 
 See [docs/QUICKSTART.md](docs/QUICKSTART.md) for detailed setup instructions.
 
@@ -112,12 +133,15 @@ Before deploying, you can test locally:
 pip install aiohttp
 
 # Start local server
-python3 local_server.py
+python3 scripts/local_server.py
 
 # In another terminal, test with curl
-curl -X POST http://localhost:8000 \
+curl -X POST http://localhost:8000/mcp \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc":"2.0","id":1,"method":"ping"}'
+
+# Or use the test script for full MCP lifecycle testing
+./scripts/test_streamable_http.sh
 ```
 
 See [docs/TESTING.md](docs/TESTING.md) for more testing options.
@@ -133,10 +157,11 @@ See [docs/TESTING.md](docs/TESTING.md) for more testing options.
 - **Custom Plugins** - Add your own plugins in `custom_plugins/`
 - **Auto-Discovery** - Plugins are automatically discovered and loaded
 
-### Dual Use Case Support
+### Dual Transport Support
 
-- **Claude Desktop** - Use Go stdio client binary (download from [Releases](https://github.com/thealphacubicle/OpenContext/releases))
-- **Applications** - Call Lambda directly via HTTP with MCP JSON-RPC format (no wrapper needed)
+- **Streamable HTTP Transport** - Connect via HTTP adapter (no client binary needed)
+- **Stdio Transport** - Use Go client binary for stdio-to-HTTP bridging (traditional method)
+- **Direct HTTP** - Applications can call Lambda directly via HTTP with MCP JSON-RPC format
 
 ### Built-in Plugins
 

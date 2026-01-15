@@ -282,7 +282,7 @@ def test_error_message_helpful_for_boston_users():
     # Error should be helpful
     assert "Fork this repository again" in error_msg
     assert "opencontext-opendata" in error_msg or "example" in error_msg.lower()
-    assert "./deploy.sh" in error_msg
+    assert "./scripts/deploy.sh" in error_msg
     assert "docs/ARCHITECTURE.md" in error_msg
 
 

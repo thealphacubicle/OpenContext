@@ -27,7 +27,7 @@ Custom plugins allow you to integrate OpenContext with your own APIs, databases,
        api_key: "${MY_API_KEY}"
    ```
 
-4. Deploy: `./deploy.sh`
+4. Deploy: `./scripts/deploy.sh`
 
 ## Plugin Structure
 

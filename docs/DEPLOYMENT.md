@@ -54,7 +54,7 @@ aws:
 ### 3. Run Deployment Script
 
 ```bash
-./deploy.sh
+./scripts/deploy.sh
 ```
 
 The script will:
@@ -97,7 +97,7 @@ terraform apply
 To update an existing deployment:
 
 1. Make changes to code or config
-2. Run `./deploy.sh` again
+2. Run `./scripts/deploy.sh` again
 3. Terraform will update the Lambda function
 
 ## Environment Variables
@@ -106,7 +106,7 @@ Configuration is passed to Lambda via `OPENCONTEXT_CONFIG` environment variable 
 
 To update config:
 1. Edit `config.yaml`
-2. Run `./deploy.sh` (Terraform updates environment variable)
+2. Run `./scripts/deploy.sh` (Terraform updates environment variable)
 
 ## Lambda Configuration
 
