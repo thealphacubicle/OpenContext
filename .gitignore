@@ -218,3 +218,5 @@ opencontext-client
 opencontext-client-*
 client/opencontext-client
 client/opencontext-client-*
+
+*.DS_Store
