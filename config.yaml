@@ -18,9 +18,9 @@
 # See docs/ARCHITECTURE.md for details.
 
 # Server metadata
-server_name: "Boston OpenData MCP"
-description: "City of Boston's official open data MCP server - Safe, conversational access to Boston's open data"
-organization: "City of Boston Department of Innovation and Technology"
+server_name: "San Jose OpenData MCP"
+description: "San Jose's official open data MCP server - Safe, conversational access to San Jose's open data"
+organization: "City of San Jose"
 
 # Plugin configuration
 # ====================
@@ -33,9 +33,9 @@ plugins:
   # Examples: data.boston.gov, data.gov, data.gov.uk
   ckan:
     enabled: true # Set to true to use
-    base_url: "https://data.boston.gov" # CKAN API base URL
-    portal_url: "https://data.boston.gov" # Public portal URL
-    city_name: "Boston" # City/organization name
+    base_url: "https://data.sanjoseca.gov/" # CKAN API base URL
+    portal_url: "https://data.sanjoseca.gov/" # Public portal URL
+    city_name: "San Jose" # City/organization name
     timeout: 120 # HTTP timeout in seconds
     # api_key: "${CKAN_API_KEY}"                # Optional: CKAN API key for authenticated requests
 
@@ -49,7 +49,7 @@ plugins:
 # AWS deployment settings
 aws:
   region: "us-east-1" # AWS region for Lambda
-  lambda_name: "boston-opendata-mcp" # Lambda function name (will be auto-generated if not set)
+  lambda_name: "sanjose-opendata-mcp" # Lambda function name (will be auto-generated if not set)
   lambda_memory: 512 # Lambda memory in MB (128-10240)
   lambda_timeout: 120 # Lambda timeout in seconds (max 900)
 

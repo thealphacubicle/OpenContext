@@ -138,10 +138,12 @@ Fixed: Python 3.11
 
 ## Function URL
 
-Lambda Function URL is created automatically with:
-- Authorization: NONE (public access)
+Lambda Function URL is created automatically for local testing:
+- Authorization: NONE (public access - no authentication)
 - CORS: Enabled for all origins
 - Methods: POST, OPTIONS
+
+**Note:** For production use, prefer the API Gateway endpoint with API key authentication (see "API Gateway Authentication" section below).
 
 ## Monitoring
 
@@ -219,13 +221,105 @@ Example: 100K requests/month, 512 MB, 1s average:
 - Logs: ~$0.10
 - **Total: ~$1/month**
 
+## API Gateway Authentication
+
+OpenContext deploys with both a Lambda Function URL (for local testing) and an API Gateway endpoint (for production with authentication).
+
+### Retrieving API Key
+
+After deployment, get your API key:
+
+```bash
+cd terraform
+terraform output -raw api_key_value
+```
+
+Get your API Gateway URL:
+
+```bash
+terraform output -raw api_gateway_url
+```
+
+### Testing API Gateway
+
+Test with a valid API key:
+
+```bash
+curl -X POST https://your-api-gateway-url.execute-api.us-east-1.amazonaws.com/prod/mcp \
+  -H "x-api-key: your-api-key-here" \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"ping"}'
+```
+
+Test without API key (should return 403):
+
+```bash
+curl -X POST https://your-api-gateway-url.execute-api.us-east-1.amazonaws.com/prod/mcp \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"ping"}'
+```
+
+Expected response: `{"message": "Forbidden"}` with status 403.
+
+### Creating Additional API Keys
+
+To create additional API keys via AWS CLI:
+
+```bash
+# Create new API key
+API_KEY_ID=$(aws apigateway create-api-key \
+  --name "my-api-key" \
+  --enabled \
+  --query 'id' \
+  --output text)
+
+# Get the API key value (only shown once)
+aws apigateway get-api-key \
+  --api-key $API_KEY_ID \
+  --include-value \
+  --query 'value' \
+  --output text
+
+# Associate with usage plan
+USAGE_PLAN_ID=$(aws apigateway get-usage-plans \
+  --query "items[?name=='your-lambda-name-usage-plan'].id" \
+  --output text)
+
+aws apigateway create-usage-plan-key \
+  --usage-plan-id $USAGE_PLAN_ID \
+  --key-type API_KEY \
+  --key-id $API_KEY_ID
+```
+
+### Rate Limiting
+
+API Gateway enforces:
+- **Quota**: 1000 requests per day per API key
+- **Throttle**: 10 burst requests, 5 sustained requests per second
+
+When rate limits are exceeded, API Gateway returns `429 Too Many Requests`.
+
+### Rollback Procedure
+
+If API Gateway has issues, you can temporarily use the Lambda Function URL directly:
+
+1. Get Lambda Function URL:
+   ```bash
+   terraform output -raw lambda_url
+   ```
+
+2. Update your client configuration to use the Lambda URL instead of API Gateway URL
+
+3. Note: Lambda Function URL has no authentication or rate limiting - use only for testing
+
 ## Security Considerations
 
-- Function URLs are public (no authentication)
+- **API Gateway** - Production endpoint with API key authentication and rate limiting
+- **Lambda Function URL** - Public endpoint (no authentication) - use only for local testing
 - Use API keys in plugin config for data source authentication
 - Store secrets in environment variables (not in code)
 - Review CloudWatch logs regularly
-- Consider adding authentication layer if needed
+- Rotate API keys periodically
 
 ## Best Practices
 

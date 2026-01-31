@@ -79,6 +79,49 @@ Add to your Claude Desktop configuration:
 **macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`  
 **Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
 
+**Production (with API Gateway)**
+
+For production deployments with API Gateway authentication:
+
+1. Get your API key after deployment:
+   ```bash
+   cd terraform
+   terraform output -raw api_key_value
+   ```
+
+2. Get your API Gateway URL:
+   ```bash
+   terraform output -raw api_gateway_url
+   ```
+
+3. Configure Claude Desktop with API key:
+
+```json
+{
+  "mcpServers": {
+    "Boston OpenData": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-stdio-to-http",
+        "--transport",
+        "streamable-http",
+        "https://your-api-gateway-url.execute-api.us-east-1.amazonaws.com/prod/mcp"
+      ],
+      "env": {
+        "HTTP_HEADERS": "{\"x-api-key\":\"your-api-key-here\"}"
+      }
+    }
+  }
+}
+```
+
+Replace `your-api-gateway-url` and `your-api-key-here` with your actual values.
+
+**Local Testing (Lambda Function URL)**
+
+For local testing without authentication:
+
 **Option 1: Streamable HTTP Transport (Recommended - No Binary Required)**
 
 ```json
@@ -122,6 +165,8 @@ Then configure Claude Desktop:
 
 **Note:** Replace `https://your-lambda-url.lambda-url.us-east-1.on.aws` with your actual Lambda Function URL. The Go client will automatically append `/mcp` to the URL.
 
+For production use, prefer the API Gateway endpoint with API key authentication (see "Production (with API Gateway)" above).
+
 See [docs/QUICKSTART.md](docs/QUICKSTART.md) for detailed setup instructions.
 
 ### 5. Test Locally (Optional)
@@ -162,6 +207,12 @@ See [docs/TESTING.md](docs/TESTING.md) for more testing options.
 - **Streamable HTTP Transport** - Connect via HTTP adapter (no client binary needed)
 - **Stdio Transport** - Use Go client binary for stdio-to-HTTP bridging (traditional method)
 - **Direct HTTP** - Applications can call Lambda directly via HTTP with MCP JSON-RPC format
+
+### Production-Ready Authentication
+
+- **API Gateway** - Production endpoint with API key authentication and rate limiting
+- **Lambda Function URL** - Direct endpoint for local testing (no authentication required)
+- **Rate Limiting** - Built-in throttling (10 burst, 5 sustained requests/second) and daily quota (1000 requests/day)
 
 ### Built-in Plugins
 
