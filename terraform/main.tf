@@ -20,14 +20,14 @@ provider "aws" {
 # Read config.yaml
 locals {
   config = yamldecode(file(var.config_file))
-  
+
   lambda_name = var.lambda_name != "" ? var.lambda_name : (
     local.config.server_name != "" ? lower(replace(local.config.server_name, " ", "-")) : "opencontext-mcp-server"
   )
-  
-  lambda_memory = local.config.aws.lambda_memory != null ? local.config.aws.lambda_memory : var.lambda_memory
+
+  lambda_memory  = local.config.aws.lambda_memory != null ? local.config.aws.lambda_memory : var.lambda_memory
   lambda_timeout = local.config.aws.lambda_timeout != null ? local.config.aws.lambda_timeout : var.lambda_timeout
-  
+
   # Serialize config to JSON for environment variable
   config_json = jsonencode(local.config)
 }
@@ -61,7 +61,7 @@ data "archive_file" "lambda_zip" {
   type        = "zip"
   source_dir  = "${path.module}/../.deploy"
   output_path = "${path.module}/lambda-deployment.zip"
-  
+
   depends_on = [null_resource.prepare_deployment]
 }
 
@@ -114,11 +114,11 @@ resource "aws_lambda_function_url" "mcp_server_url" {
   authorization_type = "NONE"
 
   cors {
-    allow_origins     = ["*"]
-    allow_methods     = ["POST", "OPTIONS"]
-    allow_headers     = ["content-type"]
-    expose_headers    = ["x-request-id", "mcp-session-id"]
-    max_age           = 86400
+    allow_origins  = ["*"]
+    allow_methods  = ["POST", "OPTIONS"]
+    allow_headers  = ["content-type"]
+    expose_headers = ["x-request-id", "mcp-session-id"]
+    max_age        = 86400
   }
 }
 

@@ -17,19 +17,19 @@ resource "aws_api_gateway_resource" "mcp" {
 
 # API Gateway Method: POST (requires API key)
 resource "aws_api_gateway_method" "mcp_post" {
-  rest_api_id   = aws_api_gateway_rest_api.mcp_api.id
-  resource_id   = aws_api_gateway_resource.mcp.id
-  http_method   = "POST"
-  authorization = "NONE"
+  rest_api_id      = aws_api_gateway_rest_api.mcp_api.id
+  resource_id      = aws_api_gateway_resource.mcp.id
+  http_method      = "POST"
+  authorization    = "NONE"
   api_key_required = true
 }
 
 # API Gateway Method: OPTIONS (for CORS, no API key required)
 resource "aws_api_gateway_method" "mcp_options" {
-  rest_api_id   = aws_api_gateway_rest_api.mcp_api.id
-  resource_id   = aws_api_gateway_resource.mcp.id
-  http_method   = "OPTIONS"
-  authorization = "NONE"
+  rest_api_id      = aws_api_gateway_rest_api.mcp_api.id
+  resource_id      = aws_api_gateway_resource.mcp.id
+  http_method      = "OPTIONS"
+  authorization    = "NONE"
   api_key_required = false
 }
 
@@ -67,7 +67,7 @@ resource "aws_api_gateway_method_response" "mcp_post_response_200" {
   response_parameters = {
     "method.response.header.Access-Control-Allow-Origin"  = true
     "method.response.header.Access-Control-Allow-Headers" = true
-    "method.response.header.Access-Control-Allow-Methods"  = true
+    "method.response.header.Access-Control-Allow-Methods" = true
   }
 }
 
@@ -81,7 +81,7 @@ resource "aws_api_gateway_method_response" "mcp_options_response_200" {
   response_parameters = {
     "method.response.header.Access-Control-Allow-Origin"  = true
     "method.response.header.Access-Control-Allow-Headers" = true
-    "method.response.header.Access-Control-Allow-Methods"  = true
+    "method.response.header.Access-Control-Allow-Methods" = true
   }
 }
 
@@ -175,10 +175,10 @@ resource "aws_api_gateway_stage" "prod" {
   access_log_settings {
     destination_arn = aws_cloudwatch_log_group.api_gateway_logs.arn
     format = jsonencode({
-      requestId   = "$context.requestId"
-      ip          = "$context.identity.sourceIp"
-      httpMethod  = "$context.httpMethod"
-      status      = "$context.status"
+      requestId      = "$context.requestId"
+      ip             = "$context.identity.sourceIp"
+      httpMethod     = "$context.httpMethod"
+      status         = "$context.status"
       responseLength = "$context.responseLength"
     })
   }
@@ -206,8 +206,8 @@ resource "aws_api_gateway_usage_plan" "mcp_usage_plan" {
   }
 
   throttle_settings {
-    burst_limit  = 10
-    rate_limit   = 5
+    burst_limit = 10
+    rate_limit  = 5
   }
 }
 
