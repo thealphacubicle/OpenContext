@@ -220,3 +220,6 @@ client/opencontext-client
 client/opencontext-client-*
 
 *.DS_Store
+
+# Config yaml
+config.yaml
