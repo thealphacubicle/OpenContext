@@ -209,9 +209,9 @@ __marimo__/
 # OpenContext deployment artifacts
 .deploy/
 lambda-deployment.zip
-terraform/.terraform/
-terraform/.terraform.lock.hcl
-terraform/lambda-deployment.zip
+terraform/*/.terraform/
+terraform/*/.terraform.lock.hcl
+terraform/*/lambda-deployment.zip
 
 # OpenContext client binaries
 opencontext-client

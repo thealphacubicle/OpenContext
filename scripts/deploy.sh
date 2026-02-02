@@ -209,15 +209,15 @@ echo ""
 echo -e "${YELLOW}🏗️  Step 3: Deploying with Terraform...${NC}"
 
 # Initialize Terraform if needed
-if [ ! -d "terraform/.terraform" ]; then
+if [ ! -d "terraform/aws/.terraform" ]; then
     echo "Initializing Terraform..."
-    cd terraform
+    cd terraform/aws
     terraform init
-    cd ..
+    cd ../..
 fi
 
 # Deploy with Terraform
-cd terraform
+cd terraform/aws
 terraform apply \
     -var="lambda_name=$LAMBDA_NAME" \
     -var="aws_region=$AWS_REGION" \

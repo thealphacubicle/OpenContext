@@ -83,12 +83,12 @@ curl -X POST https://your-lambda-url.lambda-url.us-east-1.on.aws \
 If you prefer to use Terraform directly:
 
 ```bash
-cd terraform
+cd terraform/aws
 terraform init
 terraform plan \
   -var="lambda_name=my-mcp-server" \
   -var="aws_region=us-east-1" \
-  -var="config_file=../config.yaml"
+  -var="config_file=../../config.yaml"
 terraform apply
 ```
 
@@ -197,7 +197,7 @@ Or in AWS Console:
 To delete deployment:
 
 ```bash
-cd terraform
+cd terraform/aws
 terraform destroy
 ```
 
@@ -230,7 +230,7 @@ OpenContext deploys with both a Lambda Function URL (for local testing) and an A
 After deployment, get your API key:
 
 ```bash
-cd terraform
+cd terraform/aws
 terraform output -raw api_key_value
 ```
 
@@ -305,6 +305,7 @@ If API Gateway has issues, you can temporarily use the Lambda Function URL direc
 
 1. Get Lambda Function URL:
    ```bash
+   cd terraform/aws
    terraform output -raw lambda_url
    ```
 
