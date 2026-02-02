@@ -98,6 +98,11 @@ func (c *Client) HandleRequest(req *JSONRPCRequest) *JSONRPCResponse {
 	}
 	httpReq.Header.Set("Content-Type", "application/json")
 
+	// Add API key header if API_KEY environment variable is set
+	if apiKey := os.Getenv("API_KEY"); apiKey != "" {
+		httpReq.Header.Set("x-api-key", apiKey)
+	}
+
 	// Send request
 	resp, err := c.client.Do(httpReq)
 	if err != nil {

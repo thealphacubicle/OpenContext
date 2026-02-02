@@ -164,10 +164,57 @@ async def start_server():
     site = web.TCPSite(runner, "localhost", 8000)
     await site.start()
 
+    # Generate server name from config variables
+    server_name = None
+    if "plugins" in config:
+        # Try to get city_name from enabled plugin
+        for plugin_name, plugin_config in config["plugins"].items():
+            if plugin_config.get("enabled"):
+                if "city_name" in plugin_config:
+                    city_name = plugin_config["city_name"].lower().replace(" ", "-")
+                    server_name = f"{city_name}-opendata"
+                    break
+                elif "organization" in plugin_config:
+                    org_name = plugin_config["organization"].lower().replace(" ", "-")
+                    server_name = f"{org_name}-opendata"
+                    break
+        
+        # Fallback to lambda_name or server_name from config
+        if not server_name:
+            if "aws" in config and "lambda_name" in config["aws"]:
+                lambda_name = config["aws"]["lambda_name"]
+                # Remove -mcp suffix if present
+                server_name = lambda_name.replace("-mcp", "")
+            elif "server_name" in config:
+                server_name = config["server_name"].lower().replace(" ", "-").replace("'", "")
+    
+    # Default fallback
+    if not server_name:
+        server_name = "opencontext-mcp"
+    
+    # Get client path (relative to project root)
+    client_path = project_root / "client" / "opencontext-client"
+    client_path_str = str(client_path.resolve())
+    
+    # Construct Claude config JSON
+    claude_config = {
+        server_name: {
+            "command": client_path_str,
+            "args": ["http://localhost:8000"]
+        }
+    }
+    
     print("\n" + "=" * 50)
     print("🌐 Local MCP Server running!")
     print("=" * 50)
     print(f"URL: http://localhost:8000/mcp")
+    print("\n" + "=" * 50)
+    print("📋 Claude Desktop Configuration")
+    print("=" * 50)
+    print("\nAdd this to your Claude Desktop config file:")
+    print("(macOS: ~/Library/Application Support/Claude/claude_desktop_config.json)")
+    print("\n" + json.dumps({"mcpServers": claude_config}, indent=2))
+    print("\n" + "=" * 50)
     print("\nTest with:")
     print("  ./scripts/test_streamable_http.sh")
     print("  or curl -X POST http://localhost:8000/mcp -H 'Content-Type: application/json' -d '{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"ping\"}'")
