@@ -197,6 +197,17 @@ cp -r custom_plugins "$PACKAGE_DIR/" 2>/dev/null || mkdir -p "$PACKAGE_DIR/custo
 cp -r server "$PACKAGE_DIR/"
 cp requirements.txt "$PACKAGE_DIR/" 2>/dev/null || true
 
+# Install Python dependencies into package directory
+echo "Installing Python dependencies..."
+if ! pip install -r requirements.txt -t "$PACKAGE_DIR/" --platform manylinux2014_x86_64 --only-binary :all: --no-compile --no-deps 2>/dev/null; then
+    echo "Platform-specific install failed, trying generic install..."
+    if ! pip install -r requirements.txt -t "$PACKAGE_DIR/" --no-compile 2>/dev/null; then
+        echo -e "${RED}❌ Error: Failed to install dependencies${NC}"
+        echo "Please ensure pip is available and requirements.txt is valid."
+        exit 1
+    fi
+fi
+
 # Create zip file
 ZIP_FILE="lambda-deployment.zip"
 cd "$PACKAGE_DIR"

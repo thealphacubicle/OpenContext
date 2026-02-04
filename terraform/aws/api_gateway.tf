@@ -86,20 +86,23 @@ resource "aws_api_gateway_method_response" "mcp_options_response_200" {
 }
 
 # Integration Response for POST
-resource "aws_api_gateway_integration_response" "mcp_post_integration_response" {
-  rest_api_id = aws_api_gateway_rest_api.mcp_api.id
-  resource_id = aws_api_gateway_resource.mcp.id
-  http_method = aws_api_gateway_method.mcp_post.http_method
-  status_code = aws_api_gateway_method_response.mcp_post_response_200.status_code
-
-  response_parameters = {
-    "method.response.header.Access-Control-Allow-Origin"  = "'*'"
-    "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,X-Api-Key'"
-    "method.response.header.Access-Control-Allow-Methods" = "'OPTIONS,POST'"
-  }
-
-  depends_on = [aws_api_gateway_integration.mcp_post_integration]
-}
+# NOTE: This is redundant because AWS_PROXY integration type bypasses integration responses.
+# All headers must be returned by Lambda function, which our handler already does.
+# Keeping commented for reference but not used.
+# resource "aws_api_gateway_integration_response" "mcp_post_integration_response" {
+#   rest_api_id = aws_api_gateway_rest_api.mcp_api.id
+#   resource_id = aws_api_gateway_resource.mcp.id
+#   http_method = aws_api_gateway_method.mcp_post.http_method
+#   status_code = aws_api_gateway_method_response.mcp_post_response_200.status_code
+#
+#   response_parameters = {
+#     "method.response.header.Access-Control-Allow-Origin"  = "'*'"
+#     "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,X-Api-Key'"
+#     "method.response.header.Access-Control-Allow-Methods" = "'OPTIONS,POST'"
+#   }
+#
+#   depends_on = [aws_api_gateway_integration.mcp_post_integration]
+# }
 
 # Integration Response for OPTIONS
 resource "aws_api_gateway_integration_response" "mcp_options_integration_response" {
@@ -161,7 +164,7 @@ resource "aws_api_gateway_deployment" "mcp_deployment" {
     aws_api_gateway_integration.mcp_options_integration,
     aws_api_gateway_method_response.mcp_post_response_200,
     aws_api_gateway_method_response.mcp_options_response_200,
-    aws_api_gateway_integration_response.mcp_post_integration_response,
+    # aws_api_gateway_integration_response.mcp_post_integration_response,  # Removed - AWS_PROXY ignores it
     aws_api_gateway_integration_response.mcp_options_integration_response,
   ]
 }

@@ -81,6 +81,10 @@ resource "null_resource" "prepare_deployment" {
       cp -r custom_plugins .deploy/ 2>/dev/null || mkdir -p .deploy/custom_plugins
       cp -r server .deploy/
       cp requirements.txt .deploy/ 2>/dev/null || touch .deploy/requirements.txt
+      # Install Python dependencies into package directory
+      pip install -r requirements.txt -t .deploy/ --platform manylinux2014_x86_64 --only-binary :all: --no-compile --no-deps 2>/dev/null || \
+      pip install -r requirements.txt -t .deploy/ --no-compile 2>/dev/null || \
+      (echo "Warning: Failed to install dependencies. Lambda may fail at runtime." && exit 1)
     EOT
   }
 }
@@ -90,7 +94,7 @@ resource "aws_lambda_function" "mcp_server" {
   filename         = data.archive_file.lambda_zip.output_path
   function_name    = local.lambda_name
   role             = aws_iam_role.lambda_role.arn
-  handler          = "server.lambda_handler.handler"
+  handler          = "server.adapters.aws_lambda.lambda_handler"
   source_code_hash = data.archive_file.lambda_zip.output_base64sha256
   runtime          = "python3.11"
   memory_size      = local.lambda_memory
