@@ -81,6 +81,16 @@ resource "null_resource" "prepare_deployment" {
       cp -r custom_plugins .deploy/ 2>/dev/null || mkdir -p .deploy/custom_plugins
       cp -r server .deploy/
       cp requirements.txt .deploy/ 2>/dev/null || touch .deploy/requirements.txt
+      # Install Python dependencies into package directory
+      # Try platform-specific binary install first (for Lambda compatibility)
+      if ! pip install -r requirements.txt -t .deploy/ --platform manylinux2014_x86_64 --only-binary :all: --no-compile; then
+        # Fallback to regular install if platform-specific fails
+        echo "Platform-specific install failed, trying regular install..."
+        if ! pip install -r requirements.txt -t .deploy/ --no-compile; then
+          echo "ERROR: Failed to install dependencies. Deployment aborted."
+          exit 1
+        fi
+      fi
     EOT
   }
 }
@@ -90,7 +100,7 @@ resource "aws_lambda_function" "mcp_server" {
   filename         = data.archive_file.lambda_zip.output_path
   function_name    = local.lambda_name
   role             = aws_iam_role.lambda_role.arn
-  handler          = "server.lambda_handler.handler"
+  handler          = "server.adapters.aws_lambda.lambda_handler"
   source_code_hash = data.archive_file.lambda_zip.output_base64sha256
   runtime          = "python3.11"
   memory_size      = local.lambda_memory

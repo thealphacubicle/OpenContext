@@ -53,14 +53,15 @@ class SQLValidator:
                 f"SQL too long (max {SQLValidator.MAX_SQL_LENGTH})",
             )
 
-        # 2. Must start with SELECT
-        if not sql.upper().startswith("SELECT"):
-            return False, "Only SELECT queries allowed"
-
-        # 3. Block forbidden keywords
+        # 2. Block forbidden keywords (check before SELECT check to get specific error messages)
         for keyword in SQLValidator.FORBIDDEN_KEYWORDS:
             if re.search(rf"\b{keyword}\b", sql, re.IGNORECASE):
                 return False, f"Forbidden keyword: {keyword}"
+
+        # 3. Must start with SELECT or WITH (for CTEs)
+        sql_upper = sql.upper().strip()
+        if not (sql_upper.startswith("SELECT") or sql_upper.startswith("WITH")):
+            return False, "Only SELECT queries allowed"
 
         # 4. Block dangerous patterns
         patterns = [
@@ -79,7 +80,10 @@ class SQLValidator:
             parsed = sqlparse.parse(sql)
             if len(parsed) != 1:
                 return False, "Multiple statements not allowed"
-            if parsed[0].get_type() != "SELECT":
+            statement_type = parsed[0].get_type()
+            # sqlparse returns "SELECT" for SELECT statements and CTEs (WITH ... SELECT)
+            # If type is None, it might be a CTE - we already validated it starts with WITH or SELECT above
+            if statement_type is not None and statement_type != "SELECT":
                 return False, "Only SELECT statements allowed"
         except Exception as e:
             return False, f"SQL parsing error: {str(e)}"

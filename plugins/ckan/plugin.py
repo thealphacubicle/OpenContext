@@ -206,14 +206,14 @@ Resource IDs must be double-quoted: FROM "uuid-here"
             ),
             ToolDefinition(
                 name="aggregate_data",
-                description="""Aggregate data with GROUP BY.
+                description=f"""Aggregate data with GROUP BY from {self.plugin_config.city_name}'s open data portal.
 
 Prerequisites: get_schema for field names
 
 Examples:
-- Count by field: group_by=["neighborhood"], metrics={"count": "count(*)"}
-- Multiple metrics: metrics={"total": "count(*)", "avg": "avg(field)"}
-- With filters: filters={"status": "Open"}
+- Count by field: group_by=["neighborhood"], metrics={{count: "count(*)"}}
+- Multiple metrics: metrics={{total: "count(*)", avg: "avg(field)"}}
+- With filters: filters={{"status": "Open"}}
 
 Supports: count(*), sum(), avg(), min(), max(), stddev()
 """,
