@@ -5,11 +5,24 @@ into the universal HTTP format expected by UniversalHTTPHandler.
 """
 
 import asyncio
+import base64
 import json
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Protocol
 
 from server.http_handler import UniversalHTTPHandler
+
+
+class LambdaContext(Protocol):
+    """Protocol for AWS Lambda context object.
+
+    This defines the expected interface for Lambda context objects,
+    which provide runtime information about the Lambda execution environment.
+    """
+
+    aws_request_id: str
+    function_name: Optional[str]
+    memory_limit_in_mb: Optional[int]
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +47,7 @@ def get_handler() -> UniversalHTTPHandler:
     return _handler
 
 
-def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+def lambda_handler(event: Dict[str, Any], context: Optional[LambdaContext]) -> Dict[str, Any]:
     """AWS Lambda handler function.
 
     Transforms Lambda events to universal HTTP format, processes the request,
@@ -52,8 +65,8 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     try:
         # Extract request ID from context
         request_id = context.aws_request_id if context else "unknown"
-        function_name = getattr(context, "function_name", None)
-        memory_limit = getattr(context, "memory_limit_in_mb", None)
+        function_name = getattr(context, "function_name", None) if context else None
+        memory_limit = getattr(context, "memory_limit_in_mb", None) if context else None
 
         logger.info(
             "Lambda invocation started",
@@ -79,7 +92,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         # Handle OPTIONS requests for CORS preflight
         if http_method == "OPTIONS":
             handler = get_handler()
-            status_code, headers, body = handler.handle_options()
+            status_code, headers, body = handler.handle_options(request_id=request_id)
 
             logger.info(
                 "CORS preflight request handled",
@@ -97,13 +110,29 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
 
         # Extract body
         body = event.get("body", "{}")
+        
+        # Handle base64-encoded bodies from API Gateway
+        if event.get("isBase64Encoded", False):
+            try:
+                body = base64.b64decode(body).decode("utf-8")
+            except Exception as e:
+                logger.error(
+                    f"Failed to decode base64 body: {e}",
+                    extra={"request_id": request_id},
+                )
+                raise ValueError(f"Invalid base64-encoded body: {e}") from e
+        
         if isinstance(body, dict):
             body = json.dumps(body)
 
         # Extract headers
         headers = event.get("headers", {})
         if isinstance(headers, dict):
-            # Convert header keys to lowercase for consistency
+            # Convert header keys to lowercase for HTTP/1.1 compliance.
+            # HTTP/1.1 header field names are case-insensitive, and normalizing
+            # to lowercase ensures consistent behavior across different Lambda
+            # event sources (Function URL vs API Gateway). This normalization
+            # is expected by UniversalHTTPHandler for reliable header access.
             headers = {k.lower(): v for k, v in headers.items()}
         else:
             headers = {}

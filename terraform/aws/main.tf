@@ -82,9 +82,15 @@ resource "null_resource" "prepare_deployment" {
       cp -r server .deploy/
       cp requirements.txt .deploy/ 2>/dev/null || touch .deploy/requirements.txt
       # Install Python dependencies into package directory
-      pip install -r requirements.txt -t .deploy/ --platform manylinux2014_x86_64 --only-binary :all: --no-compile --no-deps 2>/dev/null || \
-      pip install -r requirements.txt -t .deploy/ --no-compile 2>/dev/null || \
-      (echo "Warning: Failed to install dependencies. Lambda may fail at runtime." && exit 1)
+      # Try platform-specific binary install first (for Lambda compatibility)
+      if ! pip install -r requirements.txt -t .deploy/ --platform manylinux2014_x86_64 --only-binary :all: --no-compile; then
+        # Fallback to regular install if platform-specific fails
+        echo "Platform-specific install failed, trying regular install..."
+        if ! pip install -r requirements.txt -t .deploy/ --no-compile; then
+          echo "ERROR: Failed to install dependencies. Deployment aborted."
+          exit 1
+        fi
+      fi
     EOT
   }
 }

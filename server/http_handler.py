@@ -128,6 +128,20 @@ class UniversalHTTPHandler:
         """Initialize the universal HTTP handler."""
         logger.info("UniversalHTTPHandler initialized")
 
+    @staticmethod
+    def _get_cors_headers() -> Dict[str, str]:
+        """Get standard CORS headers for responses.
+
+        Returns:
+            Dictionary of CORS headers
+        """
+        return {
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "POST, OPTIONS",
+            "Access-Control-Allow-Headers": "content-type",
+            "Access-Control-Expose-Headers": "x-request-id, mcp-session-id",
+        }
+
     async def handle_request(
         self,
         method: str,
@@ -174,9 +188,11 @@ class UniversalHTTPHandler:
                     "duration_ms": duration_ms,
                 },
             )
+            error_headers = {"Content-Type": "application/json"}
+            error_headers.update(self._get_cors_headers())
             return (
                 404,
-                {"Content-Type": "application/json"},
+                error_headers,
                 error_body,
             )
 
@@ -203,13 +219,20 @@ class UniversalHTTPHandler:
                     "duration_ms": duration_ms,
                 },
             )
+            error_headers = {"Content-Type": "application/json", "Allow": "POST"}
+            error_headers.update(self._get_cors_headers())
             return (
                 405,
-                {"Content-Type": "application/json", "Allow": "POST"},
+                error_headers,
                 error_body,
             )
 
         # Parse JSON to check if this is an initialize request
+        # NOTE: This is intentionally parsing the JSON body separately from the
+        # later parsing in _mcp_server.handle_http_request(). This early parsing
+        # allows us to detect initialize requests and generate session IDs without
+        # affecting error handling if the JSON is invalid. The body will be parsed
+        # again later, which is an acceptable trade-off for error handling isolation.
         try:
             request_json = json.loads(body)
             is_initialize = request_json.get("method") == "initialize"
@@ -217,6 +240,11 @@ class UniversalHTTPHandler:
             is_initialize = False
 
         # Generate session ID for initialize requests
+        # NOTE: This session ID is for logging and tracing purposes only.
+        # It is NOT implementing true session management - there is no persistent
+        # session storage. The session ID is included in response headers to
+        # help correlate logs and trace requests, but it does not maintain
+        # any server-side session state.
         session_id = None
         if is_initialize:
             session_id = str(uuid.uuid4())
@@ -260,12 +288,7 @@ class UniversalHTTPHandler:
                 response_headers["Content-Type"] = "application/json"
 
             # Add CORS headers
-            response_headers["Access-Control-Allow-Origin"] = "*"
-            response_headers["Access-Control-Allow-Methods"] = "POST, OPTIONS"
-            response_headers["Access-Control-Allow-Headers"] = "content-type"
-            response_headers["Access-Control-Expose-Headers"] = (
-                "x-request-id, mcp-session-id"
-            )
+            response_headers.update(self._get_cors_headers())
 
             # Calculate duration
             duration_ms = (time.perf_counter() - start_time) * 1000
@@ -299,10 +322,12 @@ class UniversalHTTPHandler:
             )
 
             # Log error response
+            error_headers = {"Content-Type": "application/json"}
+            error_headers.update(self._get_cors_headers())
             response_log_data = format_response_log(
                 request_id=request_id,
                 status_code=500,
-                headers={"Content-Type": "application/json"},
+                headers=error_headers,
                 body=error_body,
                 duration_ms=duration_ms,
                 success=False,
@@ -313,7 +338,7 @@ class UniversalHTTPHandler:
                 exc_info=True,
             )
 
-            return (500, {"Content-Type": "application/json"}, error_body)
+            return (500, error_headers, error_body)
 
         except Exception as e:
             duration_ms = (time.perf_counter() - start_time) * 1000
@@ -330,10 +355,12 @@ class UniversalHTTPHandler:
             )
 
             # Log error response
+            error_headers = {"Content-Type": "application/json"}
+            error_headers.update(self._get_cors_headers())
             response_log_data = format_response_log(
                 request_id=request_id,
                 status_code=500,
-                headers={"Content-Type": "application/json"},
+                headers=error_headers,
                 body=error_body,
                 duration_ms=duration_ms,
                 success=False,
@@ -344,14 +371,18 @@ class UniversalHTTPHandler:
                 exc_info=True,
             )
 
-            return (500, {"Content-Type": "application/json"}, error_body)
+            return (500, error_headers, error_body)
 
-    def handle_options(self) -> Tuple[int, Dict[str, str], str]:
+    def handle_options(self, request_id: Optional[str] = None) -> Tuple[int, Dict[str, str], str]:
         """Handle CORS preflight OPTIONS request.
+
+        Args:
+            request_id: Optional request ID for logging/tracing
 
         Returns:
             Tuple of (status_code, response_headers, response_body)
         """
+        request_id = request_id or "unknown"
         cors_headers = {
             "Access-Control-Allow-Origin": "*",
             "Access-Control-Allow-Methods": "POST, OPTIONS",
@@ -359,8 +390,12 @@ class UniversalHTTPHandler:
             "Access-Control-Expose-Headers": "x-request-id, mcp-session-id",
             "Access-Control-Max-Age": "86400",
             "Content-Type": "application/json",
+            "X-Request-ID": request_id,
         }
 
-        logger.info("CORS preflight OPTIONS request handled")
+        logger.info(
+            "CORS preflight OPTIONS request handled",
+            extra={"request_id": request_id},
+        )
 
         return (200, cors_headers, "")
