@@ -1,3 +1,8 @@
+# Locals for API Gateway
+locals {
+  api_key_name = var.api_key_name != "" ? var.api_key_name : "${local.lambda_name}-api-key"
+}
+
 # API Gateway REST API
 resource "aws_api_gateway_rest_api" "mcp_api" {
   name        = "${local.lambda_name}-api"
@@ -190,8 +195,10 @@ resource "aws_api_gateway_stage" "prod" {
 }
 
 # API Key
-resource "aws_api_gateway_api_key" "hult_hackathon_2024" {
-  name = "hult-hackathon-2024"
+resource "aws_api_gateway_api_key" "mcp_api_key" {
+  name        = local.api_key_name
+  description = "API key for ${local.lambda_name} MCP server"
+  enabled     = true
 }
 
 # Usage Plan
@@ -204,19 +211,19 @@ resource "aws_api_gateway_usage_plan" "mcp_usage_plan" {
   }
 
   quota_settings {
-    limit  = 1000
+    limit  = var.api_quota_limit
     period = "DAY"
   }
 
   throttle_settings {
-    burst_limit = 10
-    rate_limit  = 5
+    burst_limit = var.api_burst_limit
+    rate_limit  = var.api_rate_limit
   }
 }
 
 # Usage Plan Key Association
 resource "aws_api_gateway_usage_plan_key" "mcp_usage_plan_key" {
-  key_id        = aws_api_gateway_api_key.hult_hackathon_2024.id
+  key_id        = aws_api_gateway_api_key.mcp_api_key.id
   key_type      = "API_KEY"
   usage_plan_id = aws_api_gateway_usage_plan.mcp_usage_plan.id
 }

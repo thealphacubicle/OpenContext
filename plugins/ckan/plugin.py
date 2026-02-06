@@ -7,7 +7,7 @@ import logging
 from typing import Any, Dict, List, Optional
 
 import httpx
-from tenacity import retry, stop_after_attempt, wait_exponential
+from tenacity import retry, retry_if_not_exception_type, stop_after_attempt, wait_exponential
 
 from core.interfaces import DataPlugin, PluginType, ToolDefinition, ToolResult
 from plugins.ckan.config_schema import CKANPluginConfig
@@ -79,9 +79,26 @@ class CKANPlugin(DataPlugin):
         self._initialized = False
         logger.info("CKAN plugin shut down")
 
+    def _parse_ckan_error(
+        self, response_body: Dict[str, Any], context: str = ""
+    ) -> str:
+        """Extract human-readable error from CKAN API response body."""
+        if response_body.get("success") is True:
+            return ""
+        err = response_body.get("error", {})
+        msg = (
+            err.get("message", str(err))
+            if isinstance(err, dict)
+            else str(err)
+        )
+        portal = f" on {self.plugin_config.city_name} OpenData portal"
+        base = f"{msg}{portal}" if msg else f"Unknown error{portal}"
+        return f"{context}: {base}" if context else base
+
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=2, max=10),
+        retry=retry_if_not_exception_type((RuntimeError, httpx.HTTPStatusError)),
     )
     async def _call_ckan_api(self, action: str, data: Dict[str, Any]) -> Dict[str, Any]:
         """Call CKAN API action.
@@ -92,14 +109,46 @@ class CKANPlugin(DataPlugin):
 
         Returns:
             CKAN API response
+
+        Raises:
+            RuntimeError: On HTTP errors or when CKAN returns success: false
         """
         if not self.client:
             raise RuntimeError("Plugin not initialized")
 
         url = f"/api/3/action/{action}"
-        response = await self.client.post(url, json=data)
-        response.raise_for_status()
-        return response.json()
+        portal = f"{self.plugin_config.city_name} OpenData portal"
+
+        try:
+            response = await self.client.post(url, json=data)
+            response.raise_for_status()
+        except httpx.HTTPStatusError as e:
+            status_code = e.response.status_code
+            try:
+                body = e.response.json()
+                ckan_msg = self._parse_ckan_error(body, "")
+                if ckan_msg:
+                    raise RuntimeError(
+                        f"Error: {ckan_msg} (HTTP {status_code})"
+                    ) from e
+            except ValueError:
+                pass
+            param_hint = ""
+            if "resource_id" in data:
+                param_hint = f" Resource '{data.get('resource_id')}'"
+            elif "id" in data:
+                param_hint = f" Dataset '{data.get('id')}'"
+            raise RuntimeError(
+                f"Error:{param_hint} not found on {portal} (HTTP {status_code})"
+            ) from e
+
+        result = response.json()
+
+        if result.get("success") is False:
+            msg = self._parse_ckan_error(result, "")
+            raise RuntimeError(f"Error: {msg}" if msg else f"API error on {portal}")
+
+        return result
 
     def get_tools(self) -> List[ToolDefinition]:
         """Get list of tools provided by CKAN plugin.
@@ -395,7 +444,7 @@ Supports: count(*), sum(), avg(), min(), max(), stddev()
             return ToolResult(
                 content=[],
                 success=False,
-                error_message=f"Tool execution failed: {str(e)}",
+                error_message=str(e) if str(e) else "Tool execution failed",
             )
 
     async def search_datasets(
@@ -488,6 +537,13 @@ Supports: count(*), sum(), avg(), min(), max(), stddev()
         # Execute
         try:
             result = await self._call_ckan_api("datastore_search_sql", {"sql": sql})
+            if not result.get("success", True):
+                return {
+                    "error": True,
+                    "message": self._parse_ckan_error(
+                        result, "SQL execution failed"
+                    ),
+                }
             return {
                 "success": True,
                 "records": result.get("result", {}).get("records", []),

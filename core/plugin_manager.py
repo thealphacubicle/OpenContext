@@ -256,10 +256,11 @@ class PluginManager:
                 f"Error executing tool {tool_name} in plugin {plugin_name}: {e}",
                 exc_info=True,
             )
+            error_msg = str(e) if str(e) else "Tool execution failed"
             return ToolResult(
                 content=[],
                 success=False,
-                error_message=f"Tool execution failed: {str(e)}",
+                error_message=error_msg,
             )
 
     def get_all_tools(self) -> List[Dict[str, Any]]:

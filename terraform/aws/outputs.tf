@@ -25,12 +25,17 @@ output "api_gateway_url" {
 
 output "api_key_value" {
   description = "API Gateway API key value (sensitive)"
-  value       = aws_api_gateway_api_key.hult_hackathon_2024.value
+  value       = aws_api_gateway_api_key.mcp_api_key.value
   sensitive   = true
 }
 
 output "api_key_id" {
   description = "API Gateway API key ID"
-  value       = aws_api_gateway_api_key.hult_hackathon_2024.id
+  value       = aws_api_gateway_api_key.mcp_api_key.id
+}
+
+output "api_key_name" {
+  description = "API Gateway API key name"
+  value       = aws_api_gateway_api_key.mcp_api_key.name
 }
 
