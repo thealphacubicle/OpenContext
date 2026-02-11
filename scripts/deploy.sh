@@ -199,12 +199,27 @@ cp requirements.txt "$PACKAGE_DIR/" 2>/dev/null || true
 
 # Install Python dependencies into package directory
 echo "Installing Python dependencies..."
-if ! pip install -r requirements.txt -t "$PACKAGE_DIR/" --platform manylinux2014_x86_64 --only-binary :all: --no-compile --no-deps 2>/dev/null; then
-    echo "Platform-specific install failed, trying generic install..."
-    if ! pip install -r requirements.txt -t "$PACKAGE_DIR/" --no-compile 2>/dev/null; then
-        echo -e "${RED}❌ Error: Failed to install dependencies${NC}"
-        echo "Please ensure pip is available and requirements.txt is valid."
+
+# Prefer uv for faster, cached installs; fall back to pip if uv is unavailable
+if command -v uv &> /dev/null; then
+    echo "Using uv to install dependencies..."
+    if ! uv pip install -r requirements.txt \
+        --target "$PACKAGE_DIR/" \
+        --python-platform x86_64-manylinux2014 \
+        --python-version 3.11 \
+        --no-compile; then
+        echo -e "${RED}❌ Error: Failed to install dependencies with uv${NC}"
         exit 1
+    fi
+else
+    echo "uv not found, falling back to pip..."
+    if ! pip install -r requirements.txt -t "$PACKAGE_DIR/" --platform manylinux2014_x86_64 --only-binary :all: --no-compile --no-deps 2>/dev/null; then
+        echo "Platform-specific install failed, trying generic install..."
+        if ! pip install -r requirements.txt -t "$PACKAGE_DIR/" --no-compile 2>/dev/null; then
+            echo -e "${RED}❌ Error: Failed to install dependencies${NC}"
+            echo "Please ensure pip is available and requirements.txt is valid."
+            exit 1
+        fi
     fi
 fi
 
@@ -219,6 +234,10 @@ echo ""
 
 echo -e "${YELLOW}🏗️  Step 3: Deploying with Terraform...${NC}"
 
+# Copy zip file and config.yaml to Terraform module directory
+cp "$ZIP_FILE" terraform/aws/lambda-deployment.zip
+cp config.yaml terraform/aws/config.yaml
+
 # Initialize Terraform if needed
 if [ ! -d "terraform/aws/.terraform" ]; then
     echo "Initializing Terraform..."
@@ -232,7 +251,7 @@ cd terraform/aws
 terraform apply \
     -var="lambda_name=$LAMBDA_NAME" \
     -var="aws_region=$AWS_REGION" \
-    -var="config_file=../config.yaml" \
+    -var="config_file=config.yaml" \
     -auto-approve
 
 # Get Lambda URL from Terraform output
