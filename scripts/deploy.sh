@@ -251,8 +251,7 @@ cd terraform/aws
 terraform apply \
     -var="lambda_name=$LAMBDA_NAME" \
     -var="aws_region=$AWS_REGION" \
-    -var="config_file=config.yaml" \
-    -auto-approve
+    -var="config_file=config.yaml"
 
 # Get Lambda URL from Terraform output
 LAMBDA_URL=$(terraform output -raw lambda_url 2>/dev/null || echo "")
