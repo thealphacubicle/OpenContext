@@ -213,6 +213,10 @@ terraform/*/.terraform/
 terraform/*/.terraform.lock.hcl
 terraform/*/lambda-deployment.zip
 
+# Terraform state (contains secrets, ignore across all folders)
+**/*.tfstate
+**/*.tfstate.*
+
 # OpenContext client binaries
 opencontext-client
 opencontext-client-*
