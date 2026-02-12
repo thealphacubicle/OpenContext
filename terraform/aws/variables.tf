@@ -28,12 +28,6 @@ variable "lambda_timeout" {
   default     = 120
 }
 
-variable "api_key_name" {
-  description = "Name for the API Gateway API key - auto-generates from lambda_name if not provided"
-  type        = string
-  default     = ""
-}
-
 variable "api_quota_limit" {
   description = "API Gateway daily request quota"
   type        = number

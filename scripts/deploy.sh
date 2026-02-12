@@ -253,15 +253,19 @@ terraform apply \
     -var="aws_region=$AWS_REGION" \
     -var="config_file=config.yaml"
 
-# Get Lambda URL from Terraform output
+# Get URLs from Terraform output
 LAMBDA_URL=$(terraform output -raw lambda_url 2>/dev/null || echo "")
+API_GATEWAY_URL=$(terraform output -raw api_gateway_url 2>/dev/null || echo "")
 
 cd ..
 
 echo ""
 echo -e "${GREEN}✅ Deployment complete!${NC}"
 echo ""
-echo "Lambda Function URL:"
+echo "API Gateway URL (use for Claude Desktop):"
+echo -e "${GREEN}$API_GATEWAY_URL${NC}"
+echo ""
+echo "Lambda Function URL (for direct HTTP testing):"
 echo -e "${GREEN}$LAMBDA_URL${NC}"
 echo ""
 echo "To use with Claude Desktop:"
@@ -275,7 +279,7 @@ echo "  \"mcpServers\": {"
 echo "    \"$SERVER_NAME\": {"
 echo "      \"command\": \"/path/to/opencontext-client\","
 echo "      \"args\": ["
-echo "        \"$LAMBDA_URL\""
+echo "        \"$API_GATEWAY_URL\""
 echo "      ]"
 echo "    }"
 echo "  }"

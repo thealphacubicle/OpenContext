@@ -81,20 +81,15 @@ Add to your Claude Desktop configuration:
 
 **Production (with API Gateway)**
 
-For production deployments with API Gateway authentication:
+For production deployments with API Gateway:
 
-1. Get your API key after deployment:
+1. Get your API Gateway URL:
    ```bash
-   cd terraform
-   terraform output -raw api_key_value
-   ```
-
-2. Get your API Gateway URL:
-   ```bash
+   cd terraform/aws
    terraform output -raw api_gateway_url
    ```
 
-3. Configure Claude Desktop with API key:
+2. Configure Claude Desktop:
 
 ```json
 {
@@ -107,16 +102,13 @@ For production deployments with API Gateway authentication:
         "--transport",
         "streamable-http",
         "https://your-api-gateway-url.execute-api.us-east-1.amazonaws.com/prod/mcp"
-      ],
-      "env": {
-        "HTTP_HEADERS": "{\"x-api-key\":\"your-api-key-here\"}"
-      }
+      ]
     }
   }
 }
 ```
 
-Replace `your-api-gateway-url` and `your-api-key-here` with your actual values.
+Replace `your-api-gateway-url` with your actual API Gateway URL.
 
 **Local Testing (Lambda Function URL)**
 

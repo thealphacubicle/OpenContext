@@ -221,80 +221,31 @@ Example: 100K requests/month, 512 MB, 1s average:
 - Logs: ~$0.10
 - **Total: ~$1/month**
 
-## API Gateway Authentication
+## API Gateway
 
-OpenContext deploys with both a Lambda Function URL (for local testing) and an API Gateway endpoint (for production with authentication).
+OpenContext deploys with both a Lambda Function URL (for local testing) and an API Gateway endpoint (for production).
 
-### Retrieving API Key
+### Get API Gateway URL
 
-After deployment, get your API key:
+After deployment:
 
 ```bash
 cd terraform/aws
-terraform output -raw api_key_value
-```
-
-Get your API Gateway URL:
-
-```bash
 terraform output -raw api_gateway_url
 ```
 
 ### Testing API Gateway
 
-Test with a valid API key:
-
-```bash
-curl -X POST https://your-api-gateway-url.execute-api.us-east-1.amazonaws.com/prod/mcp \
-  -H "x-api-key: your-api-key-here" \
-  -H "Content-Type: application/json" \
-  -d '{"jsonrpc":"2.0","id":1,"method":"ping"}'
-```
-
-Test without API key (should return 403):
-
 ```bash
 curl -X POST https://your-api-gateway-url.execute-api.us-east-1.amazonaws.com/prod/mcp \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc":"2.0","id":1,"method":"ping"}'
-```
-
-Expected response: `{"message": "Forbidden"}` with status 403.
-
-### Creating Additional API Keys
-
-To create additional API keys via AWS CLI:
-
-```bash
-# Create new API key
-API_KEY_ID=$(aws apigateway create-api-key \
-  --name "my-api-key" \
-  --enabled \
-  --query 'id' \
-  --output text)
-
-# Get the API key value (only shown once)
-aws apigateway get-api-key \
-  --api-key $API_KEY_ID \
-  --include-value \
-  --query 'value' \
-  --output text
-
-# Associate with usage plan
-USAGE_PLAN_ID=$(aws apigateway get-usage-plans \
-  --query "items[?name=='your-lambda-name-usage-plan'].id" \
-  --output text)
-
-aws apigateway create-usage-plan-key \
-  --usage-plan-id $USAGE_PLAN_ID \
-  --key-type API_KEY \
-  --key-id $API_KEY_ID
 ```
 
 ### Rate Limiting
 
 API Gateway enforces:
-- **Quota**: 1000 requests per day per API key
+- **Quota**: 1000 requests per day
 - **Throttle**: 10 burst requests, 5 sustained requests per second
 
 When rate limits are exceeded, API Gateway returns `429 Too Many Requests`.
@@ -315,12 +266,11 @@ If API Gateway has issues, you can temporarily use the Lambda Function URL direc
 
 ## Security Considerations
 
-- **API Gateway** - Production endpoint with API key authentication and rate limiting
+- **API Gateway** - Production endpoint with rate limiting
 - **Lambda Function URL** - Public endpoint (no authentication) - use only for local testing
 - Use API keys in plugin config for data source authentication
 - Store secrets in environment variables (not in code)
 - Review CloudWatch logs regularly
-- Rotate API keys periodically
 
 ## Best Practices
 
