@@ -46,3 +46,9 @@ variable "api_burst_limit" {
   default     = 10
 }
 
+variable "stage_name" {
+  description = "API Gateway stage name (e.g. prod, dev, staging)"
+  type        = string
+  default     = "staging"
+}
+

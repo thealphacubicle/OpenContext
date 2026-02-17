@@ -246,12 +246,36 @@ if [ ! -d "terraform/aws/.terraform" ]; then
     cd ../..
 fi
 
-# Deploy with Terraform
+# Plan first - validates configuration and catches errors before any changes
 cd terraform/aws
-terraform apply \
+echo -e "${YELLOW}📋 Planning Terraform changes...${NC}"
+if ! terraform plan \
+    -out=tfplan \
     -var="lambda_name=$LAMBDA_NAME" \
     -var="aws_region=$AWS_REGION" \
-    -var="config_file=config.yaml"
+    -var="config_file=config.yaml"; then
+    echo -e "${RED}❌ Terraform plan failed - aborting deployment${NC}"
+    exit 1
+fi
+
+# Require explicit approval before deploying
+echo ""
+echo -e "${YELLOW}⚠️  Deployment will apply the planned changes to AWS.${NC}"
+echo -e "   Lambda: ${LAMBDA_NAME}"
+echo -e "   Region: ${AWS_REGION}"
+echo ""
+read -r -p "Do you want to proceed with deployment? (yes/no): " CONFIRM
+if [ "$CONFIRM" != "yes" ] && [ "$CONFIRM" != "y" ]; then
+    echo -e "${YELLOW}Deployment cancelled by user.${NC}"
+    rm -f tfplan
+    exit 0
+fi
+echo ""
+
+# Apply the planned changes
+echo -e "${YELLOW}🚀 Applying Terraform changes...${NC}"
+terraform apply tfplan
+rm -f tfplan
 
 # Get URLs from Terraform output
 LAMBDA_URL=$(terraform output -raw lambda_url 2>/dev/null || echo "")

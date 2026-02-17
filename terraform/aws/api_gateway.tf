@@ -114,12 +114,6 @@ resource "aws_lambda_permission" "api_gateway" {
   source_arn    = "${aws_api_gateway_rest_api.mcp_api.execution_arn}/*/*"
 }
 
-# CloudWatch Log Group for API Gateway
-resource "aws_cloudwatch_log_group" "api_gateway_logs" {
-  name              = "/aws/apigateway/${local.lambda_name}"
-  retention_in_days = 30
-}
-
 # API Gateway Deployment
 resource "aws_api_gateway_deployment" "mcp_deployment" {
   rest_api_id = aws_api_gateway_rest_api.mcp_api.id
@@ -154,24 +148,7 @@ resource "aws_api_gateway_deployment" "mcp_deployment" {
 resource "aws_api_gateway_stage" "prod" {
   deployment_id = aws_api_gateway_deployment.mcp_deployment.id
   rest_api_id   = aws_api_gateway_rest_api.mcp_api.id
-  stage_name    = "prod"
-
-  access_log_settings {
-    destination_arn = aws_cloudwatch_log_group.api_gateway_logs.arn
-    format = jsonencode({
-      requestId               = "$context.requestId"
-      ip                      = "$context.identity.sourceIp"
-      requestTime             = "$context.requestTime"
-      httpMethod              = "$context.httpMethod"
-      resourcePath            = "$context.resourcePath"
-      status                  = "$context.status"
-      responseLength          = "$context.responseLength"
-      responseLatency         = "$context.responseLatency"
-      userAgent               = "$context.identity.userAgent"
-      errorMessage            = "$context.error.message"
-      integrationErrorMessage = "$context.integration.error"
-    })
-  }
+  stage_name    = var.stage_name
 
   xray_tracing_enabled = true
 }
