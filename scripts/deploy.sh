@@ -53,16 +53,16 @@ import sys
 try:
     with open('config.yaml', 'r') as f:
         config = yaml.safe_load(f)
-    
+
     plugins = config.get('plugins', {})
     enabled = []
-    
+
     for plugin_name, plugin_config in plugins.items():
         if isinstance(plugin_config, dict) and plugin_config.get('enabled', False):
             enabled.append(plugin_name)
-    
+
     count = len(enabled)
-    
+
     if count == 0:
         print("0", file=sys.stderr)
         print("No plugins enabled", file=sys.stderr)
@@ -75,7 +75,7 @@ try:
         print(count)
         print(enabled[0], file=sys.stderr)
         sys.exit(0)
-        
+
 except Exception as e:
     print(f"Error parsing config.yaml: {e}", file=sys.stderr)
     sys.exit(3)
@@ -93,7 +93,7 @@ if [ $EXIT_CODE -eq 1 ]; then
     echo "  • ckan"
     echo "  • A custom plugin in custom_plugins/"
     echo ""
-    echo "See docs/QUICKSTART.md for setup instructions."
+    echo "See docs/GETTING_STARTED.md for setup instructions."
     exit 1
 elif [ $EXIT_CODE -eq 2 ]; then
     ENABLED_PLUGINS=$(python3 << 'EOF'
@@ -101,12 +101,12 @@ import yaml
 with open('config.yaml', 'r') as f:
     config = yaml.safe_load(f)
 plugins = config.get('plugins', {})
-enabled = [name for name, cfg in plugins.items() 
+enabled = [name for name, cfg in plugins.items()
            if isinstance(cfg, dict) and cfg.get('enabled', False)]
 print("\n".join(f"  • {name}" for name in enabled))
 EOF
     )
-    
+
     echo -e "${RED}❌ Configuration Error: Multiple Plugins Enabled${NC}"
     echo ""
     echo "You have $ENABLED_COUNT plugins enabled in config.yaml:"
@@ -145,7 +145,7 @@ import yaml
 with open('config.yaml', 'r') as f:
     config = yaml.safe_load(f)
 plugins = config.get('plugins', {})
-enabled = [name for name, cfg in plugins.items() 
+enabled = [name for name, cfg in plugins.items()
            if isinstance(cfg, dict) and cfg.get('enabled', False)]
 print(enabled[0])
 EOF
@@ -310,4 +310,3 @@ echo "  }"
 echo ""
 echo "For direct HTTP access, use the Lambda URL directly with MCP JSON-RPC format."
 echo ""
-

@@ -1,6 +1,13 @@
 terraform {
   required_version = ">= 1.0"
 
+  backend "s3" {
+    bucket  = "opencontext-terraform-state"
+    key     = "opencontext/terraform.tfstate"
+    region  = "us-east-1"
+    encrypt = true
+  }
+
   required_providers {
     aws = {
       source  = "hashicorp/aws"
@@ -104,4 +111,3 @@ resource "aws_cloudwatch_log_group" "lambda_logs" {
   name              = "/aws/lambda/${local.lambda_name}"
   retention_in_days = 14
 }
-

@@ -90,9 +90,7 @@ class SQLValidator:
 
         # 6. Validate resource IDs are UUIDs
         resource_ids = re.findall(r'"([a-f0-9-]{36})"', sql, re.IGNORECASE)
-        uuid_pattern = (
-            r"^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$"
-        )
+        uuid_pattern = r"^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$"
         for rid in resource_ids:
             if not re.match(uuid_pattern, rid, re.IGNORECASE):
                 return False, f"Invalid UUID format: {rid}"

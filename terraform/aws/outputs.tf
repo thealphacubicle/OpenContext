@@ -22,4 +22,3 @@ output "api_gateway_url" {
   description = "API Gateway URL for MCP server (production endpoint with authentication)"
   value       = "${aws_api_gateway_stage.prod.invoke_url}/mcp"
 }
-

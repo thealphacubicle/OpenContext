@@ -20,6 +20,7 @@
 #
 # See docs/ARCHITECTURE.md for details.
 
+---
 # Server metadata
 server_name: "Your Organization OpenData MCP" # e.g., "Boston OpenData MCP"
 description: "Your organization's open data MCP server - Safe, conversational access to your open data"
@@ -42,12 +43,14 @@ plugins:
     timeout: 120 # HTTP timeout in seconds
     # api_key: "${CKAN_API_KEY}"  # Optional: CKAN API key for authenticated requests
 
+  # yamllint disable rule:comments-indentation
   # Custom: Add your own plugins here
   # Example:
   # my_custom_plugin:
   #   enabled: false
   #   custom_config_key: "value"
   #   api_endpoint: "https://api.example.com"
+  # yamllint enable rule:comments-indentation
 
 # AWS deployment settings
 aws:

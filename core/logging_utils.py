@@ -5,7 +5,6 @@ Provides centralized JSON logging configuration and sensitive data sanitization.
 
 import json
 import logging
-import time
 from typing import Any, Dict, List, Optional
 
 from pythonjsonlogger import json as jsonlogger
@@ -76,7 +75,7 @@ def configure_json_logging(level: str = "INFO", pretty: bool = False) -> None:
             "%(asctime)s %(name)s %(levelname)s %(message)s",
             timestamp=True,
         )
-    
+
     handler.setFormatter(formatter)
 
     # Add handler to root logger
@@ -85,14 +84,14 @@ def configure_json_logging(level: str = "INFO", pretty: bool = False) -> None:
 
 class _PrettyJsonFormatter(logging.Formatter):
     """Pretty JSON formatter for local development.
-    
+
     Formats logs as indented JSON for better readability in terminals.
     Also truncates very large nested structures to keep logs readable.
     """
-    
+
     def __init__(self, max_string_length: int = 500, max_list_items: int = 10):
         """Initialize pretty formatter.
-        
+
         Args:
             max_string_length: Maximum length for string values before truncation
             max_list_items: Maximum items in lists before truncation
@@ -100,23 +99,26 @@ class _PrettyJsonFormatter(logging.Formatter):
         super().__init__()
         self.max_string_length = max_string_length
         self.max_list_items = max_list_items
-    
+
     def _truncate_value(self, value: Any, depth: int = 0) -> Any:
         """Recursively truncate large values for readability.
-        
+
         Args:
             value: Value to truncate
             depth: Current nesting depth
-            
+
         Returns:
             Truncated value
         """
         if depth > 3:  # Don't truncate beyond 3 levels deep
             return "..."
-        
+
         if isinstance(value, str):
             if len(value) > self.max_string_length:
-                return value[:self.max_string_length] + f"... (truncated, {len(value)} chars)"
+                return (
+                    value[: self.max_string_length]
+                    + f"... (truncated, {len(value)} chars)"
+                )
             return value
         elif isinstance(value, dict):
             truncated = {}
@@ -126,13 +128,16 @@ class _PrettyJsonFormatter(logging.Formatter):
                 truncated["..."] = f"(truncated, {len(value)} keys)"
             return truncated
         elif isinstance(value, list):
-            truncated = [self._truncate_value(item, depth + 1) for item in value[:self.max_list_items]]
+            truncated = [
+                self._truncate_value(item, depth + 1)
+                for item in value[: self.max_list_items]
+            ]
             if len(value) > self.max_list_items:
                 truncated.append(f"... (truncated, {len(value)} items)")
             return truncated
         else:
             return value
-    
+
     def format(self, record: logging.LogRecord) -> str:
         """Format log record as pretty JSON."""
         log_data = {
@@ -141,20 +146,38 @@ class _PrettyJsonFormatter(logging.Formatter):
             "logger": record.name,
             "message": record.getMessage(),
         }
-        
+
         # Add any extra fields
         if hasattr(record, "__dict__"):
             for key, value in record.__dict__.items():
                 if key not in (
-                    "name", "msg", "args", "created", "filename", "funcName",
-                    "levelname", "levelno", "lineno", "module", "msecs",
-                    "message", "pathname", "process", "processName",
-                    "relativeCreated", "thread", "threadName", "exc_info",
-                    "exc_text", "stack_info", "asctime", "datefmt"
+                    "name",
+                    "msg",
+                    "args",
+                    "created",
+                    "filename",
+                    "funcName",
+                    "levelname",
+                    "levelno",
+                    "lineno",
+                    "module",
+                    "msecs",
+                    "message",
+                    "pathname",
+                    "process",
+                    "processName",
+                    "relativeCreated",
+                    "thread",
+                    "threadName",
+                    "exc_info",
+                    "exc_text",
+                    "stack_info",
+                    "asctime",
+                    "datefmt",
                 ):
                     # Truncate large values for readability
                     log_data[key] = self._truncate_value(value)
-        
+
         # Format as pretty JSON
         try:
             return json.dumps(log_data, indent=2, ensure_ascii=False)
@@ -225,8 +248,7 @@ def sanitize_headers(headers: Dict[str, str]) -> Dict[str, str]:
         key_lower = key.lower()
         # Check if header is sensitive
         if any(
-            key_lower.startswith(prefix.lower())
-            for prefix in SENSITIVE_HEADER_PREFIXES
+            key_lower.startswith(prefix.lower()) for prefix in SENSITIVE_HEADER_PREFIXES
         ) or _is_sensitive_key(key):
             sanitized[key] = "[REDACTED]"
         else:

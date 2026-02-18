@@ -4,7 +4,6 @@ This handler provides cloud-agnostic HTTP request processing that can be
 used by any cloud provider adapter (AWS Lambda, GCP Cloud Functions, Azure Functions, etc.).
 """
 
-import asyncio
 import json
 import logging
 import os
@@ -373,7 +372,9 @@ class UniversalHTTPHandler:
 
             return (500, error_headers, error_body)
 
-    def handle_options(self, request_id: Optional[str] = None) -> Tuple[int, Dict[str, str], str]:
+    def handle_options(
+        self, request_id: Optional[str] = None
+    ) -> Tuple[int, Dict[str, str], str]:
         """Handle CORS preflight OPTIONS request.
 
         Args:

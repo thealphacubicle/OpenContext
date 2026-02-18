@@ -8,7 +8,6 @@ import pytest
 import tempfile
 import os
 import yaml
-from pathlib import Path
 
 from core.validators import (
     ConfigurationError,

@@ -6,8 +6,7 @@ and error handling. Tests are designed to fail if functionality breaks.
 
 import pytest
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, Mock, patch, create_autospec
-from typing import List
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 from core.plugin_manager import PluginManager
 from core.interfaces import MCPPlugin, ToolDefinition, ToolResult, PluginType
@@ -26,7 +25,7 @@ class TestPluginDiscovery:
         }
         manager = PluginManager(config)
         discovered = manager.discover_plugins()
-        
+
         # Should find at least CKAN plugin
         assert len(discovered) > 0
         plugin_names = [p[0] for p in discovered]
@@ -40,13 +39,9 @@ class TestPluginDiscovery:
         custom_plugins_dir = base_dir / "custom_plugins" / "test_plugin"
         custom_plugins_dir.mkdir(parents=True)
         (custom_plugins_dir / "plugin.py").write_text("# Test plugin")
-        
-        config = {
-            "plugins": {
-                "test_plugin": {"enabled": True}
-            }
-        }
-        
+
+        config = {"plugins": {"test_plugin": {"enabled": True}}}
+
         # Mock the base_dir path
         with patch("core.plugin_manager.Path") as mock_path:
             mock_path.return_value.parent.parent = base_dir
@@ -57,28 +52,20 @@ class TestPluginDiscovery:
 
     def test_discover_plugins_ignores_hidden_directories(self):
         """Test that discovery ignores directories starting with underscore."""
-        config = {
-            "plugins": {
-                "ckan": {"enabled": True}
-            }
-        }
+        config = {"plugins": {"ckan": {"enabled": True}}}
         manager = PluginManager(config)
         discovered = manager.discover_plugins()
-        
+
         # Should not include hidden directories
         plugin_names = [p[0] for p in discovered]
         assert not any(name.startswith("_") for name in plugin_names)
 
     def test_discover_plugins_returns_list_of_tuples(self):
         """Test that discovery returns list of (name, path) tuples."""
-        config = {
-            "plugins": {
-                "ckan": {"enabled": True}
-            }
-        }
+        config = {"plugins": {"ckan": {"enabled": True}}}
         manager = PluginManager(config)
         discovered = manager.discover_plugins()
-        
+
         assert isinstance(discovered, list)
         if len(discovered) > 0:
             assert isinstance(discovered[0], tuple)
@@ -103,7 +90,7 @@ class TestPluginLoading:
             }
         }
         manager = PluginManager(config)
-        
+
         with patch("core.plugin_manager.PluginManager._load_plugin_class") as mock_load:
             mock_plugin_class = MagicMock()
             mock_instance = Mock()
@@ -114,9 +101,9 @@ class TestPluginLoading:
             mock_instance.plugin_version = "1.0.0"
             mock_plugin_class.return_value = mock_instance
             mock_load.return_value = mock_plugin_class
-            
+
             await manager.load_plugins()
-            
+
             assert manager.is_initialized
             assert "ckan" in manager.plugins
             assert manager.plugins["ckan"] == mock_instance
@@ -131,10 +118,10 @@ class TestPluginLoading:
             }
         }
         manager = PluginManager(config)
-        
+
         with pytest.raises(ConfigurationError) as exc_info:
             await manager.load_plugins()
-        
+
         error_msg = str(exc_info.value)
         assert "Multiple Plugins Enabled" in error_msg
         assert "ckan" in error_msg
@@ -149,10 +136,10 @@ class TestPluginLoading:
             }
         }
         manager = PluginManager(config)
-        
+
         with pytest.raises(ConfigurationError) as exc_info:
             await manager.load_plugins()
-        
+
         assert "No Plugins Enabled" in str(exc_info.value)
 
     @pytest.mark.asyncio
@@ -164,10 +151,10 @@ class TestPluginLoading:
             }
         }
         manager = PluginManager(config)
-        
+
         with pytest.raises(RuntimeError) as exc_info:
             await manager.load_plugins()
-        
+
         error_msg = str(exc_info.value)
         assert "nonexistent_plugin" in error_msg.lower()
         assert "not found" in error_msg.lower()
@@ -181,7 +168,7 @@ class TestPluginLoading:
             }
         }
         manager = PluginManager(config)
-        
+
         with patch("core.plugin_manager.PluginManager._load_plugin_class") as mock_load:
             mock_plugin_class = MagicMock()
             mock_instance = Mock()
@@ -189,10 +176,10 @@ class TestPluginLoading:
             mock_instance.plugin_name = "ckan"
             mock_plugin_class.return_value = mock_instance
             mock_load.return_value = mock_plugin_class
-            
+
             with pytest.raises(RuntimeError) as exc_info:
                 await manager.load_plugins()
-            
+
             assert "initialization" in str(exc_info.value).lower()
 
     @pytest.mark.asyncio
@@ -204,7 +191,7 @@ class TestPluginLoading:
             }
         }
         manager = PluginManager(config)
-        
+
         with patch("core.plugin_manager.PluginManager._load_plugin_class") as mock_load:
             mock_plugin_class = MagicMock()
             mock_instance = Mock()
@@ -212,11 +199,14 @@ class TestPluginLoading:
             mock_instance.plugin_name = "ckan"
             mock_plugin_class.return_value = mock_instance
             mock_load.return_value = mock_plugin_class
-            
+
             with pytest.raises(RuntimeError) as exc_info:
                 await manager.load_plugins()
-            
-            assert "initialization" in str(exc_info.value).lower() or "failed" in str(exc_info.value).lower()
+
+            assert (
+                "initialization" in str(exc_info.value).lower()
+                or "failed" in str(exc_info.value).lower()
+            )
 
     @pytest.mark.asyncio
     async def test_load_plugins_passes_config_to_plugin(self):
@@ -232,7 +222,7 @@ class TestPluginLoading:
             }
         }
         manager = PluginManager(config)
-        
+
         with patch("core.plugin_manager.PluginManager._load_plugin_class") as mock_load:
             mock_plugin_class = MagicMock()
             mock_instance = Mock()
@@ -243,9 +233,9 @@ class TestPluginLoading:
             mock_instance.plugin_version = "1.0.0"
             mock_plugin_class.return_value = mock_instance
             mock_load.return_value = mock_plugin_class
-            
+
             await manager.load_plugins()
-            
+
             # Verify plugin was instantiated with correct config
             mock_plugin_class.assert_called_once()
             call_args = mock_plugin_class.call_args[0][0]
@@ -266,7 +256,7 @@ class TestToolRegistration:
             }
         }
         manager = PluginManager(config)
-        
+
         with patch("core.plugin_manager.PluginManager._load_plugin_class") as mock_load:
             mock_plugin_class = MagicMock()
             mock_instance = Mock()
@@ -290,9 +280,9 @@ class TestToolRegistration:
             mock_instance.plugin_version = "1.0.0"
             mock_plugin_class.return_value = mock_instance
             mock_load.return_value = mock_plugin_class
-            
+
             await manager.load_plugins()
-            
+
             # Tools should be registered with double underscore prefix
             assert "ckan__search_datasets" in manager.tools
             assert "ckan__get_dataset" in manager.tools
@@ -308,7 +298,7 @@ class TestToolRegistration:
             }
         }
         manager = PluginManager(config)
-        
+
         with patch("core.plugin_manager.PluginManager._load_plugin_class") as mock_load:
             mock_plugin_class = MagicMock()
             mock_instance = Mock()
@@ -327,9 +317,9 @@ class TestToolRegistration:
             mock_instance.plugin_version = "1.0.0"
             mock_plugin_class.return_value = mock_instance
             mock_load.return_value = mock_plugin_class
-            
+
             await manager.load_plugins()
-            
+
             all_tools = manager.get_all_tools()
             assert len(all_tools) == 1
             assert all_tools[0]["name"] == "ckan__search_datasets"
@@ -349,7 +339,7 @@ class TestToolExecution:
             }
         }
         manager = PluginManager(config)
-        
+
         with patch("core.plugin_manager.PluginManager._load_plugin_class") as mock_load:
             mock_plugin_class = MagicMock()
             mock_instance = Mock()
@@ -366,15 +356,17 @@ class TestToolExecution:
             mock_instance.plugin_version = "1.0.0"
             mock_plugin_class.return_value = mock_instance
             mock_load.return_value = mock_plugin_class
-            
+
             await manager.load_plugins()
             manager.tools["ckan__test_tool"] = ("ckan", "test_tool")
-            
+
             result = await manager.execute_tool("ckan__test_tool", {"arg": "value"})
-            
+
             assert result.success is True
             assert len(result.content) > 0
-            mock_instance.execute_tool.assert_called_once_with("test_tool", {"arg": "value"})
+            mock_instance.execute_tool.assert_called_once_with(
+                "test_tool", {"arg": "value"}
+            )
 
     @pytest.mark.asyncio
     async def test_execute_tool_fails_with_nonexistent_tool(self):
@@ -385,7 +377,7 @@ class TestToolExecution:
             }
         }
         manager = PluginManager(config)
-        
+
         with patch("core.plugin_manager.PluginManager._load_plugin_class") as mock_load:
             mock_plugin_class = MagicMock()
             mock_instance = Mock()
@@ -396,27 +388,23 @@ class TestToolExecution:
             mock_instance.plugin_version = "1.0.0"
             mock_plugin_class.return_value = mock_instance
             mock_load.return_value = mock_plugin_class
-            
+
             await manager.load_plugins()
-            
+
             with pytest.raises(ValueError) as exc_info:
                 await manager.execute_tool("ckan__nonexistent", {})
-            
+
             assert "not found" in str(exc_info.value).lower()
 
     @pytest.mark.asyncio
     async def test_execute_tool_fails_when_not_initialized(self):
         """Test that executing tool before initialization raises RuntimeError."""
-        config = {
-            "plugins": {
-                "ckan": {"enabled": True}
-            }
-        }
+        config = {"plugins": {"ckan": {"enabled": True}}}
         manager = PluginManager(config)
-        
+
         with pytest.raises(RuntimeError) as exc_info:
             await manager.execute_tool("ckan__test", {})
-        
+
         assert "not initialized" in str(exc_info.value).lower()
 
     @pytest.mark.asyncio
@@ -428,27 +416,32 @@ class TestToolExecution:
             }
         }
         manager = PluginManager(config)
-        
+
         with patch("core.plugin_manager.PluginManager._load_plugin_class") as mock_load:
             mock_plugin_class = MagicMock()
             mock_instance = Mock()
             mock_instance.initialize = AsyncMock(return_value=True)
             mock_instance.get_tools = Mock(return_value=[])
-            mock_instance.execute_tool = AsyncMock(side_effect=Exception("Plugin error"))
+            mock_instance.execute_tool = AsyncMock(
+                side_effect=Exception("Plugin error")
+            )
             mock_instance.plugin_name = "ckan"
             mock_instance.plugin_type = PluginType.OPEN_DATA
             mock_instance.plugin_version = "1.0.0"
             mock_plugin_class.return_value = mock_instance
             mock_load.return_value = mock_plugin_class
-            
+
             await manager.load_plugins()
             manager.tools["ckan__test_tool"] = ("ckan", "test_tool")
-            
+
             result = await manager.execute_tool("ckan__test_tool", {})
-            
+
             assert result.success is False
             assert result.error_message is not None
-            assert "error" in result.error_message.lower() or "failed" in result.error_message.lower()
+            assert (
+                "error" in result.error_message.lower()
+                or "failed" in result.error_message.lower()
+            )
 
 
 class TestHealthCheck:
@@ -463,7 +456,7 @@ class TestHealthCheck:
             }
         }
         manager = PluginManager(config)
-        
+
         with patch("core.plugin_manager.PluginManager._load_plugin_class") as mock_load:
             mock_plugin_class = MagicMock()
             mock_instance = Mock()
@@ -475,9 +468,9 @@ class TestHealthCheck:
             mock_instance.plugin_version = "1.0.0"
             mock_plugin_class.return_value = mock_instance
             mock_load.return_value = mock_plugin_class
-            
+
             await manager.load_plugins()
-            
+
             health = await manager.health_check()
             assert "ckan" in health
             assert health["ckan"] is True
@@ -491,7 +484,7 @@ class TestHealthCheck:
             }
         }
         manager = PluginManager(config)
-        
+
         with patch("core.plugin_manager.PluginManager._load_plugin_class") as mock_load:
             mock_plugin_class = MagicMock()
             mock_instance = Mock()
@@ -503,9 +496,9 @@ class TestHealthCheck:
             mock_instance.plugin_version = "1.0.0"
             mock_plugin_class.return_value = mock_instance
             mock_load.return_value = mock_plugin_class
-            
+
             await manager.load_plugins()
-            
+
             health = await manager.health_check()
             assert "ckan" in health
             assert health["ckan"] is False
@@ -519,21 +512,23 @@ class TestHealthCheck:
             }
         }
         manager = PluginManager(config)
-        
+
         with patch("core.plugin_manager.PluginManager._load_plugin_class") as mock_load:
             mock_plugin_class = MagicMock()
             mock_instance = Mock()
             mock_instance.initialize = AsyncMock(return_value=True)
             mock_instance.get_tools = Mock(return_value=[])
-            mock_instance.health_check = AsyncMock(side_effect=Exception("Health check failed"))
+            mock_instance.health_check = AsyncMock(
+                side_effect=Exception("Health check failed")
+            )
             mock_instance.plugin_name = "ckan"
             mock_instance.plugin_type = PluginType.OPEN_DATA
             mock_instance.plugin_version = "1.0.0"
             mock_plugin_class.return_value = mock_instance
             mock_load.return_value = mock_plugin_class
-            
+
             await manager.load_plugins()
-            
+
             health = await manager.health_check()
             assert "ckan" in health
             assert health["ckan"] is False
@@ -551,7 +546,7 @@ class TestShutdown:
             }
         }
         manager = PluginManager(config)
-        
+
         with patch("core.plugin_manager.PluginManager._load_plugin_class") as mock_load:
             mock_plugin_class = MagicMock()
             mock_instance = Mock()
@@ -563,12 +558,12 @@ class TestShutdown:
             mock_instance.plugin_version = "1.0.0"
             mock_plugin_class.return_value = mock_instance
             mock_load.return_value = mock_plugin_class
-            
+
             await manager.load_plugins()
             assert manager.is_initialized
-            
+
             await manager.shutdown()
-            
+
             mock_instance.shutdown.assert_called_once()
             assert not manager.is_initialized
             assert len(manager.plugins) == 0
@@ -583,7 +578,7 @@ class TestShutdown:
             }
         }
         manager = PluginManager(config)
-        
+
         with patch("core.plugin_manager.PluginManager._load_plugin_class") as mock_load:
             mock_plugin_class = MagicMock()
             mock_instance = Mock()
@@ -595,12 +590,12 @@ class TestShutdown:
             mock_instance.plugin_version = "1.0.0"
             mock_plugin_class.return_value = mock_instance
             mock_load.return_value = mock_plugin_class
-            
+
             await manager.load_plugins()
-            
+
             # Should not raise exception
             await manager.shutdown()
-            
+
             # State should still be cleared
             assert not manager.is_initialized
             assert len(manager.plugins) == 0
@@ -612,13 +607,9 @@ class TestLoadPluginClass:
 
     def test_load_plugin_class_loads_builtin_plugin(self):
         """Test that builtin plugin class is loaded correctly."""
-        config = {
-            "plugins": {
-                "ckan": {"enabled": True}
-            }
-        }
+        config = {"plugins": {"ckan": {"enabled": True}}}
         manager = PluginManager(config)
-        
+
         plugin_path = Path(__file__).parent.parent / "plugins" / "ckan"
         if plugin_path.exists():
             plugin_class = manager._load_plugin_class("ckan", plugin_path)
@@ -627,45 +618,40 @@ class TestLoadPluginClass:
 
     def test_load_plugin_class_raises_on_invalid_path(self):
         """Test that invalid plugin path raises ValueError."""
-        config = {
-            "plugins": {
-                "ckan": {"enabled": True}
-            }
-        }
+        config = {"plugins": {"ckan": {"enabled": True}}}
         manager = PluginManager(config)
-        
+
         invalid_path = Path("/nonexistent/path")
         with pytest.raises((ImportError, ValueError)):
             manager._load_plugin_class("invalid", invalid_path)
 
     def test_load_plugin_class_raises_on_missing_plugin_class(self):
         """Test that missing plugin class raises ValueError."""
-        config = {
-            "plugins": {
-                "ckan": {"enabled": True}
-            }
-        }
+        config = {"plugins": {"ckan": {"enabled": True}}}
         manager = PluginManager(config)
-        
+
         # Use a path that contains "plugins" to pass path validation
         # Then mock importlib.import_module to return a module without a plugin class
         from types import ModuleType
+
         plugin_dir = Path("/fake/plugins/test_plugin")
-        
+
         # Create a mock module that doesn't have an MCPPlugin subclass
         mock_module = ModuleType("plugins.test_plugin.plugin")
+
         # Add some classes that are NOT MCPPlugin subclasses
         class RegularClass:
             pass
+
         mock_module.RegularClass = RegularClass
         # No MCPPlugin subclass exists
-        
+
         with patch("core.plugin_manager.importlib.import_module") as mock_import:
             mock_import.return_value = mock_module
-            
+
             with pytest.raises(ValueError) as exc_info:
                 manager._load_plugin_class("test_plugin", plugin_dir)
-            
+
             assert "does not define a class" in str(exc_info.value).lower()
             mock_import.assert_called_once_with("plugins.test_plugin.plugin")
-                # Clean up any imported modules
+            # Clean up any imported modules

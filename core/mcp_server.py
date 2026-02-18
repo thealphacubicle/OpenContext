@@ -114,7 +114,9 @@ class MCPServer:
                 result=result,
                 duration_ms=duration_ms,
             )
-            logger.info("JSON-RPC request processed successfully", extra=response_log_data)
+            logger.info(
+                "JSON-RPC request processed successfully", extra=response_log_data
+            )
 
             return response
 

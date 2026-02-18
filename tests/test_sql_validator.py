@@ -4,7 +4,6 @@ These tests verify that SQL validation correctly prevents SQL injection
 and destructive operations while allowing valid SELECT queries.
 """
 
-import pytest
 from plugins.ckan.sql_validator import SQLValidator
 
 
@@ -20,14 +19,16 @@ class TestValidSelectQueries:
 
     def test_select_with_where_clause_passes(self):
         """Test that SELECT with WHERE clause passes."""
-        sql = 'SELECT * FROM "abc-123-def-456-ghi-789-012-345-678-901" WHERE status = \'Open\''
+        sql = "SELECT * FROM \"abc-123-def-456-ghi-789-012-345-678-901\" WHERE status = 'Open'"
         is_valid, error = SQLValidator.validate_query(sql)
         assert is_valid is True
         assert error is None
 
     def test_select_with_order_by_passes(self):
         """Test that SELECT with ORDER BY passes."""
-        sql = 'SELECT * FROM "abc-123-def-456-ghi-789-012-345-678-901" ORDER BY date DESC'
+        sql = (
+            'SELECT * FROM "abc-123-def-456-ghi-789-012-345-678-901" ORDER BY date DESC'
+        )
         is_valid, error = SQLValidator.validate_query(sql)
         assert is_valid is True
         assert error is None
@@ -69,12 +70,12 @@ class TestValidSelectQueries:
 
     def test_select_with_cte_passes(self):
         """Test that SELECT with CTE passes."""
-        sql = '''
+        sql = """
         WITH subquery AS (
             SELECT * FROM "abc-123-def-456-ghi-789-012-345-678-901"
         )
         SELECT * FROM subquery
-        '''
+        """
         is_valid, error = SQLValidator.validate_query(sql)
         assert is_valid is True, f"CTE query should pass but got error: {error}"
         assert error is None
@@ -106,7 +107,9 @@ class TestRejectDestructiveOperations:
 
     def test_insert_statement_rejected(self):
         """Test that INSERT statements are rejected."""
-        sql = 'INSERT INTO "abc-123-def-456-ghi-789-012-345-678-901" VALUES (1, \'test\')'
+        sql = (
+            "INSERT INTO \"abc-123-def-456-ghi-789-012-345-678-901\" VALUES (1, 'test')"
+        )
         is_valid, error = SQLValidator.validate_query(sql)
         assert is_valid is False
         assert error is not None
@@ -114,7 +117,7 @@ class TestRejectDestructiveOperations:
 
     def test_update_statement_rejected(self):
         """Test that UPDATE statements are rejected."""
-        sql = 'UPDATE "abc-123-def-456-ghi-789-012-345-678-901" SET status = \'Closed\''
+        sql = "UPDATE \"abc-123-def-456-ghi-789-012-345-678-901\" SET status = 'Closed'"
         is_valid, error = SQLValidator.validate_query(sql)
         assert is_valid is False
         assert error is not None
@@ -138,7 +141,7 @@ class TestRejectDestructiveOperations:
 
     def test_create_statement_rejected(self):
         """Test that CREATE statements are rejected."""
-        sql = 'CREATE TABLE test (id INT)'
+        sql = "CREATE TABLE test (id INT)"
         is_valid, error = SQLValidator.validate_query(sql)
         assert is_valid is False
         assert error is not None
@@ -146,7 +149,9 @@ class TestRejectDestructiveOperations:
 
     def test_alter_statement_rejected(self):
         """Test that ALTER statements are rejected."""
-        sql = 'ALTER TABLE "abc-123-def-456-ghi-789-012-345-678-901" ADD COLUMN test INT'
+        sql = (
+            'ALTER TABLE "abc-123-def-456-ghi-789-012-345-678-901" ADD COLUMN test INT'
+        )
         is_valid, error = SQLValidator.validate_query(sql)
         assert is_valid is False
         assert error is not None
@@ -182,7 +187,9 @@ class TestRejectSQLInjection:
 
     def test_multiple_statements_rejected(self):
         """Test that multiple statements are rejected."""
-        sql = 'SELECT * FROM "abc-123-def-456-ghi-789-012-345-678-901"; DROP TABLE users;'
+        sql = (
+            'SELECT * FROM "abc-123-def-456-ghi-789-012-345-678-901"; DROP TABLE users;'
+        )
         is_valid, error = SQLValidator.validate_query(sql)
         assert is_valid is False
         assert error is not None
@@ -207,7 +214,7 @@ class TestRejectSQLInjection:
 
     def test_command_execution_pattern_rejected(self):
         """Test that command execution patterns are rejected."""
-        sql = 'SELECT * FROM "abc-123-def-456-ghi-789-012-345-678-901" WHERE xp_cmdshell(\'dir\')'
+        sql = "SELECT * FROM \"abc-123-def-456-ghi-789-012-345-678-901\" WHERE xp_cmdshell('dir')"
         is_valid, error = SQLValidator.validate_query(sql)
         assert is_valid is False
         assert error is not None
@@ -223,7 +230,9 @@ class TestRejectSQLInjection:
 
     def test_sleep_function_rejected(self):
         """Test that sleep functions are rejected."""
-        sql = 'SELECT * FROM "abc-123-def-456-ghi-789-012-345-678-901" WHERE pg_sleep(10)'
+        sql = (
+            'SELECT * FROM "abc-123-def-456-ghi-789-012-345-678-901" WHERE pg_sleep(10)'
+        )
         is_valid, error = SQLValidator.validate_query(sql)
         assert is_valid is False
         assert error is not None
@@ -308,7 +317,7 @@ class TestRejectInvalidUUIDs:
 
     def test_uuid_without_quotes_passes_if_no_uuid_check(self):
         """Test that UUID without quotes might pass (depends on validator)."""
-        sql = 'SELECT * FROM abc-123-def-456-ghi-789-012-345-678-901'
+        sql = "SELECT * FROM abc-123-def-456-ghi-789-012-345-678-901"
         is_valid, error = SQLValidator.validate_query(sql)
         # Without quotes, UUID pattern won't match, so won't be validated
         # But should still pass SELECT validation
@@ -320,7 +329,9 @@ class TestRejectForbiddenKeywords:
 
     def test_execute_keyword_rejected(self):
         """Test that EXECUTE keyword is rejected."""
-        sql = 'SELECT * FROM "abc-123-def-456-ghi-789-012-345-678-901" WHERE EXECUTE test'
+        sql = (
+            'SELECT * FROM "abc-123-def-456-ghi-789-012-345-678-901" WHERE EXECUTE test'
+        )
         is_valid, error = SQLValidator.validate_query(sql)
         assert is_valid is False
         assert error is not None
@@ -344,7 +355,9 @@ class TestRejectForbiddenKeywords:
 
     def test_declare_keyword_rejected(self):
         """Test that DECLARE keyword is rejected."""
-        sql = 'SELECT * FROM "abc-123-def-456-ghi-789-012-345-678-901" WHERE DECLARE @var'
+        sql = (
+            'SELECT * FROM "abc-123-def-456-ghi-789-012-345-678-901" WHERE DECLARE @var'
+        )
         is_valid, error = SQLValidator.validate_query(sql)
         assert is_valid is False
         assert error is not None
@@ -352,7 +365,9 @@ class TestRejectForbiddenKeywords:
 
     def test_set_keyword_in_where_might_pass(self):
         """Test that SET keyword in WHERE clause might pass (context-dependent)."""
-        sql = 'SELECT * FROM "abc-123-def-456-ghi-789-012-345-678-901" WHERE status = SET'
+        sql = (
+            'SELECT * FROM "abc-123-def-456-ghi-789-012-345-678-901" WHERE status = SET'
+        )
         is_valid, error = SQLValidator.validate_query(sql)
         # SET as a value might pass, but SET as keyword should be caught
         # This depends on validator implementation
@@ -403,14 +418,14 @@ class TestEdgeCases:
 
     def test_select_with_special_characters_passes(self):
         """Test that SELECT with special characters passes."""
-        sql = 'SELECT * FROM "abc-123-def-456-ghi-789-012-345-678-901" WHERE name = \'O\'Brien\''
+        sql = "SELECT * FROM \"abc-123-def-456-ghi-789-012-345-678-901\" WHERE name = 'O'Brien'"
         is_valid, error = SQLValidator.validate_query(sql)
         assert is_valid is True
         assert error is None
 
     def test_select_with_regex_patterns_passes(self):
         """Test that SELECT with regex patterns passes."""
-        sql = 'SELECT * FROM "abc-123-def-456-ghi-789-012-345-678-901" WHERE name ~ \'^[A-Z]\''
+        sql = "SELECT * FROM \"abc-123-def-456-ghi-789-012-345-678-901\" WHERE name ~ '^[A-Z]'"
         is_valid, error = SQLValidator.validate_query(sql)
         assert is_valid is True
         assert error is None
