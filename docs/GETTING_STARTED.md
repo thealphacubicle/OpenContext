@@ -15,7 +15,13 @@ Test the MCP server locally before deploying.
 
 ### 1. Configure Your Plugin
 
-Edit `config.yaml` and enable **ONE** plugin. For CKAN:
+Create `config.yaml` from the template and enable **ONE** plugin:
+
+```bash
+cp config-example.yaml config.yaml
+```
+
+Edit `config.yaml`. For CKAN:
 
 ```yaml
 plugins:
@@ -91,7 +97,9 @@ Or run the full test: `./scripts/test_streamable_http.sh`
 ### 1. Fork & Configure
 
 1. Fork the [OpenContext repository](https://github.com/thealphacubicle/OpenContext)
-2. Clone your fork and edit `config.yaml` with **ONE** plugin enabled
+2. Clone your fork
+3. Create config: `cp config-example.yaml config.yaml`
+4. Edit `config.yaml` with **ONE** plugin enabled
 
 ### 2. Deploy to AWS
 
@@ -112,6 +120,8 @@ cd terraform/aws
 terraform output -raw api_gateway_url
 ```
 
+Use the full URL from `terraform output` (it already includes `/mcp`):
+
 ```json
 {
   "mcpServers": {
@@ -122,7 +132,7 @@ terraform output -raw api_gateway_url
         "@modelcontextprotocol/server-stdio-to-http",
         "--transport",
         "streamable-http",
-        "https://your-api-gateway-url.execute-api.us-east-1.amazonaws.com/prod/mcp"
+        "https://YOUR-API-GATEWAY-URL"
       ]
     }
   }

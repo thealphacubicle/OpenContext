@@ -4,6 +4,8 @@
 
 ### Config Validation
 
+Ensure `config.yaml` exists (create from `config-example.yaml` if needed), then:
+
 ```bash
 python3 -c "
 import yaml

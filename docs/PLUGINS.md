@@ -44,10 +44,11 @@ Add your own plugins in `custom_plugins/`. They are auto-discovered.
 ### Quick Start
 
 ```bash
+mkdir -p custom_plugins/my_plugin
 cp custom_plugins/template/plugin_template.py custom_plugins/my_plugin/plugin.py
 ```
 
-Edit the plugin, add config to `config.yaml`, then `./scripts/deploy.sh`.
+Edit the plugin, add config to `config.yaml` (create from `config-example.yaml` if needed), then `./scripts/deploy.sh`.
 
 ### Plugin Structure
 

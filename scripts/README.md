@@ -17,13 +17,13 @@ Deployment script that validates configuration and deploys the MCP server to AWS
 - Validates that exactly ONE plugin is enabled
 - Packages the code for Lambda deployment
 - Deploys to AWS using Terraform
-- Outputs the Lambda Function URL
+- Outputs the API Gateway URL and Lambda Function URL
 
 **Requirements:**
 - Python 3.11+
 - AWS CLI configured
 - Terraform installed
-- Valid `config.yaml` in project root
+- Valid `config.yaml` in project root (create from `config-example.yaml`)
 
 ### `local_server.py`
 
@@ -43,7 +43,7 @@ python3 scripts/local_server.py
 **Requirements:**
 - Python 3.11+
 - `aiohttp` package (`pip install aiohttp`)
-- Valid `config.yaml` in project root
+- Valid `config.yaml` in project root (create from `config-example.yaml`)
 
 **Testing:**
 ```bash

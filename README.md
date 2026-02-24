@@ -19,7 +19,10 @@ Each deployment has exactly one plugin. To run multiple servers (e.g., CKAN + cu
 ## Quick Start
 
 ```bash
-# 1. Configure (enable ONE plugin in config.yaml)
+# 1. Configure (create config, enable ONE plugin)
+cp config-example.yaml config.yaml
+# Edit config.yaml - set enabled: true for one plugin
+
 # 2. Test locally
 pip install aiohttp
 python3 scripts/local_server.py
@@ -40,12 +43,14 @@ Add to Claude Desktop (`~/Library/Application Support/Claude/claude_desktop_conf
         "@modelcontextprotocol/server-stdio-to-http",
         "--transport",
         "streamable-http",
-        "https://your-api-gateway-url.execute-api.us-east-1.amazonaws.com/prod/mcp"
+        "https://YOUR-API-GATEWAY-URL"
       ]
     }
   }
 }
 ```
+
+Get the URL from: `cd terraform/aws && terraform output -raw api_gateway_url`
 
 See [Getting Started](docs/GETTING_STARTED.md) for full setup (local testing, Lambda URL, Go client).
 

@@ -21,51 +21,69 @@ Deploy OpenContext to AWS Lambda. See [Getting Started](GETTING_STARTED.md) for 
 # Configure AWS
 aws configure
 
+# Create config from template (if needed)
+cp config-example.yaml config.yaml
+# Edit config.yaml - enable exactly ONE plugin
+
 # Deploy (validates config, packages, deploys)
 ./scripts/deploy.sh
 ```
 
 ### Manual Terraform
 
+First-time: bootstrap the S3 backend (run once). See [terraform/bootstrap/README.md](../terraform/bootstrap/README.md):
+
+```bash
+cd terraform/bootstrap
+terraform init && terraform apply
+```
+
+Then deploy:
+
 ```bash
 cd terraform/aws
 terraform init
-terraform plan -var="lambda_name=my-mcp-server" -var="aws_region=us-east-1" -var="config_file=../../config.yaml"
+terraform plan -var="config_file=config.yaml"
 terraform apply
 ```
+
+The deploy script copies `config.yaml` into `terraform/aws/` before running Terraform. For manual runs, ensure `config.yaml` exists in the project root or pass the correct path.
 
 ## Endpoints
 
 | Endpoint | Use Case | Auth |
 |----------|----------|------|
-| **API Gateway** | Production | API key, rate limiting |
+| **API Gateway** | Production | Rate limiting, daily quota |
 | **Lambda Function URL** | Testing | None |
 
 ### Get URLs
 
 ```bash
 cd terraform/aws
-terraform output -raw api_gateway_url   # Production
-terraform output -raw lambda_url       # Testing
+terraform output -raw api_gateway_url   # Production (includes /mcp)
+terraform output -raw lambda_url      # Testing
 ```
 
 ### API Gateway
 
-- **Rate limit:** 10 burst, 5 sustained req/s; 1000/day quota
+- **Rate limit:** 100 burst, 50 sustained req/s (configurable via Terraform variables)
+- **Daily quota:** 1000 requests/day (configurable via `api_quota_limit`)
+- **Stage name:** Default is `staging`; URL format: `https://...execute-api.region.amazonaws.com/staging/mcp`
 - **429** when exceeded
 - Use for production; Lambda URL has no auth
 
 ## Configuration
 
-Config is passed via `OPENCONTEXT_CONFIG` env var. Edit `config.yaml` and run `./scripts/deploy.sh` to update.
+Config is passed via `OPENCONTEXT_CONFIG` env var. Create `config.yaml` from `config-example.yaml`, edit it, and run `./scripts/deploy.sh` to update.
 
-### Lambda Settings
+### Lambda Settings (in config.yaml)
 
 ```yaml
 aws:
   region: "us-east-1"
-  lambda_memory: 512    # 128–10240 MB
-  lambda_timeout: 120   # 1–900 seconds
+  lambda_name: "my-mcp-server"   # Optional; defaults from server_name
+  lambda_memory: 512             # 128–10240 MB
+  lambda_timeout: 120            # 1–900 seconds
 ```
 
 ## Monitoring
@@ -80,7 +98,7 @@ aws:
 **Destroy:**
 ```bash
 cd terraform/aws
-terraform destroy
+terraform destroy -var="config_file=config.yaml"
 ```
 
 ## Cost (us-east-1)
@@ -100,6 +118,6 @@ terraform destroy
 
 ## Security
 
-- Use API Gateway for production (rate limiting, API key)
+- Use API Gateway for production (rate limiting, quota)
 - Lambda URL is public—testing only
 - Store secrets in env vars, not code

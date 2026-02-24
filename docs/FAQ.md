@@ -14,7 +14,7 @@ Simplicity, independent scaling, clear boundaries. See [Architecture](ARCHITECTU
 ## Configuration
 
 **How do I enable a plugin?**
-Set `enabled: true` for exactly one plugin in `config.yaml`.
+Create `config.yaml` from `config-example.yaml`, then set `enabled: true` for exactly one plugin.
 
 **How do I update config after deployment?**
 Edit `config.yaml`, run `./scripts/deploy.sh`.
