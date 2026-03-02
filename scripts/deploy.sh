@@ -25,7 +25,8 @@ echo ""
 # Check if config.yaml exists
 if [ ! -f "config.yaml" ]; then
     echo -e "${RED}❌ Error: config.yaml not found${NC}"
-    echo "Create config.yaml based on the template in the repository."
+    echo "Create config from template: cp config-example.yaml config.yaml"
+    echo "Then edit config.yaml and enable exactly ONE plugin."
     exit 1
 fi
 
@@ -53,16 +54,16 @@ import sys
 try:
     with open('config.yaml', 'r') as f:
         config = yaml.safe_load(f)
-    
+
     plugins = config.get('plugins', {})
     enabled = []
-    
+
     for plugin_name, plugin_config in plugins.items():
         if isinstance(plugin_config, dict) and plugin_config.get('enabled', False):
             enabled.append(plugin_name)
-    
+
     count = len(enabled)
-    
+
     if count == 0:
         print("0", file=sys.stderr)
         print("No plugins enabled", file=sys.stderr)
@@ -75,7 +76,7 @@ try:
         print(count)
         print(enabled[0], file=sys.stderr)
         sys.exit(0)
-        
+
 except Exception as e:
     print(f"Error parsing config.yaml: {e}", file=sys.stderr)
     sys.exit(3)
@@ -93,7 +94,7 @@ if [ $EXIT_CODE -eq 1 ]; then
     echo "  • ckan"
     echo "  • A custom plugin in custom_plugins/"
     echo ""
-    echo "See docs/QUICKSTART.md for setup instructions."
+    echo "See docs/GETTING_STARTED.md for setup instructions."
     exit 1
 elif [ $EXIT_CODE -eq 2 ]; then
     ENABLED_PLUGINS=$(python3 << 'EOF'
@@ -101,12 +102,12 @@ import yaml
 with open('config.yaml', 'r') as f:
     config = yaml.safe_load(f)
 plugins = config.get('plugins', {})
-enabled = [name for name, cfg in plugins.items() 
+enabled = [name for name, cfg in plugins.items()
            if isinstance(cfg, dict) and cfg.get('enabled', False)]
 print("\n".join(f"  • {name}" for name in enabled))
 EOF
     )
-    
+
     echo -e "${RED}❌ Configuration Error: Multiple Plugins Enabled${NC}"
     echo ""
     echo "You have $ENABLED_COUNT plugins enabled in config.yaml:"
@@ -145,7 +146,7 @@ import yaml
 with open('config.yaml', 'r') as f:
     config = yaml.safe_load(f)
 plugins = config.get('plugins', {})
-enabled = [name for name, cfg in plugins.items() 
+enabled = [name for name, cfg in plugins.items()
            if isinstance(cfg, dict) and cfg.get('enabled', False)]
 print(enabled[0])
 EOF
@@ -199,12 +200,27 @@ cp requirements.txt "$PACKAGE_DIR/" 2>/dev/null || true
 
 # Install Python dependencies into package directory
 echo "Installing Python dependencies..."
-if ! pip install -r requirements.txt -t "$PACKAGE_DIR/" --platform manylinux2014_x86_64 --only-binary :all: --no-compile --no-deps 2>/dev/null; then
-    echo "Platform-specific install failed, trying generic install..."
-    if ! pip install -r requirements.txt -t "$PACKAGE_DIR/" --no-compile 2>/dev/null; then
-        echo -e "${RED}❌ Error: Failed to install dependencies${NC}"
-        echo "Please ensure pip is available and requirements.txt is valid."
+
+# Prefer uv for faster, cached installs; fall back to pip if uv is unavailable
+if command -v uv &> /dev/null; then
+    echo "Using uv to install dependencies..."
+    if ! uv pip install -r requirements.txt \
+        --target "$PACKAGE_DIR/" \
+        --python-platform x86_64-manylinux2014 \
+        --python-version 3.11 \
+        --no-compile; then
+        echo -e "${RED}❌ Error: Failed to install dependencies with uv${NC}"
         exit 1
+    fi
+else
+    echo "uv not found, falling back to pip..."
+    if ! pip install -r requirements.txt -t "$PACKAGE_DIR/" --platform manylinux2014_x86_64 --only-binary :all: --no-compile --no-deps 2>/dev/null; then
+        echo "Platform-specific install failed, trying generic install..."
+        if ! pip install -r requirements.txt -t "$PACKAGE_DIR/" --no-compile 2>/dev/null; then
+            echo -e "${RED}❌ Error: Failed to install dependencies${NC}"
+            echo "Please ensure pip is available and requirements.txt is valid."
+            exit 1
+        fi
     fi
 fi
 
@@ -219,6 +235,10 @@ echo ""
 
 echo -e "${YELLOW}🏗️  Step 3: Deploying with Terraform...${NC}"
 
+# Copy zip file and config.yaml to Terraform module directory
+cp "$ZIP_FILE" terraform/aws/lambda-deployment.zip
+cp config.yaml terraform/aws/config.yaml
+
 # Initialize Terraform if needed
 if [ ! -d "terraform/aws/.terraform" ]; then
     echo "Initializing Terraform..."
@@ -227,41 +247,74 @@ if [ ! -d "terraform/aws/.terraform" ]; then
     cd ../..
 fi
 
-# Deploy with Terraform
+# Plan first - validates configuration and catches errors before any changes
 cd terraform/aws
-terraform apply \
+echo -e "${YELLOW}📋 Planning Terraform changes...${NC}"
+if ! terraform plan \
+    -out=tfplan \
     -var="lambda_name=$LAMBDA_NAME" \
     -var="aws_region=$AWS_REGION" \
-    -var="config_file=../config.yaml" \
-    -auto-approve
+    -var="config_file=config.yaml"; then
+    echo -e "${RED}❌ Terraform plan failed - aborting deployment${NC}"
+    exit 1
+fi
 
-# Get Lambda URL from Terraform output
+# Require explicit approval before deploying
+echo ""
+echo -e "${YELLOW}⚠️  Deployment will apply the planned changes to AWS.${NC}"
+echo -e "   Lambda: ${LAMBDA_NAME}"
+echo -e "   Region: ${AWS_REGION}"
+echo ""
+read -r -p "Do you want to proceed with deployment? (yes/no): " CONFIRM
+if [ "$CONFIRM" != "yes" ] && [ "$CONFIRM" != "y" ]; then
+    echo -e "${YELLOW}Deployment cancelled by user.${NC}"
+    rm -f tfplan
+    exit 0
+fi
+echo ""
+
+# Apply the planned changes
+echo -e "${YELLOW}🚀 Applying Terraform changes...${NC}"
+terraform apply tfplan
+rm -f tfplan
+
+# Get URLs from Terraform output
 LAMBDA_URL=$(terraform output -raw lambda_url 2>/dev/null || echo "")
+API_GATEWAY_URL=$(terraform output -raw api_gateway_url 2>/dev/null || echo "")
 
 cd ..
 
 echo ""
 echo -e "${GREEN}✅ Deployment complete!${NC}"
 echo ""
-echo "Lambda Function URL:"
+echo "API Gateway URL (use for Claude Desktop):"
+echo -e "${GREEN}$API_GATEWAY_URL${NC}"
+echo ""
+echo "Lambda Function URL (for direct HTTP testing):"
 echo -e "${GREEN}$LAMBDA_URL${NC}"
 echo ""
 echo "To use with Claude Desktop:"
 echo ""
-echo "1. Download opencontext-client binary from:"
-echo "   https://github.com/thealphacubicle/OpenContext/releases"
-echo ""
-echo "2. Add to your Claude Desktop config:"
-echo ""
+echo "Option A - Streamable HTTP (recommended, no binary):"
 echo "  \"mcpServers\": {"
 echo "    \"$SERVER_NAME\": {"
-echo "      \"command\": \"/path/to/opencontext-client\","
+echo "      \"command\": \"npx\","
 echo "      \"args\": ["
-echo "        \"$LAMBDA_URL\""
+echo "        \"-y\","
+echo "        \"@modelcontextprotocol/server-stdio-to-http\","
+echo "        \"--transport\","
+echo "        \"streamable-http\","
+echo "        \"$API_GATEWAY_URL\""
 echo "      ]"
 echo "    }"
 echo "  }"
 echo ""
-echo "For direct HTTP access, use the Lambda URL directly with MCP JSON-RPC format."
+echo "Option B - Go client binary:"
+echo "  Download from https://github.com/thealphacubicle/OpenContext/releases"
+echo "  \"mcpServers\": {"
+echo "    \"$SERVER_NAME\": {"
+echo "      \"command\": \"/path/to/opencontext-client\","
+echo "      \"args\": [\"$API_GATEWAY_URL\"]"
+echo "    }"
+echo "  }"
 echo ""
-

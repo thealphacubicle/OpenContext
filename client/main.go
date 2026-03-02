@@ -196,7 +196,7 @@ func (c *Client) HandleRequest(req *JSONRPCRequest) *JSONRPCResponse {
 // Run starts the client loop
 func (c *Client) Run() error {
 	scanner := bufio.NewScanner(os.Stdin)
-	
+
 	// Set a large buffer size for long lines if needed, but default is usually fine (64k)
 	// We'll stick to default for now as it matches Python's line reading
 

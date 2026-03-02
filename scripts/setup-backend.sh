@@ -14,7 +14,7 @@ if [ -z "$AWS_ACCOUNT_ID" ]; then
 fi
 
 # Generate bucket name
-BUCKET_NAME="terraform-state-${AWS_ACCOUNT_ID}-${AWS_REGION}"
+BUCKET_NAME="boston-opencontext-opendataterraform-state-${AWS_ACCOUNT_ID}-${AWS_REGION}"
 TABLE_NAME="terraform-state-lock"
 
 echo "AWS Account ID: $AWS_ACCOUNT_ID"

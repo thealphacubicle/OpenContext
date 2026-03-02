@@ -4,6 +4,7 @@
 import asyncio
 import json
 import logging
+import os
 import sys
 import time
 import uuid
@@ -24,15 +25,16 @@ from core.validators import get_logging_config
 
 logger = logging.getLogger(__name__)
 
-# Load config
-with open("config.yaml") as f:
+# Load config (OPENCONTEXT_CONFIG env var for tests; default config.yaml)
+_config_path = os.environ.get("OPENCONTEXT_CONFIG", "config.yaml")
+with open(_config_path) as f:
     config = yaml.safe_load(f)
 
 # Configure JSON logging - use pretty format for local development
 logging_config = get_logging_config(config)
 configure_json_logging(
     level=logging_config.get("level", "INFO"),
-    pretty=True  # Pretty-print JSON for better local readability
+    pretty=True,  # Pretty-print JSON for better local readability
 )
 
 # Global server instance
@@ -67,14 +69,14 @@ async def handle_mcp_request(request):
 
         # Extract session ID from headers for logging
         session_id = headers.get("mcp-session-id") or headers.get("Mcp-Session-Id")
-        
+
         # Parse JSON to detect method and extract details for logging
         try:
             request_json = json.loads(body)
             method = request_json.get("method", "unknown")
             tool_name = None
             tool_args = None
-            
+
             if method == "tools/call":
                 params = request_json.get("params", {})
                 tool_name = params.get("name")
@@ -98,7 +100,7 @@ async def handle_mcp_request(request):
         # Check if this is an initialize request
         is_initialize = method == "initialize"
         session_id_to_return = None
-        
+
         if is_initialize:
             session_id_to_return = str(uuid.uuid4())
             logger.info(
@@ -178,7 +180,7 @@ async def start_server():
                     org_name = plugin_config["organization"].lower().replace(" ", "-")
                     server_name = f"{org_name}-opendata"
                     break
-        
+
         # Fallback to lambda_name or server_name from config
         if not server_name:
             if "aws" in config and "lambda_name" in config["aws"]:
@@ -186,28 +188,27 @@ async def start_server():
                 # Remove -mcp suffix if present
                 server_name = lambda_name.replace("-mcp", "")
             elif "server_name" in config:
-                server_name = config["server_name"].lower().replace(" ", "-").replace("'", "")
-    
+                server_name = (
+                    config["server_name"].lower().replace(" ", "-").replace("'", "")
+                )
+
     # Default fallback
     if not server_name:
         server_name = "opencontext-mcp"
-    
+
     # Get client path (relative to project root)
     client_path = project_root / "client" / "opencontext-client"
     client_path_str = str(client_path.resolve())
-    
+
     # Construct Claude config JSON
     claude_config = {
-        server_name: {
-            "command": client_path_str,
-            "args": ["http://localhost:8000"]
-        }
+        server_name: {"command": client_path_str, "args": ["http://localhost:8000"]}
     }
-    
+
     print("\n" + "=" * 50)
     print("🌐 Local MCP Server running!")
     print("=" * 50)
-    print(f"URL: http://localhost:8000/mcp")
+    print("URL: http://localhost:8000/mcp")
     print("\n" + "=" * 50)
     print("📋 Claude Desktop Configuration")
     print("=" * 50)
@@ -217,7 +218,9 @@ async def start_server():
     print("\n" + "=" * 50)
     print("\nTest with:")
     print("  ./scripts/test_streamable_http.sh")
-    print("  or curl -X POST http://localhost:8000/mcp -H 'Content-Type: application/json' -d '{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"ping\"}'")
+    print(
+        '  or curl -X POST http://localhost:8000/mcp -H \'Content-Type: application/json\' -d \'{"jsonrpc":"2.0","id":1,"method":"ping"}\''
+    )
     print("\nPress Ctrl+C to stop")
     print("=" * 50 + "\n")
 

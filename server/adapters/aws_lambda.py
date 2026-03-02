@@ -24,6 +24,7 @@ class LambdaContext(Protocol):
     function_name: Optional[str]
     memory_limit_in_mb: Optional[int]
 
+
 logger = logging.getLogger(__name__)
 
 # Module-level handler instance for Lambda warm starts
@@ -47,7 +48,9 @@ def get_handler() -> UniversalHTTPHandler:
     return _handler
 
 
-def lambda_handler(event: Dict[str, Any], context: Optional[LambdaContext]) -> Dict[str, Any]:
+def lambda_handler(
+    event: Dict[str, Any], context: Optional[LambdaContext]
+) -> Dict[str, Any]:
     """AWS Lambda handler function.
 
     Transforms Lambda events to universal HTTP format, processes the request,
@@ -110,7 +113,7 @@ def lambda_handler(event: Dict[str, Any], context: Optional[LambdaContext]) -> D
 
         # Extract body
         body = event.get("body", "{}")
-        
+
         # Handle base64-encoded bodies from API Gateway
         if event.get("isBase64Encoded", False):
             try:
@@ -121,7 +124,7 @@ def lambda_handler(event: Dict[str, Any], context: Optional[LambdaContext]) -> D
                     extra={"request_id": request_id},
                 )
                 raise ValueError(f"Invalid base64-encoded body: {e}") from e
-        
+
         if isinstance(body, dict):
             body = json.dumps(body)
 

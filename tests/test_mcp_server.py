@@ -6,8 +6,7 @@ error handling, and HTTP request processing.
 
 import pytest
 import json
-from unittest.mock import AsyncMock, MagicMock, Mock, patch
-from typing import Dict, Any
+from unittest.mock import AsyncMock, MagicMock
 
 from core.mcp_server import MCPServer
 from core.plugin_manager import PluginManager
@@ -22,16 +21,16 @@ class TestInitialize:
         """Test that initialize returns correct protocol version and capabilities."""
         plugin_manager = MagicMock(spec=PluginManager)
         server = MCPServer(plugin_manager)
-        
+
         request = {
             "jsonrpc": "2.0",
             "id": 1,
             "method": "initialize",
             "params": {},
         }
-        
+
         response = await server.handle_request(request)
-        
+
         assert response is not None
         assert response["jsonrpc"] == "2.0"
         assert response["id"] == 1
@@ -47,16 +46,16 @@ class TestInitialize:
         """Test that initialize notification (no id) returns None."""
         plugin_manager = MagicMock(spec=PluginManager)
         server = MCPServer(plugin_manager)
-        
+
         request = {
             "jsonrpc": "2.0",
             "method": "initialize",
             "params": {},
             # No "id" field - this is a notification
         }
-        
+
         response = await server.handle_request(request)
-        
+
         assert response is None
 
 
@@ -80,16 +79,16 @@ class TestToolsList:
             },
         ]
         server = MCPServer(plugin_manager)
-        
+
         request = {
             "jsonrpc": "2.0",
             "id": 1,
             "method": "tools/list",
             "params": {},
         }
-        
+
         response = await server.handle_request(request)
-        
+
         assert response is not None
         assert response["jsonrpc"] == "2.0"
         assert response["id"] == 1
@@ -104,16 +103,16 @@ class TestToolsList:
         plugin_manager = MagicMock(spec=PluginManager)
         plugin_manager.get_all_tools.return_value = []
         server = MCPServer(plugin_manager)
-        
+
         request = {
             "jsonrpc": "2.0",
             "id": 1,
             "method": "tools/list",
             "params": {},
         }
-        
+
         response = await server.handle_request(request)
-        
+
         assert response is not None
         assert response["result"]["tools"] == []
 
@@ -132,7 +131,7 @@ class TestToolsCall:
             )
         )
         server = MCPServer(plugin_manager)
-        
+
         request = {
             "jsonrpc": "2.0",
             "id": 1,
@@ -142,9 +141,9 @@ class TestToolsCall:
                 "arguments": {"query": "test", "limit": 10},
             },
         }
-        
+
         response = await server.handle_request(request)
-        
+
         assert response is not None
         assert response["jsonrpc"] == "2.0"
         assert response["id"] == 1
@@ -169,7 +168,7 @@ class TestToolsCall:
             )
         )
         server = MCPServer(plugin_manager)
-        
+
         request = {
             "jsonrpc": "2.0",
             "id": 1,
@@ -179,9 +178,9 @@ class TestToolsCall:
                 "arguments": {},
             },
         }
-        
+
         response = await server.handle_request(request)
-        
+
         assert response is not None
         assert "result" in response
         assert response["result"]["isError"] is True
@@ -254,14 +253,17 @@ class TestToolsCall:
         # Content must include error so all clients (Claude, Inspector, curl) receive it
         assert len(response["result"]["content"]) == 1
         assert response["result"]["content"][0]["type"] == "text"
-        assert response["result"]["content"][0]["text"] == "Resource 'xyz' not found (HTTP 404)"
+        assert (
+            response["result"]["content"][0]["text"]
+            == "Resource 'xyz' not found (HTTP 404)"
+        )
 
     @pytest.mark.asyncio
     async def test_tools_call_raises_error_when_tool_name_missing(self):
         """Test that tools/call raises error when tool name is missing."""
         plugin_manager = MagicMock(spec=PluginManager)
         server = MCPServer(plugin_manager)
-        
+
         request = {
             "jsonrpc": "2.0",
             "id": 1,
@@ -271,9 +273,9 @@ class TestToolsCall:
                 # Missing "name" field
             },
         }
-        
+
         response = await server.handle_request(request)
-        
+
         assert response is not None
         assert "error" in response
         assert response["error"]["code"] == -32603
@@ -290,7 +292,7 @@ class TestToolsCall:
             )
         )
         server = MCPServer(plugin_manager)
-        
+
         request = {
             "jsonrpc": "2.0",
             "id": 1,
@@ -300,9 +302,9 @@ class TestToolsCall:
                 # Missing "arguments" field
             },
         }
-        
+
         response = await server.handle_request(request)
-        
+
         assert response is not None
         # Should use empty dict as default
         plugin_manager.execute_tool.assert_called_once_with(
@@ -319,16 +321,16 @@ class TestPing:
         """Test that ping returns ok status."""
         plugin_manager = MagicMock(spec=PluginManager)
         server = MCPServer(plugin_manager)
-        
+
         request = {
             "jsonrpc": "2.0",
             "id": 1,
             "method": "ping",
             "params": {},
         }
-        
+
         response = await server.handle_request(request)
-        
+
         assert response is not None
         assert response["jsonrpc"] == "2.0"
         assert response["id"] == 1
@@ -343,16 +345,16 @@ class TestNotifications:
         """Test that notifications/initialized returns None."""
         plugin_manager = MagicMock(spec=PluginManager)
         server = MCPServer(plugin_manager)
-        
+
         request = {
             "jsonrpc": "2.0",
             "method": "notifications/initialized",
             "params": {},
             # No "id" field - this is a notification
         }
-        
+
         response = await server.handle_request(request)
-        
+
         assert response is None
 
     @pytest.mark.asyncio
@@ -360,16 +362,16 @@ class TestNotifications:
         """Test that unknown notification method returns None."""
         plugin_manager = MagicMock(spec=PluginManager)
         server = MCPServer(plugin_manager)
-        
+
         request = {
             "jsonrpc": "2.0",
             "method": "notifications/unknown",
             "params": {},
             # No "id" field - this is a notification
         }
-        
+
         response = await server.handle_request(request)
-        
+
         assert response is None
 
 
@@ -381,16 +383,16 @@ class TestUnknownMethods:
         """Test that unknown method raises ValueError."""
         plugin_manager = MagicMock(spec=PluginManager)
         server = MCPServer(plugin_manager)
-        
+
         request = {
             "jsonrpc": "2.0",
             "id": 1,
             "method": "unknown/method",
             "params": {},
         }
-        
+
         response = await server.handle_request(request)
-        
+
         assert response is not None
         assert "error" in response
         assert response["error"]["code"] == -32603
@@ -406,16 +408,16 @@ class TestErrorHandling:
         plugin_manager = MagicMock(spec=PluginManager)
         plugin_manager.get_all_tools.side_effect = Exception("Internal error")
         server = MCPServer(plugin_manager)
-        
+
         request = {
             "jsonrpc": "2.0",
             "id": 1,
             "method": "tools/list",
             "params": {},
         }
-        
+
         response = await server.handle_request(request)
-        
+
         assert response is not None
         assert "error" in response
         assert response["error"]["code"] == -32603
@@ -428,16 +430,16 @@ class TestErrorHandling:
         plugin_manager = MagicMock(spec=PluginManager)
         plugin_manager.get_all_tools.side_effect = Exception("Internal error")
         server = MCPServer(plugin_manager)
-        
+
         request = {
             "jsonrpc": "2.0",
             "method": "tools/list",
             "params": {},
             # No "id" field - this is a notification
         }
-        
+
         response = await server.handle_request(request)
-        
+
         # Notifications should return None even on error
         assert response is None
 
@@ -451,16 +453,18 @@ class TestHTTPRequestHandling:
         plugin_manager = MagicMock(spec=PluginManager)
         plugin_manager.get_all_tools.return_value = []
         server = MCPServer(plugin_manager)
-        
-        request_body = json.dumps({
-            "jsonrpc": "2.0",
-            "id": 1,
-            "method": "ping",
-            "params": {},
-        })
-        
+
+        request_body = json.dumps(
+            {
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "ping",
+                "params": {},
+            }
+        )
+
         response = await server.handle_http_request(request_body)
-        
+
         assert response["statusCode"] == 200
         assert response["headers"]["Content-Type"] == "application/json"
         assert "body" in response
@@ -473,11 +477,11 @@ class TestHTTPRequestHandling:
         """Test handling HTTP request with invalid JSON."""
         plugin_manager = MagicMock(spec=PluginManager)
         server = MCPServer(plugin_manager)
-        
+
         request_body = "invalid json {"
-        
+
         response = await server.handle_http_request(request_body)
-        
+
         assert response["statusCode"] == 400
         assert response["headers"]["Content-Type"] == "application/json"
         body = json.loads(response["body"])
@@ -489,16 +493,18 @@ class TestHTTPRequestHandling:
         """Test handling HTTP request with notification (no id)."""
         plugin_manager = MagicMock(spec=PluginManager)
         server = MCPServer(plugin_manager)
-        
-        request_body = json.dumps({
-            "jsonrpc": "2.0",
-            "method": "notifications/initialized",
-            "params": {},
-            # No "id" field
-        })
-        
+
+        request_body = json.dumps(
+            {
+                "jsonrpc": "2.0",
+                "method": "notifications/initialized",
+                "params": {},
+                # No "id" field
+            }
+        )
+
         response = await server.handle_http_request(request_body)
-        
+
         assert response["statusCode"] == 200
         assert response["body"] == ""  # Empty body for notifications
 
@@ -508,17 +514,19 @@ class TestHTTPRequestHandling:
         plugin_manager = MagicMock(spec=PluginManager)
         plugin_manager.get_all_tools.return_value = []
         server = MCPServer(plugin_manager)
-        
-        request_body = json.dumps({
-            "jsonrpc": "2.0",
-            "id": 1,
-            "method": "ping",
-            "params": {},
-        })
-        
+
+        request_body = json.dumps(
+            {
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "ping",
+                "params": {},
+            }
+        )
+
         headers = {"X-Custom-Header": "value"}
         response = await server.handle_http_request(request_body, headers)
-        
+
         assert response["statusCode"] == 200
         # Headers are not modified by handle_http_request
         # They're just passed through for logging purposes

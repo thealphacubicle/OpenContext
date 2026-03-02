@@ -6,3 +6,6 @@
 # Testing
 pytest>=7.0.0
 pytest-asyncio>=0.21.0
+
+# Pre-commit hooks (run: pre-commit install)
+pre-commit>=4.0.0

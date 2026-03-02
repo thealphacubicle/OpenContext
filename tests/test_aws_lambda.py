@@ -4,17 +4,15 @@ These tests verify Lambda event transformation, error handling,
 and integration with UniversalHTTPHandler.
 """
 
-import pytest
 import json
-from unittest.mock import Mock, patch, MagicMock, AsyncMock
-from typing import Dict, Any
+from unittest.mock import patch, MagicMock, AsyncMock
 
 from server.adapters.aws_lambda import lambda_handler, get_handler
 
 
 class MockLambdaContext:
     """Mock Lambda context object."""
-    
+
     def __init__(self, request_id="test-request-id-123"):
         self.aws_request_id = request_id
         self.function_name = "test-function"
@@ -34,18 +32,20 @@ class TestLambdaHandler:
                 }
             },
             "rawPath": "/mcp",
-            "body": json.dumps({
-                "jsonrpc": "2.0",
-                "id": 1,
-                "method": "ping",
-                "params": {},
-            }),
+            "body": json.dumps(
+                {
+                    "jsonrpc": "2.0",
+                    "id": 1,
+                    "method": "ping",
+                    "params": {},
+                }
+            ),
             "headers": {
                 "Content-Type": "application/json",
             },
         }
         context = MockLambdaContext()
-        
+
         with patch("server.adapters.aws_lambda.get_handler") as mock_get_handler:
             mock_handler = MagicMock()
             mock_handler.handle_request = AsyncMock(
@@ -56,9 +56,9 @@ class TestLambdaHandler:
                 )
             )
             mock_get_handler.return_value = mock_handler
-            
+
             response = lambda_handler(event, context)
-            
+
             assert response["statusCode"] == 200
             assert response["headers"]["Content-Type"] == "application/json"
             mock_handler.handle_request.assert_called_once()
@@ -72,18 +72,20 @@ class TestLambdaHandler:
         event = {
             "httpMethod": "POST",
             "path": "/mcp",
-            "body": json.dumps({
-                "jsonrpc": "2.0",
-                "id": 1,
-                "method": "ping",
-                "params": {},
-            }),
+            "body": json.dumps(
+                {
+                    "jsonrpc": "2.0",
+                    "id": 1,
+                    "method": "ping",
+                    "params": {},
+                }
+            ),
             "headers": {
                 "Content-Type": "application/json",
             },
         }
         context = MockLambdaContext()
-        
+
         with patch("server.adapters.aws_lambda.get_handler") as mock_get_handler:
             mock_handler = MagicMock()
             mock_handler.handle_request = AsyncMock(
@@ -94,9 +96,9 @@ class TestLambdaHandler:
                 )
             )
             mock_get_handler.return_value = mock_handler
-            
+
             response = lambda_handler(event, context)
-            
+
             assert response["statusCode"] == 200
             mock_handler.handle_request.assert_called_once()
             call_args = mock_handler.handle_request.call_args
@@ -117,7 +119,7 @@ class TestLambdaHandler:
             "headers": {},
         }
         context = MockLambdaContext()
-        
+
         with patch("server.adapters.aws_lambda.get_handler") as mock_get_handler:
             mock_handler = MagicMock()
             mock_handler.handle_options = MagicMock(
@@ -128,9 +130,9 @@ class TestLambdaHandler:
                 )
             )
             mock_get_handler.return_value = mock_handler
-            
+
             response = lambda_handler(event, context)
-            
+
             assert response["statusCode"] == 200
             mock_handler.handle_options.assert_called_once()
 
@@ -152,16 +154,14 @@ class TestLambdaHandler:
             "headers": {},
         }
         context = MockLambdaContext()
-        
+
         with patch("server.adapters.aws_lambda.get_handler") as mock_get_handler:
             mock_handler = MagicMock()
-            mock_handler.handle_request = AsyncMock(
-                return_value=(200, {}, "")
-            )
+            mock_handler.handle_request = AsyncMock(return_value=(200, {}, ""))
             mock_get_handler.return_value = mock_handler
-            
+
             lambda_handler(event, context)
-            
+
             call_args = mock_handler.handle_request.call_args
             assert isinstance(call_args[1]["body"], str)
             assert "jsonrpc" in call_args[1]["body"]
@@ -183,16 +183,14 @@ class TestLambdaHandler:
             },
         }
         context = MockLambdaContext()
-        
+
         with patch("server.adapters.aws_lambda.get_handler") as mock_get_handler:
             mock_handler = MagicMock()
-            mock_handler.handle_request = AsyncMock(
-                return_value=(200, {}, "")
-            )
+            mock_handler.handle_request = AsyncMock(return_value=(200, {}, ""))
             mock_get_handler.return_value = mock_handler
-            
+
             lambda_handler(event, context)
-            
+
             call_args = mock_handler.handle_request.call_args
             headers = call_args[1]["headers"]
             assert "content-type" in headers
@@ -211,16 +209,14 @@ class TestLambdaHandler:
             "body": json.dumps({"jsonrpc": "2.0", "id": 1, "method": "ping"}),
             "headers": {},
         }
-        
+
         with patch("server.adapters.aws_lambda.get_handler") as mock_get_handler:
             mock_handler = MagicMock()
-            mock_handler.handle_request = AsyncMock(
-                return_value=(200, {}, "")
-            )
+            mock_handler.handle_request = AsyncMock(return_value=(200, {}, ""))
             mock_get_handler.return_value = mock_handler
-            
+
             response = lambda_handler(event, None)
-            
+
             assert response["statusCode"] == 200
             call_args = mock_handler.handle_request.call_args
             assert call_args[1]["request_id"] == "unknown"
@@ -239,12 +235,12 @@ class TestLambdaHandler:
             "headers": {},
         }
         context = MockLambdaContext()
-        
+
         with patch("server.adapters.aws_lambda.get_handler") as mock_get_handler:
             mock_get_handler.side_effect = Exception("Handler error")
-            
+
             response = lambda_handler(event, context)
-            
+
             assert response["statusCode"] == 500
             assert response["headers"]["Content-Type"] == "application/json"
             assert response["headers"]["Access-Control-Allow-Origin"] == "*"
@@ -265,12 +261,12 @@ class TestLambdaHandler:
             "body": json.dumps({"jsonrpc": "2.0", "id": 1, "method": "ping"}),
             "headers": {},
         }
-        
+
         with patch("server.adapters.aws_lambda.get_handler") as mock_get_handler:
             mock_get_handler.side_effect = Exception("Handler error")
-            
+
             response = lambda_handler(event, None)
-            
+
             assert response["statusCode"] == 500
             body = json.loads(response["body"])
             assert body["error"]["code"] == -32603
@@ -287,16 +283,14 @@ class TestLambdaHandler:
             "headers": {},
         }
         context = MockLambdaContext()
-        
+
         with patch("server.adapters.aws_lambda.get_handler") as mock_get_handler:
             mock_handler = MagicMock()
-            mock_handler.handle_request = AsyncMock(
-                return_value=(200, {}, "")
-            )
+            mock_handler.handle_request = AsyncMock(return_value=(200, {}, ""))
             mock_get_handler.return_value = mock_handler
-            
+
             lambda_handler(event, context)
-            
+
             call_args = mock_handler.handle_request.call_args
             assert call_args[1]["path"] == "/"
 
@@ -313,16 +307,14 @@ class TestLambdaHandler:
             "headers": {},
         }
         context = MockLambdaContext()
-        
+
         with patch("server.adapters.aws_lambda.get_handler") as mock_get_handler:
             mock_handler = MagicMock()
-            mock_handler.handle_request = AsyncMock(
-                return_value=(200, {}, "")
-            )
+            mock_handler.handle_request = AsyncMock(return_value=(200, {}, ""))
             mock_get_handler.return_value = mock_handler
-            
+
             lambda_handler(event, context)
-            
+
             call_args = mock_handler.handle_request.call_args
             assert call_args[1]["method"] == "POST"
 
@@ -333,11 +325,12 @@ class TestGetHandler:
     def test_get_handler_creates_new_instance(self):
         """Test that get_handler creates new instance when None."""
         import server.adapters.aws_lambda
+
         server.adapters.aws_lambda._handler = None
-        
+
         handler1 = get_handler()
         assert handler1 is not None
-        
+
         handler2 = get_handler()
         # Should return same instance (singleton)
         assert handler1 is handler2
@@ -345,8 +338,9 @@ class TestGetHandler:
     def test_get_handler_reuses_existing_instance(self):
         """Test that get_handler reuses existing instance."""
         import server.adapters.aws_lambda
+
         existing_handler = MagicMock()
         server.adapters.aws_lambda._handler = existing_handler
-        
+
         handler = get_handler()
         assert handler is existing_handler

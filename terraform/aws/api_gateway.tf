@@ -1,8 +1,3 @@
-# Locals for API Gateway
-locals {
-  api_key_name = var.api_key_name != "" ? var.api_key_name : "${local.lambda_name}-api-key"
-}
-
 # API Gateway REST API
 resource "aws_api_gateway_rest_api" "mcp_api" {
   name        = "${local.lambda_name}-api"
@@ -20,13 +15,13 @@ resource "aws_api_gateway_resource" "mcp" {
   path_part   = "mcp"
 }
 
-# API Gateway Method: POST (requires API key)
+# API Gateway Method: POST
 resource "aws_api_gateway_method" "mcp_post" {
   rest_api_id      = aws_api_gateway_rest_api.mcp_api.id
   resource_id      = aws_api_gateway_resource.mcp.id
   http_method      = "POST"
   authorization    = "NONE"
-  api_key_required = true
+  api_key_required = false
 }
 
 # API Gateway Method: OPTIONS (for CORS, no API key required)
@@ -90,25 +85,6 @@ resource "aws_api_gateway_method_response" "mcp_options_response_200" {
   }
 }
 
-# Integration Response for POST
-# NOTE: This is redundant because AWS_PROXY integration type bypasses integration responses.
-# All headers must be returned by Lambda function, which our handler already does.
-# Keeping commented for reference but not used.
-# resource "aws_api_gateway_integration_response" "mcp_post_integration_response" {
-#   rest_api_id = aws_api_gateway_rest_api.mcp_api.id
-#   resource_id = aws_api_gateway_resource.mcp.id
-#   http_method = aws_api_gateway_method.mcp_post.http_method
-#   status_code = aws_api_gateway_method_response.mcp_post_response_200.status_code
-#
-#   response_parameters = {
-#     "method.response.header.Access-Control-Allow-Origin"  = "'*'"
-#     "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,X-Api-Key'"
-#     "method.response.header.Access-Control-Allow-Methods" = "'OPTIONS,POST'"
-#   }
-#
-#   depends_on = [aws_api_gateway_integration.mcp_post_integration]
-# }
-
 # Integration Response for OPTIONS
 resource "aws_api_gateway_integration_response" "mcp_options_integration_response" {
   rest_api_id = aws_api_gateway_rest_api.mcp_api.id
@@ -118,7 +94,7 @@ resource "aws_api_gateway_integration_response" "mcp_options_integration_respons
 
   response_parameters = {
     "method.response.header.Access-Control-Allow-Origin"  = "'*'"
-    "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,X-Api-Key'"
+    "method.response.header.Access-Control-Allow-Headers" = "'Content-Type'"
     "method.response.header.Access-Control-Allow-Methods" = "'OPTIONS,POST'"
   }
 
@@ -136,12 +112,6 @@ resource "aws_lambda_permission" "api_gateway" {
   function_name = aws_lambda_function.mcp_server.function_name
   principal     = "apigateway.amazonaws.com"
   source_arn    = "${aws_api_gateway_rest_api.mcp_api.execution_arn}/*/*"
-}
-
-# CloudWatch Log Group for API Gateway
-resource "aws_cloudwatch_log_group" "api_gateway_logs" {
-  name              = "/aws/apigateway/${local.lambda_name}"
-  retention_in_days = 14
 }
 
 # API Gateway Deployment
@@ -178,27 +148,21 @@ resource "aws_api_gateway_deployment" "mcp_deployment" {
 resource "aws_api_gateway_stage" "prod" {
   deployment_id = aws_api_gateway_deployment.mcp_deployment.id
   rest_api_id   = aws_api_gateway_rest_api.mcp_api.id
-  stage_name    = "prod"
-
-  access_log_settings {
-    destination_arn = aws_cloudwatch_log_group.api_gateway_logs.arn
-    format = jsonencode({
-      requestId      = "$context.requestId"
-      ip             = "$context.identity.sourceIp"
-      httpMethod     = "$context.httpMethod"
-      status         = "$context.status"
-      responseLength = "$context.responseLength"
-    })
-  }
+  stage_name    = var.stage_name
 
   xray_tracing_enabled = true
 }
 
-# API Key
-resource "aws_api_gateway_api_key" "mcp_api_key" {
-  name        = local.api_key_name
-  description = "API key for ${local.lambda_name} MCP server"
-  enabled     = true
+# Method Settings: Throttling for mcp/POST
+resource "aws_api_gateway_method_settings" "mcp_post" {
+  rest_api_id = aws_api_gateway_rest_api.mcp_api.id
+  stage_name  = aws_api_gateway_stage.prod.stage_name
+  method_path = "mcp/POST"
+
+  settings {
+    throttling_burst_limit = 100
+    throttling_rate_limit  = 50
+  }
 }
 
 # Usage Plan
@@ -219,11 +183,4 @@ resource "aws_api_gateway_usage_plan" "mcp_usage_plan" {
     burst_limit = var.api_burst_limit
     rate_limit  = var.api_rate_limit
   }
-}
-
-# Usage Plan Key Association
-resource "aws_api_gateway_usage_plan_key" "mcp_usage_plan_key" {
-  key_id        = aws_api_gateway_api_key.mcp_api_key.id
-  key_type      = "API_KEY"
-  usage_plan_id = aws_api_gateway_usage_plan.mcp_usage_plan.id
 }

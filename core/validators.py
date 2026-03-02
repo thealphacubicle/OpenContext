@@ -49,7 +49,7 @@ def validate_plugin_count(config: Dict[str, Any]) -> Tuple[List[str], int]:
             "To enable a plugin, set 'enabled: true' for:\n"
             "  • ckan\n"
             "  • A custom plugin in custom_plugins/\n\n"
-            "See docs/QUICKSTART.md for setup instructions."
+            "See docs/GETTING_STARTED.md for setup instructions."
         )
 
     if count > 1:
@@ -170,12 +170,9 @@ def get_enabled_plugin_config(config: Dict[str, Any]) -> Tuple[str, Dict[str, An
 
     if len(enabled_plugins) != 1:
         # This should never happen if validate_plugin_count was called first
-        raise ConfigurationError(
-            "Internal error: Expected exactly one enabled plugin"
-        )
+        raise ConfigurationError("Internal error: Expected exactly one enabled plugin")
 
     plugin_name = enabled_plugins[0]
     plugin_config = config["plugins"][plugin_name]
 
     return plugin_name, plugin_config
-

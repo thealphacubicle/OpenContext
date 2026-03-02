@@ -1,3 +1,4 @@
+---
 # Boston OpenData MCP Server Configuration
 # Example: CKAN plugin for data.boston.gov
 
@@ -15,14 +16,12 @@ plugins:
     timeout: 120
     # api_key: "${CKAN_API_KEY}"  # Optional: Uncomment if API key is needed
 
-
 aws:
   region: "us-east-1"
-  lambda_name: "boston-opendata-mcp"
+  lambda_name: "boston-opencontext-opendata-mcp"
   lambda_memory: 512
   lambda_timeout: 120
 
 logging:
   level: "INFO"
   format: "json"
-

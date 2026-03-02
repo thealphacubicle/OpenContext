@@ -22,20 +22,3 @@ output "api_gateway_url" {
   description = "API Gateway URL for MCP server (production endpoint with authentication)"
   value       = "${aws_api_gateway_stage.prod.invoke_url}/mcp"
 }
-
-output "api_key_value" {
-  description = "API Gateway API key value (sensitive)"
-  value       = aws_api_gateway_api_key.mcp_api_key.value
-  sensitive   = true
-}
-
-output "api_key_id" {
-  description = "API Gateway API key ID"
-  value       = aws_api_gateway_api_key.mcp_api_key.id
-}
-
-output "api_key_name" {
-  description = "API Gateway API key name"
-  value       = aws_api_gateway_api_key.mcp_api_key.name
-}
-
