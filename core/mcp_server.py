@@ -201,10 +201,18 @@ class MCPServer:
                 "content": result.content,
             }
         else:
+            error_msg = result.error_message or "An unknown error occurred"
+            # Include error in content so all clients (curl, Inspector, Claude) receive it.
+            # LLMs read content for context; empty content means they cannot see the error.
+            content = (
+                result.content
+                if result.content
+                else [{"type": "text", "text": error_msg}]
+            )
             return {
-                "content": result.content,
+                "content": content,
                 "isError": True,
-                "error": result.error_message,
+                "error": error_msg,
             }
 
     async def handle_http_request(

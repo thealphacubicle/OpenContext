@@ -7,6 +7,8 @@ error handling, and data formatting. Tests are designed to fail if functionality
 import pytest
 from unittest.mock import AsyncMock, Mock, patch
 
+import httpx
+
 from plugins.ckan.plugin import CKANPlugin
 
 
@@ -572,7 +574,7 @@ class TestExecuteTool:
             mock_response_init.json.return_value = {"success": True}
             mock_response_init.raise_for_status = Mock()
             mock_client.post = AsyncMock(
-                side_effect=[mock_response_init, Exception("API error")]
+                side_effect=[mock_response_init, RuntimeError("API error")]
             )
             mock_client_class.return_value = mock_client
 
@@ -580,7 +582,123 @@ class TestExecuteTool:
             result = await plugin.execute_tool("search_datasets", {"query": "test"})
 
             assert result.success is False
-            assert "failed" in result.error_message.lower()
+            assert "API error" in result.error_message
+
+    @pytest.mark.asyncio
+    async def test_execute_sql_returns_error_when_ckan_body_has_success_false(
+        self, ckan_config
+    ):
+        """Test execute_sql returns descriptive error when CKAN returns success: false."""
+        plugin = CKANPlugin(ckan_config)
+
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_response_init = Mock()
+            mock_response_init.json.return_value = {"success": True}
+            mock_response_init.raise_for_status = Mock()
+            mock_response_sql = Mock()
+            mock_response_sql.json.return_value = {
+                "success": False,
+                "error": {"message": 'relation "fake-uuid" does not exist'},
+            }
+            mock_response_sql.raise_for_status = Mock()
+            mock_client.post = AsyncMock(
+                side_effect=[mock_response_init, mock_response_sql]
+            )
+            mock_client_class.return_value = mock_client
+
+            await plugin.initialize()
+            result = await plugin.execute_tool(
+                "execute_sql",
+                {"sql": 'SELECT * FROM "fake-uuid" LIMIT 1'},
+            )
+
+            assert result.success is False
+            assert result.error_message is not None
+            assert (
+                "does not exist" in result.error_message
+                or "TestCity" in result.error_message
+            )
+
+    @pytest.mark.asyncio
+    async def test_aggregate_data_returns_error_when_ckan_body_has_success_false(
+        self, ckan_config
+    ):
+        """Test aggregate_data returns descriptive error when CKAN returns success: false."""
+        plugin = CKANPlugin(ckan_config)
+
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_response_init = Mock()
+            mock_response_init.json.return_value = {"success": True}
+            mock_response_init.raise_for_status = Mock()
+            mock_response_sql = Mock()
+            mock_response_sql.json.return_value = {
+                "success": False,
+                "error": {"message": 'relation "bad-resource-id" does not exist'},
+            }
+            mock_response_sql.raise_for_status = Mock()
+            mock_client.post = AsyncMock(
+                side_effect=[mock_response_init, mock_response_sql]
+            )
+            mock_client_class.return_value = mock_client
+
+            await plugin.initialize()
+            result = await plugin.execute_tool(
+                "aggregate_data",
+                {
+                    "resource_id": "bad-resource-id",
+                    "metrics": {"count": "count(*)"},
+                },
+            )
+
+            assert result.success is False
+            assert result.error_message is not None
+            assert (
+                "does not exist" in result.error_message
+                or "TestCity" in result.error_message
+            )
+
+    @pytest.mark.asyncio
+    async def test_query_data_returns_descriptive_error_on_http_404(self, ckan_config):
+        """Test that 404 HTTP error includes resource_id and status code."""
+        plugin = CKANPlugin(ckan_config)
+
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_response_init = Mock()
+            mock_response_init.json.return_value = {"success": True}
+            mock_response_init.raise_for_status = Mock()
+            mock_response_404 = Mock()
+            mock_response_404.status_code = 404
+            mock_response_404.json.return_value = {
+                "success": False,
+                "error": {"message": "Resource not found"},
+            }
+            mock_response_404.raise_for_status = Mock(
+                side_effect=httpx.HTTPStatusError(
+                    "Not Found",
+                    request=Mock(),
+                    response=mock_response_404,
+                )
+            )
+            mock_client.post = AsyncMock(
+                side_effect=[mock_response_init, mock_response_404]
+            )
+            mock_client_class.return_value = mock_client
+
+            await plugin.initialize()
+            result = await plugin.execute_tool(
+                "query_data",
+                {"resource_id": "fake-dataset-does-not-exist-12345", "limit": 10},
+            )
+
+            assert result.success is False
+            assert "404" in result.error_message
+            assert (
+                "fake-dataset-does-not-exist-12345" in result.error_message
+                or "TestCity" in result.error_message
+            )
 
 
 class TestHealthCheck:

@@ -188,6 +188,77 @@ class TestToolsCall:
         assert response["result"]["error"] == "Tool execution failed"
 
     @pytest.mark.asyncio
+    async def test_tools_call_returns_non_empty_error_when_error_message_is_none(self):
+        """Test that tools/call returns a non-empty error when error_message is None."""
+        plugin_manager = MagicMock(spec=PluginManager)
+        plugin_manager.execute_tool = AsyncMock(
+            return_value=ToolResult(
+                content=[],
+                success=False,
+                error_message=None,
+            )
+        )
+        server = MCPServer(plugin_manager)
+
+        request = {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "tools/call",
+            "params": {
+                "name": "ckan__search_datasets",
+                "arguments": {},
+            },
+        }
+
+        response = await server.handle_request(request)
+
+        assert response is not None
+        assert "result" in response
+        assert response["result"]["isError"] is True
+        assert "error" in response["result"]
+        assert response["result"]["error"]
+        assert "unknown" in response["result"]["error"].lower()
+        # Error should also be in content so LLM clients (e.g. Claude) receive it
+        assert response["result"]["content"]
+        assert response["result"]["content"][0]["text"] == "An unknown error occurred"
+
+    @pytest.mark.asyncio
+    async def test_tools_call_puts_error_in_content_when_content_empty(self):
+        """Test that error message is in content when tool fails with empty content."""
+        plugin_manager = MagicMock(spec=PluginManager)
+        plugin_manager.execute_tool = AsyncMock(
+            return_value=ToolResult(
+                content=[],
+                success=False,
+                error_message="Resource 'xyz' not found (HTTP 404)",
+            )
+        )
+        server = MCPServer(plugin_manager)
+
+        request = {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "tools/call",
+            "params": {
+                "name": "ckan__query_data",
+                "arguments": {"resource_id": "xyz"},
+            },
+        }
+
+        response = await server.handle_request(request)
+
+        assert response is not None
+        assert response["result"]["isError"] is True
+        assert response["result"]["error"] == "Resource 'xyz' not found (HTTP 404)"
+        # Content must include error so all clients (Claude, Inspector, curl) receive it
+        assert len(response["result"]["content"]) == 1
+        assert response["result"]["content"][0]["type"] == "text"
+        assert (
+            response["result"]["content"][0]["text"]
+            == "Resource 'xyz' not found (HTTP 404)"
+        )
+
+    @pytest.mark.asyncio
     async def test_tools_call_raises_error_when_tool_name_missing(self):
         """Test that tools/call raises error when tool name is missing."""
         plugin_manager = MagicMock(spec=PluginManager)
