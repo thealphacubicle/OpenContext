@@ -1,0 +1,33 @@
+---
+# Sync develop with main after main is updated (e.g., after merging a PR).
+# This prevents main and develop from diverging.
+name: Sync develop with main
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    name: Merge main into develop
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Merge main into develop
+        run: |
+          git checkout develop
+          git merge main -m "chore: sync develop with main"
+          git push origin develop
