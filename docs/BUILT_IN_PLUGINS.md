@@ -1,6 +1,6 @@
 # Built-in Plugins Reference
 
-OpenContext includes a built-in plugin for CKAN-based open data portals.
+OpenContext includes built-in plugins for CKAN and Socrata open data portals.
 
 ## CKAN Plugin
 
@@ -51,6 +51,68 @@ This plugin uses CKAN's Action API:
 - `/api/3/action/datastore_search` - Query data
 
 See [CKAN API documentation](https://docs.ckan.org/en/latest/api/) for details.
+
+## Socrata Plugin
+
+For Socrata-based open data portals (e.g., data.cityofchicago.org, data.cityofnewyork.us, data.seattle.gov).
+
+**Note:** Socrata requires a free app token. Register at [https://dev.socrata.com/register](https://dev.socrata.com/register).
+
+### Configuration
+
+```yaml
+plugins:
+  socrata:
+    enabled: true
+    base_url: "https://data.cityofboston.gov"
+    portal_url: "https://data.cityofboston.gov"
+    city_name: "Boston"
+    app_token: "${SOCRATA_APP_TOKEN}"   # Required
+    timeout: 30.0                        # HTTP timeout (default: 30)
+```
+
+### Tools
+
+- `socrata__search_datasets(query, limit)` - Search for datasets in the portal catalog
+- `socrata__get_dataset(dataset_id)` - Get full metadata for a dataset (4x4 ID)
+- `socrata__get_schema(dataset_id)` - Get column schema for constructing SoQL queries
+- `socrata__query_dataset(dataset_id, soql_query)` - Query data using SoQL
+- `socrata__list_categories()` - List all categories with dataset counts
+
+### Examples
+
+**Search datasets:**
+```
+Search for datasets about housing in Boston
+```
+
+**Get dataset:**
+```
+Get details about dataset wc4w-4jew
+```
+
+**Get schema (call before query_dataset):**
+```
+Get schema for dataset wc4w-4jew
+```
+
+**Query data:**
+```
+Query dataset wc4w-4jew with: SELECT * WHERE year > 2020 LIMIT 50
+```
+
+**List categories:**
+```
+List all dataset categories on Boston's open data portal
+```
+
+### Socrata API
+
+This plugin uses two Socrata API layers:
+- **Discovery API** (api.us.socrata.com) - Catalog search, categories
+- **SODA3** (portal domain) - Dataset metadata, schema, data queries
+
+See [Socrata developer documentation](https://dev.socrata.com/) for details.
 
 ## Custom Plugins
 
