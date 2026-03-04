@@ -34,9 +34,7 @@ Add to Claude Desktop (`~/Library/Application Support/Claude/claude_desktop_conf
       "command": "npx",
       "args": [
         "-y",
-        "@modelcontextprotocol/server-stdio-to-http",
-        "--transport",
-        "streamable-http",
+        "mcp-remote",
         "https://YOUR-API-GATEWAY-URL"
       ]
     }
