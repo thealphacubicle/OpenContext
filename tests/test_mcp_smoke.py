@@ -18,7 +18,7 @@ SERVER_SCRIPT = PROJECT_ROOT / "scripts" / "local_server.py"
 SERVER_URL = "http://localhost:8000/mcp"
 STARTUP_TIMEOUT = 10
 # Use example config so tests run without requiring config.yaml (which is gitignored)
-TEST_CONFIG = PROJECT_ROOT / "examples" / "boston-opendata" / "config.yaml"
+TEST_CONFIG = PROJECT_ROOT / "config.yaml"
 
 
 class TestMCPSmoke:
@@ -45,6 +45,7 @@ class TestMCPSmoke:
                     SERVER_URL,
                     json={"jsonrpc": "2.0", "id": 0, "method": "ping"},
                     timeout=2.0,
+                    trust_env=False,
                 )
                 if resp.status_code in (200, 400, 404, 500):
                     return
@@ -74,7 +75,7 @@ class TestMCPSmoke:
         if params is not None:
             payload["params"] = params
 
-        resp = httpx.post(SERVER_URL, json=payload, timeout=10.0)
+        resp = httpx.post(SERVER_URL, json=payload, timeout=10.0, trust_env=False)
         assert resp.status_code == 200, f"HTTP {resp.status_code}: {resp.text}"
         return resp.json()
 
