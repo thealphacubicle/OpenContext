@@ -201,7 +201,11 @@ class SocrataPlugin(DataPlugin):
         return [
             ToolDefinition(
                 name="search_datasets",
-                description=f"Search for datasets in {self.plugin_config.city_name}'s open data portal",
+                description=(
+                    f"Search for datasets in {self.plugin_config.city_name}'s open data portal. "
+                    f"Returns dataset IDs needed for get_dataset, get_schema, and query_dataset. "
+                    f"Limit is optional (default: 10)."
+                ),
                 input_schema={
                     "type": "object",
                     "properties": {
@@ -211,7 +215,7 @@ class SocrataPlugin(DataPlugin):
                         },
                         "limit": {
                             "type": "integer",
-                            "description": "Maximum number of results (default: 10)",
+                            "description": "Maximum number of results (optional, default: 10)",
                             "default": 10,
                         },
                     },
@@ -220,7 +224,11 @@ class SocrataPlugin(DataPlugin):
             ),
             ToolDefinition(
                 name="get_dataset",
-                description=f"Get detailed information about a specific dataset from {self.plugin_config.city_name}'s open data portal",
+                description=(
+                    f"Get metadata for a specific dataset from {self.plugin_config.city_name}'s open data portal "
+                    f"(name, description, row count, etc.). Returns metadata only—no column info. "
+                    f"For column names and types, use get_schema instead."
+                ),
                 input_schema={
                     "type": "object",
                     "properties": {
@@ -234,7 +242,12 @@ class SocrataPlugin(DataPlugin):
             ),
             ToolDefinition(
                 name="get_schema",
-                description=f"Get column schema for a dataset in {self.plugin_config.city_name}'s open data portal. Call before query_dataset to construct valid SoQL.",
+                description=(
+                    f"Get column schema for a dataset in {self.plugin_config.city_name}'s open data portal. "
+                    f"Returns column field names (not display names), data types, and descriptions—all directly usable in SoQL. "
+                    f"Call before query_dataset to construct valid SoQL. "
+                    f"Note: schemas may include computed region columns (:@computed_region_...) at the end; these are noisy and generally not useful for queries."
+                ),
                 input_schema={
                     "type": "object",
                     "properties": {
@@ -248,7 +261,14 @@ class SocrataPlugin(DataPlugin):
             ),
             ToolDefinition(
                 name="query_dataset",
-                description=f"Query data from a dataset in {self.plugin_config.city_name}'s open data portal using SoQL. Use get_schema first to get column names.",
+                description=(
+                    f"Query data from a dataset in {self.plugin_config.city_name}'s open data portal using SoQL. "
+                    f"Use get_schema first to get column names. "
+                    f"SoQL gotchas: GROUP BY is required whenever using COUNT() or any aggregation; "
+                    f"LIMIT caps returned rows (can affect aggregation results); "
+                    f"boolean fields use = true / = false, not = 'Y' or = 1; "
+                    f"for conditional counts use SUM(CASE WHEN col = true THEN 1 ELSE 0 END)."
+                ),
                 input_schema={
                     "type": "object",
                     "properties": {
@@ -258,7 +278,13 @@ class SocrataPlugin(DataPlugin):
                         },
                         "soql_query": {
                             "type": "string",
-                            "description": "SoQL query (e.g., SELECT * WHERE year > 2020 LIMIT 50)",
+                            "description": (
+                                "SoQL query. Examples: "
+                                "Simple filter: SELECT * WHERE year > 2020 LIMIT 50; "
+                                "Aggregation (GROUP BY required): SELECT category, COUNT(*) GROUP BY category; "
+                                "Multi-column: SELECT region, SUM(amount) GROUP BY region; "
+                                "Conditional aggregation: SELECT type, SUM(CASE WHEN arrest = true THEN 1 ELSE 0 END) GROUP BY type"
+                            ),
                         },
                     },
                     "required": ["dataset_id", "soql_query"],
@@ -266,7 +292,11 @@ class SocrataPlugin(DataPlugin):
             ),
             ToolDefinition(
                 name="list_categories",
-                description=f"List all dataset categories available on {self.plugin_config.city_name}'s open data portal",
+                description=(
+                    f"Typical workflow: list_categories → search_datasets → get_dataset → get_schema → query_dataset. "
+                    f"List all dataset categories on {self.plugin_config.city_name}'s open data portal. "
+                    f"Categories include dataset counts per category. Use results to inform which search terms to pass to search_datasets."
+                ),
                 input_schema={"type": "object", "properties": {}},
             ),
         ]
@@ -352,11 +382,14 @@ class SocrataPlugin(DataPlugin):
                         error_message="soql_query is required",
                     )
                 data = await self._query_dataset(dataset_id, soql_query)
+                display_limit = self._parse_soql_limit(soql_query, default=100)
                 return ToolResult(
                     content=[
                         {
                             "type": "text",
-                            "text": self._format_query_results(data),
+                            "text": self._format_query_results(
+                                data, limit=display_limit
+                            ),
                         }
                     ],
                     success=True,
@@ -427,6 +460,23 @@ class SocrataPlugin(DataPlugin):
         metadata = await self._call_soda_api("GET", f"/api/views/{dataset_id}.json")
         return metadata.get("columns", [])
 
+    def _parse_soql_limit(
+        self, soql_query: str, default: int = 100, max_val: Optional[int] = None
+    ) -> int:
+        """Parse LIMIT value from SoQL query."""
+        if "LIMIT" not in soql_query.upper():
+            return default
+        parts = soql_query.upper().split("LIMIT")
+        if len(parts) < 2:
+            return default
+        try:
+            val = int(parts[-1].strip().split()[0])
+            if max_val is not None:
+                val = min(val, max_val)
+            return max(1, val)
+        except (ValueError, IndexError):
+            return default
+
     async def _query_dataset(
         self, dataset_id: str, soql_query: str
     ) -> List[Dict[str, Any]]:
@@ -439,15 +489,7 @@ class SocrataPlugin(DataPlugin):
         Returns:
             List of row objects
         """
-        # Parse LIMIT from query if present; default to 100
-        page_size = 100
-        if "LIMIT" in soql_query.upper():
-            parts = soql_query.upper().split("LIMIT")
-            if len(parts) > 1:
-                try:
-                    page_size = min(int(parts[-1].strip().split()[0]), 50000)
-                except (ValueError, IndexError):
-                    pass
+        page_size = self._parse_soql_limit(soql_query, default=100, max_val=50000)
 
         body = {
             "query": soql_query,
@@ -464,13 +506,43 @@ class SocrataPlugin(DataPlugin):
         return rows if isinstance(rows, list) else []
 
     async def _list_categories(self) -> List[Dict[str, Any]]:
-        """List categories with dataset counts."""
+        """List categories with dataset counts.
+
+        The Socrata Discovery API's facets parameter does not return facets for
+        many portals (e.g., Chicago). Fall back to deriving categories from
+        domain_category in each result's classification.
+        """
         response = await self._call_discovery_api({"facets": "categories"})
         facets = response.get("facets", {})
         categories = facets.get("categories", [])
-        if isinstance(categories, list):
+        if isinstance(categories, list) and categories:
             return categories
-        return list(categories.items()) if isinstance(categories, dict) else []
+        if isinstance(categories, dict) and categories:
+            return list(categories.items())
+
+        # Fallback: derive from domain_category in search results
+        # (facets are often empty for domain-scoped catalog requests)
+        category_counts: Dict[str, int] = {}
+        offset = 0
+        limit = 500
+        while True:
+            page = await self._call_discovery_api({"limit": limit, "offset": offset})
+            results = page.get("results", [])
+            if not results:
+                break
+            for item in results:
+                classification = item.get("classification", {})
+                domain_cat = classification.get("domain_category")
+                if domain_cat and isinstance(domain_cat, str):
+                    category_counts[domain_cat] = category_counts.get(domain_cat, 0) + 1
+            if len(results) < limit:
+                break
+            offset += limit
+
+        return [
+            {"name": name, "count": count}
+            for name, count in sorted(category_counts.items())
+        ]
 
     async def query_data(
         self,
@@ -615,7 +687,7 @@ class SocrataPlugin(DataPlugin):
         return "\n".join(lines)
 
     def _format_query_results(
-        self, records: List[Dict[str, Any]], limit: int = 10
+        self, records: List[Dict[str, Any]], limit: int = 100
     ) -> str:
         """Format query results for user display."""
         if not records:
