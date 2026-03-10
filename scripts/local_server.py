@@ -196,25 +196,17 @@ async def start_server():
     if not server_name:
         server_name = "opencontext-mcp"
 
-    # Get client path (relative to project root)
-    client_path = project_root / "client" / "opencontext-client"
-    client_path_str = str(client_path.resolve())
-
-    # Construct Claude config JSON
-    claude_config = {
-        server_name: {"command": client_path_str, "args": ["http://localhost:8000"]}
-    }
-
     print("\n" + "=" * 50)
     print("🌐 Local MCP Server running!")
     print("=" * 50)
     print("URL: http://localhost:8000/mcp")
     print("\n" + "=" * 50)
-    print("📋 Claude Desktop Configuration")
+    print("📋 Connect via Claude Connectors")
     print("=" * 50)
-    print("\nAdd this to your Claude Desktop config file:")
-    print("(macOS: ~/Library/Application Support/Claude/claude_desktop_config.json)")
-    print("\n" + json.dumps({"mcpServers": claude_config}, indent=2))
+    print("\n1. Go to Settings → Connectors (or Customize → Connectors on claude.ai)")
+    print("2. Click 'Add custom connector'")
+    print("3. Enter a name and URL: http://localhost:8000/mcp")
+    print("\nNote: Localhost works with Claude Desktop only (web needs a deployed URL).")
     print("\n" + "=" * 50)
     print("\nTest with:")
     print("  ./scripts/test_streamable_http.sh")

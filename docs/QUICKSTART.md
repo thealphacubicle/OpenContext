@@ -59,59 +59,26 @@ You'll see output like:
 ```
 ✅ Deployment complete!
 
-Lambda Function URL:
-https://abc123.lambda-url.us-east-1.on.aws
-
-To use with Claude Desktop, add to your Claude Desktop config:
-...
+API Gateway URL (use for Claude Connectors):
+https://xxx.execute-api.us-east-1.amazonaws.com/staging/mcp
 ```
 
-## Step 4: Download Client Binary
+## Step 4: Connect via Claude Connectors
 
-Download the `opencontext-client` binary for your platform from [GitHub Releases](https://github.com/thealphacubicle/OpenContext/releases):
+Connect using **Claude Connectors** (same steps on both Claude.ai and Claude Desktop):
 
-- **macOS (Intel):** `opencontext-client-darwin-amd64`
-- **macOS (Apple Silicon):** `opencontext-client-darwin-arm64`
-- **Linux:** `opencontext-client-linux-amd64`
-- **Windows:** `opencontext-client-windows-amd64.exe`
+1. Go to **Settings** → **Connectors** (or **Customize** → **Connectors** on claude.ai)
+2. Click **Add custom connector**
+3. Enter a name (e.g. "Boston OpenData") and your API Gateway URL
 
-Make it executable and move to a convenient location:
+Get the URL from the deploy output, or run:
 
 ```bash
-chmod +x opencontext-client-darwin-arm64  # Adjust for your platform
-mv opencontext-client-darwin-arm64 ~/bin/opencontext-client  # Or another location in PATH
+cd terraform/aws
+terraform output -raw api_gateway_url
 ```
 
-**Or build from source:**
-
-```bash
-cd client
-make build
-```
-
-## Step 5: Use with Claude Desktop
-
-Add to your Claude Desktop configuration file:
-
-**macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`
-**Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
-
-```json
-{
-  "mcpServers": {
-    "boston-opendata": {
-      "command": "/path/to/opencontext-client",
-      "args": ["https://your-lambda-url.lambda-url.us-east-1.on.aws"]
-    }
-  }
-}
-```
-
-**Note:** Use the full path to the `opencontext-client` binary, or ensure it's in your PATH.
-
-Restart Claude Desktop to load the new server.
-
-## Step 6: Test
+## Step 5: Test
 
 **Test locally first (optional):**
 
@@ -125,9 +92,9 @@ curl -X POST http://localhost:8000 \
   -d '{"jsonrpc":"2.0","id":1,"method":"ping"}'
 ```
 
-**Test in Claude Desktop:**
+**Test in Claude:**
 
-Try asking Claude:
+Enable your connector in the chat (click "+" → Connectors → toggle on), then ask:
 
 ```
 Search for datasets about housing in Boston
@@ -149,15 +116,13 @@ Claude will use your MCP server to search the CKAN portal.
 2. Function URL is enabled
 3. Configuration is correct
 
-### Claude Desktop Can't Connect
+### Claude Can't Connect
 
 **Check:**
 
-1. Lambda URL is correct
-2. `opencontext-client` binary is downloaded and executable
-3. Path to `opencontext-client` in config is correct (use full path)
-4. Claude Desktop config JSON is valid
-5. Restart Claude Desktop after config changes
+1. API Gateway or Lambda URL is correct (includes `/mcp`)
+2. Connector is added in Settings → Connectors
+3. Connector is enabled for the conversation (click "+" → Connectors → toggle on)
 
 ## Next Steps
 

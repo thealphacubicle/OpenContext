@@ -50,12 +50,14 @@ For a full test (initialize, list tools, call tool), run:
 
 ---
 
-## Method 2: Claude Desktop
+## Method 2: Claude (Connectors)
 
-1. Add the server to your Claude Desktop config (see [Getting Started](GETTING_STARTED.md))
-2. Point the URL to `http://localhost:8000/mcp`
-3. Restart Claude Desktop
+1. Connect via Claude Connectors (see [Getting Started](GETTING_STARTED.md))
+2. Add a custom connector with URL: `http://localhost:8000/mcp`
+3. Enable the connector in your conversation (click "+" → Connectors → toggle on)
 4. Ask Claude to search your data or list available tools
+
+**Note:** Localhost only works with Claude Desktop. For Claude.ai (web), use MCP Inspector or deploy first.
 
 ---
 

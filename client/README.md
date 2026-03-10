@@ -42,9 +42,17 @@ This produces binaries for macOS (Intel/ARM), Linux (amd64/arm64), and Windows (
 
 ## Usage
 
-### With Claude Desktop
+### Connecting to Claude
 
-Add to your Claude Desktop configuration file:
+**Recommended: Claude Connectors** (same on Claude.ai and Claude Desktop)
+
+1. Go to **Settings** → **Connectors** (or **Customize** → **Connectors** on claude.ai)
+2. Click **Add custom connector**
+3. Enter a name and your API Gateway or Lambda URL (e.g. `https://xxx.execute-api.us-east-1.amazonaws.com/staging/mcp`)
+
+**Alternative: Go client with Claude Desktop config**
+
+If you prefer the config file approach, add to `claude_desktop_config.json`:
 
 ```json
 {
@@ -57,7 +65,7 @@ Add to your Claude Desktop configuration file:
 }
 ```
 
-**Note:** The client automatically appends `/mcp` to the Lambda URL. You can provide the base Lambda URL (without `/mcp`) or the full URL with `/mcp` - both work.
+The client automatically appends `/mcp` to the Lambda URL.
 
 ### Command Line
 
@@ -81,4 +89,4 @@ The client reads MCP JSON-RPC messages from stdin and forwards them to the Lambd
 
 This allows Claude Desktop to communicate with OpenContext MCP servers running on AWS Lambda using the stdio transport protocol, bridging it to HTTP.
 
-**Note:** OpenContext also supports Streamable HTTP transport directly (no binary needed). See the main README for both connection options.
+**Note:** The recommended way to connect is via [Claude Connectors](https://claude.ai/customize/connectors) (works on both Claude.ai and Claude Desktop). The Go client is an alternative for the config file approach.

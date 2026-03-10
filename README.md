@@ -25,24 +25,13 @@ python3 scripts/local_server.py
 ./scripts/deploy.sh
 ```
 
-Add to Claude Desktop (`~/Library/Application Support/Claude/claude_desktop_config.json`):
+Connect via **Claude Connectors** (same steps on both Claude.ai and Claude Desktop):
 
-```json
-{
-  "mcpServers": {
-    "Boston OpenData": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "mcp-remote",
-        "https://YOUR-API-GATEWAY-URL"
-      ]
-    }
-  }
-}
-```
+1. Go to **Settings** → **Connectors** (or **Customize** → **Connectors** on claude.ai)
+2. Click **Add custom connector**
+3. Enter a name (e.g. "Boston OpenData") and your API Gateway URL
 
-Get the URL from: `cd terraform/aws && terraform output -raw api_gateway_url`
+Get the URL: `cd terraform/aws && terraform output -raw api_gateway_url`
 
 See [Getting Started](docs/GETTING_STARTED.md) for full setup.
 

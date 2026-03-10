@@ -7,7 +7,6 @@ OpenContext uses the Model Context Protocol (MCP), which connects AI assistants 
 ## Prerequisites
 
 - Python 3.11+
-- Node.js and npm (required for connecting Claude Desktop via Streamable HTTP)
 - Terraform >= 1.0 (for deployment)
 - AWS CLI configured (for deployment)
 
@@ -46,45 +45,15 @@ python3 scripts/local_server.py
 
 The server runs at `http://localhost:8000/mcp`. Keep this terminal open.
 
-### 3. Connect Claude Desktop
+### 3. Connect via Claude Connectors
 
-Add to your Claude Desktop config (`~/Library/Application Support/Claude/claude_desktop_config.json` on macOS):
+Connect using **Claude Connectors** (same steps on both Claude.ai and Claude Desktop):
 
-**Option A: Streamable HTTP (recommended—no binary)**
+1. Go to **Settings** → **Connectors** (or **Customize** → **Connectors** on claude.ai)
+2. Click **Add custom connector**
+3. Enter a name (e.g. "OpenContext Local") and URL: `http://localhost:8000/mcp`
 
-```json
-{
-  "mcpServers": {
-    "OpenContext Local": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "@modelcontextprotocol/server-stdio-to-http",
-        "--transport",
-        "streamable-http",
-        "http://localhost:8000/mcp"
-      ]
-    }
-  }
-}
-```
-
-**Option B: Go client binary**
-
-Build the client: `cd client && make build`. Then:
-
-```json
-{
-  "mcpServers": {
-    "OpenContext Local": {
-      "command": "/path/to/opencontext-client",
-      "args": ["http://localhost:8000"]
-    }
-  }
-}
-```
-
-The Go client auto-appends `/mcp`. Restart Claude Desktop after config changes.
+**Note:** Local servers (`localhost`) only work with Claude Desktop, since the connection runs from your machine. For Claude.ai (web), use the MCP Inspector or deploy to production first (see below).
 
 ### 4. Verify
 
@@ -119,52 +88,22 @@ The script validates config, packages code, and deploys to AWS Lambda. You'll re
 
 AWS creates: Lambda function, Function URL, API Gateway, IAM role, CloudWatch Log Group. Cost is roughly $1/month for 100K requests. See [Deployment](DEPLOYMENT.md) for details.
 
-### 3. Connect Claude Desktop (Production)
+### 3. Connect via Claude Connectors (Production)
 
-**Production (API Gateway—recommended):**
+Connect using **Claude Connectors** (same steps on both Claude.ai and Claude Desktop):
+
+1. Go to **Settings** → **Connectors** (or **Customize** → **Connectors** on claude.ai)
+2. Click **Add custom connector**
+3. Enter a name (e.g. "Boston OpenData") and your API Gateway URL
+
+Get the URL:
 
 ```bash
 cd terraform/aws
 terraform output -raw api_gateway_url
 ```
 
-Use the full URL from `terraform output` (it already includes `/mcp`):
-
-```json
-{
-  "mcpServers": {
-    "Boston OpenData": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "@modelcontextprotocol/server-stdio-to-http",
-        "--transport",
-        "streamable-http",
-        "https://YOUR-API-GATEWAY-URL"
-      ]
-    }
-  }
-}
-```
-
-**Testing (Lambda URL—no auth):**
-
-```json
-{
-  "mcpServers": {
-    "Boston OpenData": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "@modelcontextprotocol/server-stdio-to-http",
-        "--transport",
-        "streamable-http",
-        "https://your-lambda-url.lambda-url.us-east-1.on.aws/mcp"
-      ]
-    }
-  }
-}
-```
+The output already includes `/mcp`. Use this URL for production (rate limiting, API key). For testing without auth, use the Lambda URL from `terraform output -raw lambda_url` instead.
 
 ### 4. Updating
 
@@ -178,7 +117,7 @@ To update config or code: edit `config.yaml` or your code, then run `./scripts/d
 |-------|----------|
 | `ModuleNotFoundError: aiohttp` | `pip install aiohttp` |
 | "Multiple Plugins Enabled" | Enable only one plugin in `config.yaml` |
-| Claude can't connect | Verify URL includes `/mcp`, restart Claude Desktop |
+| Claude can't connect | Verify URL includes `/mcp`, check connector is enabled in the chat |
 | Lambda 500 error | Check CloudWatch logs, validate config |
 | Plugin init fails | Check API URLs, keys, and network connectivity |
 

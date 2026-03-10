@@ -79,24 +79,15 @@ Run `./scripts/deploy.sh` again. Terraform will update the Lambda function.
 
 ## Usage
 
-### How do I use it with Claude Desktop?
+### How do I connect to it with Claude?
 
-**First, download the client binary** from [GitHub Releases](https://github.com/thealphacubicle/OpenContext/releases) and make it executable.
+Connect via **Claude Connectors** (same steps on both Claude.ai and Claude Desktop):
 
-Then add to your Claude Desktop config:
+1. Go to **Settings** → **Connectors** (or **Customize** → **Connectors** on claude.ai)
+2. Click **Add custom connector**
+3. Enter a name and your API Gateway URL (from `terraform output -raw api_gateway_url`)
 
-```json
-{
-  "mcpServers": {
-    "my-server": {
-      "command": "/path/to/opencontext-client",
-      "args": ["https://your-lambda-url"]
-    }
-  }
-}
-```
-
-**Note:** Use the full path to the binary, or ensure it's in your PATH.
+Enable the connector in your conversation by clicking "+" → Connectors → toggle it on.
 
 ### Can I use it without Claude Desktop?
 
@@ -124,15 +115,13 @@ curl -X POST https://your-lambda-url \
 2. Configuration is valid
 3. Plugin initialization succeeded
 
-### Claude Desktop can't connect
+### Claude can't connect
 
 **Check:**
 
-1. Lambda URL is correct
-2. `opencontext-client` binary is downloaded and executable
-3. Path to binary in config is correct (use full path)
-4. Claude Desktop config JSON is valid
-5. Restart Claude Desktop after config changes
+1. API Gateway or Lambda URL is correct (includes `/mcp`)
+2. Connector is added in Settings → Connectors
+3. Connector is enabled for the conversation (click "+" → Connectors → toggle on)
 
 ### Plugin initialization fails
 
