@@ -18,6 +18,7 @@ from tenacity import (
 
 from core.interfaces import DataPlugin, PluginType, ToolDefinition, ToolResult
 from plugins.socrata.config_schema import SocrataPluginConfig
+from plugins.socrata.soql_validator import SoQLValidator
 
 logger = logging.getLogger(__name__)
 
@@ -299,6 +300,26 @@ class SocrataPlugin(DataPlugin):
                 ),
                 input_schema={"type": "object", "properties": {}},
             ),
+            ToolDefinition(
+                name="execute_sql",
+                description="""Execute raw SoQL query (advanced). Similar to CKAN execute_sql.
+Use for complex SoQL queries. Security: Only SELECT allowed.
+Use get_schema first for column names.""",
+                input_schema={
+                    "type": "object",
+                    "properties": {
+                        "dataset_id": {
+                            "type": "string",
+                            "description": "Dataset 4x4 ID",
+                        },
+                        "soql": {
+                            "type": "string",
+                            "description": "SoQL SELECT statement",
+                        },
+                    },
+                    "required": ["dataset_id", "soql"],
+                },
+            ),
         ]
 
     async def execute_tool(
@@ -407,6 +428,36 @@ class SocrataPlugin(DataPlugin):
                     success=True,
                 )
 
+            elif tool_name == "execute_sql":
+                dataset_id = arguments.get("dataset_id")
+                soql = arguments.get("soql")
+                if not dataset_id:
+                    return ToolResult(
+                        content=[],
+                        success=False,
+                        error_message="dataset_id is required",
+                    )
+                if not soql:
+                    return ToolResult(
+                        content=[],
+                        success=False,
+                        error_message="soql is required",
+                    )
+                result = await self.execute_sql(dataset_id, soql)
+                if result.get("error"):
+                    return ToolResult(
+                        content=[],
+                        success=False,
+                        error_message=result.get("message", "SoQL execution failed"),
+                    )
+                records = result.get("records", [])
+                fields = result.get("fields", [])
+                formatted_text = self._format_sql_results(records, fields)
+                return ToolResult(
+                    content=[{"type": "text", "text": formatted_text}],
+                    success=True,
+                )
+
             else:
                 return ToolResult(
                     content=[],
@@ -504,6 +555,39 @@ class SocrataPlugin(DataPlugin):
             return result
         rows = result.get("rows", result.get("results", []))
         return rows if isinstance(rows, list) else []
+
+    async def execute_sql(self, dataset_id: str, soql: str) -> Dict[str, Any]:
+        """Execute raw SoQL query with security validation.
+
+        Args:
+            dataset_id: Dataset 4x4 ID
+            soql: SoQL SELECT statement
+
+        Returns:
+            Dictionary with success flag, records, fields, or error message
+        """
+        is_valid, error = SoQLValidator.validate_query(soql)
+        if not is_valid:
+            return {"error": True, "message": error}
+
+        logger.info("Executing SoQL", extra={"soql": soql[:500]})
+
+        try:
+            records = await self._query_dataset(dataset_id, soql)
+            fields: List[Dict[str, Any]] = []
+            if records:
+                for key in records[0].keys():
+                    if key != "_id":
+                        fields.append({"id": key})
+
+            return {
+                "success": True,
+                "records": records,
+                "fields": fields,
+            }
+        except Exception as e:
+            logger.error(f"SoQL execution failed: {e}", exc_info=True)
+            return {"error": True, "message": str(e)}
 
     async def _list_categories(self) -> List[Dict[str, Any]]:
         """List categories with dataset counts.
@@ -706,6 +790,39 @@ class SocrataPlugin(DataPlugin):
 
         if len(records) > limit:
             lines.append(f"... and {len(records) - limit} more record(s)")
+
+        return "\n".join(lines)
+
+    def _format_sql_results(
+        self, records: List[Dict[str, Any]], fields: List[Dict[str, Any]]
+    ) -> str:
+        """Format SQL/SoQL query results for user display.
+
+        Args:
+            records: List of record dictionaries
+            fields: List of field metadata dictionaries
+
+        Returns:
+            Formatted string representation of results
+        """
+        if not records:
+            return "No records found matching the SoQL query."
+
+        lines = [f"SQL Query Results: {len(records)} record(s)\n"]
+
+        if fields:
+            field_names = [field.get("id", "unknown") for field in fields]
+            lines.append(f"Fields: {', '.join(field_names)}\n")
+
+        for i, record in enumerate(records[:10], 1):
+            lines.append(f"Record {i}:")
+            for key, value in record.items():
+                if key != "_id":
+                    lines.append(f"  {key}: {value}")
+            lines.append("")
+
+        if len(records) > 10:
+            lines.append(f"... and {len(records) - 10} more record(s)")
 
         return "\n".join(lines)
 

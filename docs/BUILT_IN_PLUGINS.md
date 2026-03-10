@@ -77,6 +77,7 @@ plugins:
 - `socrata__get_dataset(dataset_id)` - Get full metadata for a dataset (4x4 ID)
 - `socrata__get_schema(dataset_id)` - Get column schema for constructing SoQL queries
 - `socrata__query_dataset(dataset_id, soql_query)` - Query data using SoQL
+- `socrata__execute_sql(dataset_id, soql)` - Execute raw SoQL query (advanced, similar to CKAN execute_sql)
 - `socrata__list_categories()` - List all categories with dataset counts
 
 ### Examples

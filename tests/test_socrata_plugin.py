@@ -129,18 +129,19 @@ class TestGetTools:
             "app_token": "test-token",
         }
 
-    def test_get_tools_returns_all_five_tools(self, socrata_config):
-        """Test that get_tools returns all 5 expected tools."""
+    def test_get_tools_returns_all_six_tools(self, socrata_config):
+        """Test that get_tools returns all 6 expected tools."""
         plugin = SocrataPlugin(socrata_config)
         tools = plugin.get_tools()
 
-        assert len(tools) == 5
+        assert len(tools) == 6
         tool_names = [t.name for t in tools]
         assert "search_datasets" in tool_names
         assert "get_dataset" in tool_names
         assert "get_schema" in tool_names
         assert "query_dataset" in tool_names
         assert "list_categories" in tool_names
+        assert "execute_sql" in tool_names
 
     def test_get_tools_includes_city_name_in_descriptions(self, socrata_config):
         """Test that tool descriptions include city name."""
@@ -148,7 +149,8 @@ class TestGetTools:
         tools = plugin.get_tools()
 
         for tool in tools:
-            assert "Boston" in tool.description
+            if tool.name != "execute_sql":  # execute_sql has generic description
+                assert "Boston" in tool.description
 
     def test_get_tools_has_correct_input_schemas(self, socrata_config):
         """Test that tools have correct input schemas."""
@@ -160,6 +162,13 @@ class TestGetTools:
         assert "query" in search_tool.input_schema["properties"]
         assert "limit" in search_tool.input_schema["properties"]
         assert "query" in search_tool.input_schema["required"]
+
+        execute_sql_tool = next(t for t in tools if t.name == "execute_sql")
+        assert execute_sql_tool.input_schema["type"] == "object"
+        assert "dataset_id" in execute_sql_tool.input_schema["properties"]
+        assert "soql" in execute_sql_tool.input_schema["properties"]
+        assert "dataset_id" in execute_sql_tool.input_schema["required"]
+        assert "soql" in execute_sql_tool.input_schema["required"]
 
 
 class TestSearchDatasets:
@@ -545,6 +554,107 @@ class TestExecuteTool:
             assert result.success is False
             assert "Unknown tool" in result.error_message
 
+    @pytest.mark.asyncio
+    async def test_execute_tool_execute_sql_succeeds(self, socrata_config):
+        """Test executing execute_sql tool with valid SoQL."""
+        plugin = SocrataPlugin(socrata_config)
+
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_client.get = AsyncMock(
+                return_value=Mock(
+                    json=Mock(return_value={"results": []}), raise_for_status=Mock()
+                )
+            )
+            mock_client.post = AsyncMock(
+                return_value=Mock(
+                    json=Mock(return_value=[{"id": 1, "name": "Test"}]),
+                    raise_for_status=Mock(),
+                )
+            )
+            mock_client_class.return_value = mock_client
+
+            await plugin.initialize()
+            result = await plugin.execute_tool(
+                "execute_sql",
+                {
+                    "dataset_id": "wc4w-4jew",
+                    "soql": "SELECT * LIMIT 10",
+                },
+            )
+
+            assert result.success is True
+            assert len(result.content) > 0
+            assert "SQL Query Results" in result.content[0]["text"]
+
+    @pytest.mark.asyncio
+    async def test_execute_tool_execute_sql_validation_error(self, socrata_config):
+        """Test executing execute_sql tool with invalid SoQL."""
+        plugin = SocrataPlugin(socrata_config)
+
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_client.get = AsyncMock(
+                return_value=Mock(
+                    json=Mock(return_value={"results": []}), raise_for_status=Mock()
+                )
+            )
+            mock_client_class.return_value = mock_client
+
+            await plugin.initialize()
+            result = await plugin.execute_tool(
+                "execute_sql",
+                {"dataset_id": "wc4w-4jew", "soql": "DELETE FROM users"},
+            )
+
+            assert result.success is False
+            assert result.error_message is not None
+            assert "SELECT" in result.error_message or "DELETE" in result.error_message
+
+    @pytest.mark.asyncio
+    async def test_execute_tool_execute_sql_missing_param(self, socrata_config):
+        """Test executing execute_sql tool without required parameters."""
+        plugin = SocrataPlugin(socrata_config)
+
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_client.get = AsyncMock(
+                return_value=Mock(
+                    json=Mock(return_value={"results": []}), raise_for_status=Mock()
+                )
+            )
+            mock_client_class.return_value = mock_client
+
+            await plugin.initialize()
+            result = await plugin.execute_tool("execute_sql", {})
+
+            assert result.success is False
+            assert "required" in result.error_message.lower()
+
+    @pytest.mark.asyncio
+    async def test_execute_sql_returns_error_on_api_failure(self, socrata_config):
+        """Test execute_sql returns error when SODA API fails."""
+        plugin = SocrataPlugin(socrata_config)
+
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_client.get = AsyncMock(
+                return_value=Mock(
+                    json=Mock(return_value={"results": []}), raise_for_status=Mock()
+                )
+            )
+            mock_client.post = AsyncMock(side_effect=RuntimeError("Dataset not found"))
+            mock_client_class.return_value = mock_client
+
+            await plugin.initialize()
+            result = await plugin.execute_tool(
+                "execute_sql",
+                {"dataset_id": "nonexistent", "soql": "SELECT * LIMIT 1"},
+            )
+
+            assert result.success is False
+            assert "Dataset not found" in result.error_message
+
 
 class TestHealthCheck:
     """Test health_check method."""
@@ -645,3 +755,318 @@ class TestQueryData:
             assert "status = 'Open'" in query
             assert "year = 2020" in query
             assert "LIMIT 50" in query
+
+    @pytest.mark.asyncio
+    async def test_query_data_filter_with_none_value(self, socrata_config):
+        """Test that query_data handles None filter values as IS NULL."""
+        plugin = SocrataPlugin(socrata_config)
+
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_client.get = AsyncMock(
+                return_value=Mock(
+                    json=Mock(return_value={"results": []}), raise_for_status=Mock()
+                )
+            )
+            mock_client.post = AsyncMock(
+                return_value=Mock(
+                    json=Mock(return_value=[]),
+                    raise_for_status=Mock(),
+                )
+            )
+            mock_client_class.return_value = mock_client
+
+            await plugin.initialize()
+            await plugin.query_data("wc4w-4jew", filters={"status": None}, limit=10)
+
+            post_call = mock_client.post.call_args
+            body = post_call[1]["json"]
+            assert "status IS NULL" in body["query"]
+
+
+class TestFormatMethods:
+    """Test formatting helper methods."""
+
+    @pytest.fixture
+    def plugin(self):
+        return SocrataPlugin(
+            {
+                "base_url": "https://data.cityofboston.gov",
+                "portal_url": "https://data.cityofboston.gov",
+                "city_name": "Boston",
+                "app_token": "test-token",
+            }
+        )
+
+    def test_format_search_results_empty(self, plugin):
+        result = plugin._format_search_results([])
+        assert "No datasets found" in result
+
+    def test_format_search_results_with_category(self, plugin):
+        datasets = [
+            {
+                "resource": {
+                    "id": "abc-1234",
+                    "name": "Budget Data",
+                    "description": "City budget",
+                    "category": "Finance",
+                    "permalink": "https://data.cityofboston.gov/d/abc-1234",
+                }
+            }
+        ]
+        result = plugin._format_search_results(datasets)
+        assert "Budget Data" in result
+        assert "Finance" in result
+        assert "abc-1234" in result
+
+    def test_format_search_results_no_permalink(self, plugin):
+        datasets = [
+            {
+                "resource": {
+                    "id": "abc-1234",
+                    "name": "Budget Data",
+                    "description": "City budget",
+                }
+            }
+        ]
+        result = plugin._format_search_results(datasets)
+        assert "abc-1234" in result
+        assert "data.cityofboston.gov/d/abc-1234" in result
+
+    def test_format_dataset(self, plugin):
+        dataset = {
+            "id": "abc-1234",
+            "name": "311 Service Requests",
+            "description": "All 311 calls",
+            "rowCount": 500000,
+            "rowsUpdatedAt": "2024-01-01",
+            "tags": ["service", "311"],
+            "category": "Public Safety",
+            "license": {"name": "Public Domain"},
+        }
+        result = plugin._format_dataset(dataset)
+        assert "311 Service Requests" in result
+        assert "abc-1234" in result
+        assert "500000" in result
+        assert "service" in result
+        assert "Public Safety" in result
+
+    def test_format_dataset_minimal(self, plugin):
+        result = plugin._format_dataset({})
+        assert "Untitled" in result
+        assert "get_schema" in result
+
+    def test_format_schema_empty(self, plugin):
+        result = plugin._format_schema([])
+        assert "No schema" in result
+
+    def test_format_schema_with_columns(self, plugin):
+        columns = [
+            {
+                "fieldName": "case_id",
+                "name": "Case ID",
+                "dataTypeName": "number",
+                "description": "Unique case identifier",
+            },
+            {
+                "fieldName": "status",
+                "name": "Status",
+                "dataTypeName": "text",
+            },
+        ]
+        result = plugin._format_schema(columns)
+        assert "case_id" in result
+        assert "number" in result
+        assert "Unique case identifier" in result
+        assert "status" in result
+
+    def test_format_query_results_empty(self, plugin):
+        result = plugin._format_query_results([])
+        assert "No records found" in result
+
+    def test_format_query_results_with_records(self, plugin):
+        records = [{"id": 1, "name": "Test"}, {"id": 2, "name": "Test2"}]
+        result = plugin._format_query_results(records, limit=10)
+        assert "2 record(s)" in result
+        assert "id: 1" in result
+
+    def test_format_query_results_truncated(self, plugin):
+        records = [{"id": i} for i in range(20)]
+        result = plugin._format_query_results(records, limit=5)
+        assert "15 more" in result
+
+    def test_format_sql_results_empty(self, plugin):
+        result = plugin._format_sql_results([], [])
+        assert "No records found" in result
+
+    def test_format_sql_results_with_many_records(self, plugin):
+        records = [{"id": i, "name": f"Row {i}"} for i in range(15)]
+        fields = [{"id": "id"}, {"id": "name"}]
+        result = plugin._format_sql_results(records, fields)
+        assert "SQL Query Results" in result
+        assert "5 more" in result
+
+    def test_format_categories_empty(self, plugin):
+        result = plugin._format_categories([])
+        assert "No categories found" in result
+
+    def test_format_categories_dict_list(self, plugin):
+        categories = [{"name": "Finance", "count": 10}, {"name": "Health", "count": 5}]
+        result = plugin._format_categories(categories)
+        assert "Finance" in result
+        assert "10" in result
+
+    def test_format_categories_non_dict(self, plugin):
+        result = plugin._format_categories(["Finance", "Health"])
+        assert "Finance" in result
+        assert "Health" in result
+
+
+class TestExecuteToolMissingParams:
+    """Test execute_tool missing required param branches."""
+
+    @pytest.fixture
+    def socrata_config(self):
+        return {
+            "base_url": "https://data.cityofboston.gov",
+            "portal_url": "https://data.cityofboston.gov",
+            "city_name": "Boston",
+            "app_token": "test-token",
+        }
+
+    @pytest.mark.asyncio
+    async def test_execute_tool_get_schema_missing_dataset_id(self, socrata_config):
+        plugin = SocrataPlugin(socrata_config)
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_client.get = AsyncMock(
+                return_value=Mock(
+                    json=Mock(return_value={"results": []}), raise_for_status=Mock()
+                )
+            )
+            mock_client_class.return_value = mock_client
+            await plugin.initialize()
+            result = await plugin.execute_tool("get_schema", {})
+        assert result.success is False
+        assert "required" in result.error_message.lower()
+
+    @pytest.mark.asyncio
+    async def test_execute_tool_query_dataset_missing_dataset_id(self, socrata_config):
+        plugin = SocrataPlugin(socrata_config)
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_client.get = AsyncMock(
+                return_value=Mock(
+                    json=Mock(return_value={"results": []}), raise_for_status=Mock()
+                )
+            )
+            mock_client_class.return_value = mock_client
+            await plugin.initialize()
+            result = await plugin.execute_tool("query_dataset", {})
+        assert result.success is False
+        assert "required" in result.error_message.lower()
+
+    @pytest.mark.asyncio
+    async def test_execute_tool_query_dataset_missing_soql_query(self, socrata_config):
+        plugin = SocrataPlugin(socrata_config)
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_client.get = AsyncMock(
+                return_value=Mock(
+                    json=Mock(return_value={"results": []}), raise_for_status=Mock()
+                )
+            )
+            mock_client_class.return_value = mock_client
+            await plugin.initialize()
+            result = await plugin.execute_tool(
+                "query_dataset", {"dataset_id": "wc4w-4jew"}
+            )
+        assert result.success is False
+        assert "required" in result.error_message.lower()
+
+    @pytest.mark.asyncio
+    async def test_execute_tool_list_categories_succeeds(self, socrata_config):
+        plugin = SocrataPlugin(socrata_config)
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_client.get = AsyncMock(
+                side_effect=[
+                    Mock(
+                        json=Mock(return_value={"results": []}), raise_for_status=Mock()
+                    ),
+                    Mock(
+                        json=Mock(
+                            return_value={
+                                "facets": {
+                                    "categories": [{"name": "Finance", "count": 5}]
+                                }
+                            }
+                        ),
+                        raise_for_status=Mock(),
+                    ),
+                ]
+            )
+            mock_client_class.return_value = mock_client
+            await plugin.initialize()
+            result = await plugin.execute_tool("list_categories", {})
+        assert result.success is True
+        assert "Finance" in result.content[0]["text"]
+
+
+class TestParseSoqlLimit:
+    """Test _parse_soql_limit edge cases."""
+
+    @pytest.fixture
+    def plugin(self):
+        return SocrataPlugin(
+            {
+                "base_url": "https://data.cityofboston.gov",
+                "portal_url": "https://data.cityofboston.gov",
+                "city_name": "Boston",
+                "app_token": "test-token",
+            }
+        )
+
+    def test_no_limit_returns_default(self, plugin):
+        assert plugin._parse_soql_limit("SELECT *", default=50) == 50
+
+    def test_with_max_val_caps_result(self, plugin):
+        assert plugin._parse_soql_limit("SELECT * LIMIT 10000", max_val=500) == 500
+
+    def test_invalid_limit_returns_default(self, plugin):
+        assert plugin._parse_soql_limit("SELECT * LIMIT abc", default=25) == 25
+
+
+class TestQueryDatasetRowExtraction:
+    """Test _query_dataset handles non-list API responses."""
+
+    @pytest.fixture
+    def socrata_config(self):
+        return {
+            "base_url": "https://data.cityofboston.gov",
+            "portal_url": "https://data.cityofboston.gov",
+            "city_name": "Boston",
+            "app_token": "test-token",
+        }
+
+    @pytest.mark.asyncio
+    async def test_query_dataset_dict_response_with_rows_key(self, socrata_config):
+        plugin = SocrataPlugin(socrata_config)
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_client.get = AsyncMock(
+                return_value=Mock(
+                    json=Mock(return_value={"results": []}), raise_for_status=Mock()
+                )
+            )
+            mock_client.post = AsyncMock(
+                return_value=Mock(
+                    json=Mock(return_value={"rows": [{"id": 1}, {"id": 2}]}),
+                    raise_for_status=Mock(),
+                )
+            )
+            mock_client_class.return_value = mock_client
+            await plugin.initialize()
+            result = await plugin._query_dataset("wc4w-4jew", "SELECT * LIMIT 10")
+        assert len(result) == 2
+        assert result[0]["id"] == 1
