@@ -18,7 +18,7 @@ SERVER_SCRIPT = PROJECT_ROOT / "scripts" / "local_server.py"
 SERVER_URL = "http://localhost:8000/mcp"
 STARTUP_TIMEOUT = 10
 # Use example config so tests run without requiring config.yaml (which is gitignored)
-TEST_CONFIG = PROJECT_ROOT / "examples" / "boston-opendata" / "config.yaml"
+TEST_CONFIG = PROJECT_ROOT / "examples" / "chicago" / "config.yaml"
 
 
 class TestMCPSmoke:
