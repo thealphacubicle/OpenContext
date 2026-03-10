@@ -86,9 +86,6 @@ jobs:
             --cov-report=term-missing \
             --cov-fail-under=80
 
-      - name: MCP Protocol Smoke Test
-        run: uv run pytest tests/test_mcp_smoke.py -v
-
       - name: Set up Go 1.21
         uses: actions/setup-go@v5
         with:
