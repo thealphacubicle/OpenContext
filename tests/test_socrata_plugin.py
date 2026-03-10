@@ -129,18 +129,19 @@ class TestGetTools:
             "app_token": "test-token",
         }
 
-    def test_get_tools_returns_all_five_tools(self, socrata_config):
-        """Test that get_tools returns all 5 expected tools."""
+    def test_get_tools_returns_all_six_tools(self, socrata_config):
+        """Test that get_tools returns all 6 expected tools."""
         plugin = SocrataPlugin(socrata_config)
         tools = plugin.get_tools()
 
-        assert len(tools) == 5
+        assert len(tools) == 6
         tool_names = [t.name for t in tools]
         assert "search_datasets" in tool_names
         assert "get_dataset" in tool_names
         assert "get_schema" in tool_names
         assert "query_dataset" in tool_names
         assert "list_categories" in tool_names
+        assert "execute_sql" in tool_names
 
     def test_get_tools_includes_city_name_in_descriptions(self, socrata_config):
         """Test that tool descriptions include city name."""
@@ -148,7 +149,8 @@ class TestGetTools:
         tools = plugin.get_tools()
 
         for tool in tools:
-            assert "Boston" in tool.description
+            if tool.name != "execute_sql":  # execute_sql has generic description
+                assert "Boston" in tool.description
 
     def test_get_tools_has_correct_input_schemas(self, socrata_config):
         """Test that tools have correct input schemas."""
@@ -160,6 +162,13 @@ class TestGetTools:
         assert "query" in search_tool.input_schema["properties"]
         assert "limit" in search_tool.input_schema["properties"]
         assert "query" in search_tool.input_schema["required"]
+
+        execute_sql_tool = next(t for t in tools if t.name == "execute_sql")
+        assert execute_sql_tool.input_schema["type"] == "object"
+        assert "dataset_id" in execute_sql_tool.input_schema["properties"]
+        assert "soql" in execute_sql_tool.input_schema["properties"]
+        assert "dataset_id" in execute_sql_tool.input_schema["required"]
+        assert "soql" in execute_sql_tool.input_schema["required"]
 
 
 class TestSearchDatasets:
@@ -544,6 +553,107 @@ class TestExecuteTool:
 
             assert result.success is False
             assert "Unknown tool" in result.error_message
+
+    @pytest.mark.asyncio
+    async def test_execute_tool_execute_sql_succeeds(self, socrata_config):
+        """Test executing execute_sql tool with valid SoQL."""
+        plugin = SocrataPlugin(socrata_config)
+
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_client.get = AsyncMock(
+                return_value=Mock(
+                    json=Mock(return_value={"results": []}), raise_for_status=Mock()
+                )
+            )
+            mock_client.post = AsyncMock(
+                return_value=Mock(
+                    json=Mock(return_value=[{"id": 1, "name": "Test"}]),
+                    raise_for_status=Mock(),
+                )
+            )
+            mock_client_class.return_value = mock_client
+
+            await plugin.initialize()
+            result = await plugin.execute_tool(
+                "execute_sql",
+                {
+                    "dataset_id": "wc4w-4jew",
+                    "soql": "SELECT * LIMIT 10",
+                },
+            )
+
+            assert result.success is True
+            assert len(result.content) > 0
+            assert "SQL Query Results" in result.content[0]["text"]
+
+    @pytest.mark.asyncio
+    async def test_execute_tool_execute_sql_validation_error(self, socrata_config):
+        """Test executing execute_sql tool with invalid SoQL."""
+        plugin = SocrataPlugin(socrata_config)
+
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_client.get = AsyncMock(
+                return_value=Mock(
+                    json=Mock(return_value={"results": []}), raise_for_status=Mock()
+                )
+            )
+            mock_client_class.return_value = mock_client
+
+            await plugin.initialize()
+            result = await plugin.execute_tool(
+                "execute_sql",
+                {"dataset_id": "wc4w-4jew", "soql": "DELETE FROM users"},
+            )
+
+            assert result.success is False
+            assert result.error_message is not None
+            assert "SELECT" in result.error_message or "DELETE" in result.error_message
+
+    @pytest.mark.asyncio
+    async def test_execute_tool_execute_sql_missing_param(self, socrata_config):
+        """Test executing execute_sql tool without required parameters."""
+        plugin = SocrataPlugin(socrata_config)
+
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_client.get = AsyncMock(
+                return_value=Mock(
+                    json=Mock(return_value={"results": []}), raise_for_status=Mock()
+                )
+            )
+            mock_client_class.return_value = mock_client
+
+            await plugin.initialize()
+            result = await plugin.execute_tool("execute_sql", {})
+
+            assert result.success is False
+            assert "required" in result.error_message.lower()
+
+    @pytest.mark.asyncio
+    async def test_execute_sql_returns_error_on_api_failure(self, socrata_config):
+        """Test execute_sql returns error when SODA API fails."""
+        plugin = SocrataPlugin(socrata_config)
+
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_client.get = AsyncMock(
+                return_value=Mock(
+                    json=Mock(return_value={"results": []}), raise_for_status=Mock()
+                )
+            )
+            mock_client.post = AsyncMock(side_effect=RuntimeError("Dataset not found"))
+            mock_client_class.return_value = mock_client
+
+            await plugin.initialize()
+            result = await plugin.execute_tool(
+                "execute_sql",
+                {"dataset_id": "nonexistent", "soql": "SELECT * LIMIT 1"},
+            )
+
+            assert result.success is False
+            assert "Dataset not found" in result.error_message
 
 
 class TestHealthCheck:
