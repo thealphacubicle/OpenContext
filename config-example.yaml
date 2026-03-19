@@ -43,6 +43,15 @@ plugins:
     timeout: 120 # HTTP timeout in seconds
     # api_key: "${CKAN_API_KEY}"  # Optional: CKAN API key for authenticated requests
 
+  # Built-in: ArcGIS Hub (for ArcGIS Hub open data portals)
+  # Examples: hub.arcgis.com, data-boston.hub.arcgis.com
+  arcgis:
+    enabled: false # Set to true to use
+    portal_url: "https://hub.arcgis.com"
+    city_name: "Your City"
+    timeout: 120
+    # token: "${ARCGIS_TOKEN}"  # Optional: Bearer token for private items
+
   # yamllint disable rule:comments-indentation
   # Custom: Add your own plugins here
   # Example:
