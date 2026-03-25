@@ -30,6 +30,13 @@ class ArcGISPlugin(DataPlugin):
     plugin_type = PluginType.OPEN_DATA
     plugin_version = "1.0.0"
 
+    QUERYABLE_TYPES = {
+        "Feature Layer",
+        "Feature Service",
+        "Map Service",
+        "Table",
+    }
+
     def __init__(self, config: Dict[str, Any]) -> None:
         super().__init__(config)
         self.plugin_config: Optional[ArcGISPluginConfig] = None
@@ -131,8 +138,8 @@ class ArcGISPlugin(DataPlugin):
                         "field": {
                             "type": "string",
                             "description": (
-                                'Field to aggregate (e.g. "type", "tags", '
-                                '"categories", "owner", "access")'
+                                "Field to aggregate. Available fields: "
+                                '"type", "tags", "categories", "access"'
                             ),
                         },
                         "q": {
@@ -172,6 +179,7 @@ class ArcGISPlugin(DataPlugin):
                             "type": "integer",
                             "description": "Maximum number of records (default: 100)",
                             "default": 100,
+                            "minimum": 1,
                             "maximum": 1000,
                         },
                     },
@@ -330,11 +338,20 @@ class ArcGISPlugin(DataPlugin):
         filters: Optional[Dict[str, Any]] = None,
         limit: int = 100,
     ) -> List[Dict[str, Any]]:
+        if limit < 1:
+            raise ValueError(f"limit must be at least 1 (got {limit})")
         dataset = await self.get_dataset(resource_id)
         service_url = dataset.get("service_url")
+        ds_type = dataset.get("type", "")
         if not service_url:
             raise ValueError(
                 f"Dataset {resource_id} does not have a queryable Feature Service URL"
+            )
+
+        if ds_type and ds_type not in self.QUERYABLE_TYPES:
+            raise ValueError(
+                f"Dataset type '{ds_type}' is not queryable. "
+                f"query_data only supports: {', '.join(sorted(self.QUERYABLE_TYPES))}."
             )
 
         where_clause = filters.get("where", "1=1") if filters else "1=1"
@@ -343,10 +360,11 @@ class ArcGISPlugin(DataPlugin):
 
         service_url = self._ensure_layer_url(service_url)
         query_url = f"{service_url}/query"
+        record_count = min(limit, 1000)
         params = {
             "where": where_clause,
             "outFields": out_fields,
-            "resultRecordCount": min(limit, 1000),
+            "resultRecordCount": record_count,
             "f": "json",
             "returnGeometry": "false",
         }
@@ -360,7 +378,27 @@ class ArcGISPlugin(DataPlugin):
                 f"{e.response.text}"
             ) from e
 
-        data = response.json()
+        try:
+            data = response.json()
+        except Exception as json_err:
+            content_type = response.headers.get("content-type", "")
+            raise ValueError(
+                f"Feature Service returned non-JSON response "
+                f"(content-type: {content_type}). The dataset URL may not "
+                f"point to a queryable ArcGIS Feature Service."
+            ) from json_err
+
+        error_in_body = data.get("error")
+        if error_in_body:
+            code = error_in_body.get("code", "unknown")
+            msg = error_in_body.get("message", "Unknown error")
+            details = error_in_body.get("details", [])
+            detail_str = "; ".join(details) if details else ""
+            raise RuntimeError(
+                f"Feature Service query failed (code {code}): {msg}"
+                + (f" — {detail_str}" if detail_str else "")
+            )
+
         features = data.get("features", [])
         if not features:
             return []
@@ -372,7 +410,7 @@ class ArcGISPlugin(DataPlugin):
     async def get_aggregations(
         self, field: str, q: Optional[str] = None
     ) -> List[Dict[str, Any]]:
-        params: Dict[str, Any] = {"fields": field}
+        params: Dict[str, Any] = {}
         if q:
             params["q"] = q
 
@@ -389,8 +427,20 @@ class ArcGISPlugin(DataPlugin):
             return []
 
         data = response.json()
-        buckets = data.get("aggregations", {}).get(field, {}).get("buckets", [])
-        return buckets
+        logger.debug(f"Aggregations raw response: {data}")
+
+        aggregations = data.get("aggregations", {})
+        terms = aggregations.get("terms", []) if isinstance(aggregations, dict) else []
+
+        for term_group in terms:
+            if term_group.get("field") == field:
+                raw_buckets = term_group.get("aggregations", [])
+                return [
+                    {"key": b.get("label", ""), "doc_count": b.get("value", 0)}
+                    for b in raw_buckets
+                ]
+
+        return []
 
     # ── Health check ────────────────────────────────────────────────────
 
@@ -508,7 +558,7 @@ class ArcGISPlugin(DataPlugin):
         for bucket in buckets:
             lines.append(
                 f"  {bucket.get('key', 'unknown')}: "
-                f"{bucket.get('doc_count', 0)} dataset(s)"
+                f"{bucket.get('doc_count', bucket.get('count', 0))} dataset(s)"
             )
 
         return "\n".join(lines)
