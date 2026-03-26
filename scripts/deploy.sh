@@ -18,7 +18,15 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$PROJECT_ROOT"
 
-echo -e "${GREEN}🚀 OpenContext Deployment${NC}"
+# Environment: staging (default) or prod
+ENVIRONMENT="${1:-staging}"
+if [ "$ENVIRONMENT" != "staging" ] && [ "$ENVIRONMENT" != "prod" ]; then
+    echo -e "${RED}❌ Error: Invalid environment '${ENVIRONMENT}'${NC}"
+    echo "Usage: $0 [staging|prod]"
+    exit 1
+fi
+
+echo -e "${GREEN}🚀 OpenContext Deployment [${ENVIRONMENT}]${NC}"
 echo "================================"
 echo ""
 
@@ -172,17 +180,8 @@ print(config.get('aws', {}).get('region', 'us-east-1'))
 EOF
 )
 
-LAMBDA_NAME=$(python3 << 'EOF'
-import yaml
-with open('config.yaml', 'r') as f:
-    config = yaml.safe_load(f)
-lambda_name = config.get('aws', {}).get('lambda_name', '')
-if not lambda_name:
-    server_name = config.get('server_name', 'my-mcp-server')
-    lambda_name = server_name.lower().replace(' ', '-')
-print(lambda_name)
-EOF
-)
+TFVARS_FILE="terraform/aws/${ENVIRONMENT}.tfvars"
+LAMBDA_NAME=$(grep '^lambda_name' "$TFVARS_FILE" | sed 's/.*=\s*"\(.*\)"/\1/')
 
 echo -e "${YELLOW}📦 Step 2: Packaging Lambda code...${NC}"
 
@@ -249,10 +248,20 @@ fi
 
 # Plan first - validates configuration and catches errors before any changes
 cd terraform/aws
+
+# Select Terraform workspace: staging uses default, prod uses its own
+if [ "$ENVIRONMENT" = "prod" ]; then
+    echo "Selecting Terraform workspace: boston-prod"
+    terraform workspace select boston-prod 2>/dev/null || terraform workspace new boston-prod
+else
+    echo "Selecting Terraform workspace: default"
+    terraform workspace select default 2>/dev/null || true
+fi
+
 echo -e "${YELLOW}📋 Planning Terraform changes...${NC}"
 if ! terraform plan \
     -out=tfplan \
-    -var="lambda_name=$LAMBDA_NAME" \
+    -var-file="${ENVIRONMENT}.tfvars" \
     -var="aws_region=$AWS_REGION" \
     -var="config_file=config.yaml"; then
     echo -e "${RED}❌ Terraform plan failed - aborting deployment${NC}"
@@ -262,8 +271,9 @@ fi
 # Require explicit approval before deploying
 echo ""
 echo -e "${YELLOW}⚠️  Deployment will apply the planned changes to AWS.${NC}"
-echo -e "   Lambda: ${LAMBDA_NAME}"
-echo -e "   Region: ${AWS_REGION}"
+echo -e "   Environment: ${ENVIRONMENT}"
+echo -e "   Lambda:      ${LAMBDA_NAME}"
+echo -e "   Region:      ${AWS_REGION}"
 echo ""
 read -r -p "Do you want to proceed with deployment? (yes/no): " CONFIRM
 if [ "$CONFIRM" != "yes" ] && [ "$CONFIRM" != "y" ]; then

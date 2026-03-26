@@ -1,1 +1,29 @@
-examples/boston-socrata/config.yaml
+---
+# Boston CKAN MCP Server Configuration
+# Example: CKAN plugin for data.cityofboston.gov
+#
+# Usage: ln -sf examples/boston/config.yaml config.yaml
+# Then: ./scripts/deploy.sh
+#
+
+server_name: "Boston OpenData MCP Server"
+description: "MCP server for Boston's CKAN open data portal"
+organization: "City of Boston"
+
+plugins:
+  ckan:
+    enabled: true
+    base_url: "https://data.boston.gov"
+    portal_url: "https://data.boston.gov"
+    city_name: "Boston"
+    timeout: 120.0
+
+aws:
+  region: "us-east-1"
+  lambda_name: "opencontext-mcp-server"
+  lambda_memory: 512
+  lambda_timeout: 120
+
+logging:
+  level: "INFO"
+  format: "json"

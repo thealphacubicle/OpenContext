@@ -1,0 +1,9 @@
+lambda_name     = "boston-opencontext-mcp-prod"
+stage_name      = "prod"
+aws_region      = "us-east-1"
+config_file     = "config.yaml"
+lambda_memory   = 512
+lambda_timeout  = 120
+api_quota_limit = 1000
+api_rate_limit  = 5
+api_burst_limit = 10
