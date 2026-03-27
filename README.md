@@ -18,7 +18,7 @@ cp config-example.yaml config.yaml
 # Edit config.yaml - set enabled: true for one plugin
 
 # 2. Test locally
-pip install aiohttp
+pip install -r requirements.txt
 python3 scripts/local_server.py
 
 # 3. Deploy
