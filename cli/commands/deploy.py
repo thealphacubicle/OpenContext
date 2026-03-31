@@ -12,6 +12,7 @@ import questionary
 import typer
 from rich.table import Table
 
+from cli.commands.validate import run_checks as _run_validate_checks
 from cli.utils import (
     console,
     ensure_config_exists,
@@ -118,6 +119,15 @@ def deploy(
 ) -> None:
     """Package and deploy the MCP server to AWS Lambda."""
     require_tty()
+
+    # Validate configuration before doing any work
+    console.print("\n[bold]Validating configuration before deploy...[/bold]")
+    if not _run_validate_checks(env):
+        console.print(
+            "\n[red bold]Validation failed.[/red bold] "
+            "Fix the issues above before redeploying."
+        )
+        raise typer.Exit(1)
 
     project_root = get_project_root()
     terraform_dir = get_terraform_dir()
