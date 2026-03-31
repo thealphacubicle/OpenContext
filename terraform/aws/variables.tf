@@ -51,3 +51,9 @@ variable "stage_name" {
   type        = string
   default     = "staging"
 }
+
+variable "custom_domain" {
+  description = "Custom domain name for API Gateway (leave empty to skip custom domain setup)"
+  type        = string
+  default     = ""
+}
