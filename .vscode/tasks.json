@@ -1,0 +1,73 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    // Auto-runs on folder open: pulls latest changes then syncs deps
+    {
+      "label": "Dev: sync workspace",
+      "dependsOrder": "sequence",
+      "dependsOn": ["git pull", "uv sync"],
+      "runOptions": {
+        "runOn": "folderOpen"
+      },
+      "problemMatcher": [],
+      "group": "build"
+    },
+    {
+      "label": "git pull",
+      "type": "shell",
+      "command": "git pull",
+      "presentation": {
+        "reveal": "silent",
+        "panel": "shared",
+        "showReuseMessage": false
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "uv sync",
+      "type": "shell",
+      "command": "uv sync --all-extras",
+      "presentation": {
+        "reveal": "silent",
+        "panel": "shared",
+        "showReuseMessage": false
+      },
+      "problemMatcher": []
+    },
+    // Manual convenience tasks
+    {
+      "label": "Dev: start local server",
+      "type": "shell",
+      "command": "python3 scripts/local_server.py",
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      },
+      "problemMatcher": [],
+      "group": "build"
+    },
+    {
+      "label": "Test: run all",
+      "type": "shell",
+      "command": "uv run pytest tests/ -n auto --cov=core --cov=plugins --cov-fail-under=80",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "problemMatcher": [],
+      "group": "test"
+    },
+    {
+      "label": "Lint: ruff fix + format",
+      "type": "shell",
+      "command": "uv run ruff check core/ plugins/ server/ tests/ --fix --unsafe-fixes && uv run ruff format core/ plugins/ server/ tests/",
+      "presentation": {
+        "reveal": "silent",
+        "panel": "shared",
+        "showReuseMessage": false
+      },
+      "problemMatcher": [],
+      "group": "build"
+    }
+  ]
+}
