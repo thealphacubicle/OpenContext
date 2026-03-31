@@ -28,9 +28,9 @@ Edit `config.yaml`. For CKAN:
 plugins:
   ckan:
     enabled: true
-    base_url: "https://data.boston.gov"
-    portal_url: "https://data.boston.gov"
-    city_name: "Boston"
+    base_url: "https://data.yourcity.gov"
+    portal_url: "https://data.yourcity.gov"
+    city_name: "Your City"
     timeout: 120
 ```
 
@@ -94,7 +94,7 @@ Connect using **Claude Connectors** (same steps on both Claude.ai and Claude Des
 
 1. Go to **Settings** → **Connectors** (or **Customize** → **Connectors** on claude.ai)
 2. Click **Add custom connector**
-3. Enter a name (e.g. "Boston OpenData") and your API Gateway URL
+3. Enter a name (e.g. "Your City OpenData") and your API Gateway URL
 
 Get the URL:
 

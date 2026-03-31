@@ -13,10 +13,10 @@ class SocrataPluginConfig(BaseModel):
 
     enabled: bool = Field(default=False, description="Whether plugin is enabled")
     base_url: str = Field(
-        ..., description="Portal URL (e.g., https://data.cityofboston.gov)"
+        ..., description="Portal URL (e.g., https://data.example.gov)"
     )
     portal_url: str = Field(
-        ..., description="Public portal URL (e.g., https://data.cityofboston.gov)"
+        ..., description="Public portal URL (e.g., https://data.example.gov)"
     )
     city_name: str = Field(..., description="Name of the city/organization")
     app_token: str = Field(

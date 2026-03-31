@@ -18,7 +18,63 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$PROJECT_ROOT"
 
-echo -e "${GREEN}🚀 OpenContext Deployment${NC}"
+# Parse named arguments
+ENVIRONMENT=""
+TF_WORKSPACE=""
+
+show_usage() {
+    echo "Usage: $0 --environment <staging|prod> [--tfworkspace <name>]"
+    echo ""
+    echo "Options:"
+    echo "  --environment, -e   Deployment environment: staging or prod (required)"
+    echo "  --tfworkspace, -w   Terraform workspace name (default: opencontext-staging or opencontext-prod)"
+    echo "  --help, -h          Show this help message"
+}
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --environment|-e)
+            ENVIRONMENT="$2"
+            shift 2
+            ;;
+        --tfworkspace|-w)
+            TF_WORKSPACE="$2"
+            shift 2
+            ;;
+        --help|-h)
+            show_usage
+            exit 0
+            ;;
+        *)
+            echo -e "${RED}❌ Error: Unknown argument '${1}'${NC}"
+            show_usage
+            exit 1
+            ;;
+    esac
+done
+
+if [ -z "$ENVIRONMENT" ]; then
+    echo -e "${RED}❌ Error: --environment is required${NC}"
+    show_usage
+    exit 1
+fi
+
+if [ "$ENVIRONMENT" != "staging" ] && [ "$ENVIRONMENT" != "prod" ]; then
+    echo -e "${RED}❌ Error: Invalid environment '${ENVIRONMENT}'. Must be 'staging' or 'prod'.${NC}"
+    show_usage
+    exit 1
+fi
+
+# Default workspace per environment when not explicitly provided
+if [ -z "$TF_WORKSPACE" ]; then
+    if [ "$ENVIRONMENT" = "prod" ]; then
+        TF_WORKSPACE="opencontext-prod"
+    else
+        TF_WORKSPACE="opencontext-staging"
+    fi
+fi
+
+echo -e "${GREEN}🚀 OpenContext Deployment [${ENVIRONMENT}] (workspace: ${TF_WORKSPACE})${NC}"
 echo "================================"
 echo ""
 
@@ -172,17 +228,8 @@ print(config.get('aws', {}).get('region', 'us-east-1'))
 EOF
 )
 
-LAMBDA_NAME=$(python3 << 'EOF'
-import yaml
-with open('config.yaml', 'r') as f:
-    config = yaml.safe_load(f)
-lambda_name = config.get('aws', {}).get('lambda_name', '')
-if not lambda_name:
-    server_name = config.get('server_name', 'my-mcp-server')
-    lambda_name = server_name.lower().replace(' ', '-')
-print(lambda_name)
-EOF
-)
+TFVARS_FILE="terraform/aws/${ENVIRONMENT}.tfvars"
+LAMBDA_NAME=$(grep '^lambda_name' "$TFVARS_FILE" | sed 's/.*=\s*"\(.*\)"/\1/')
 
 echo -e "${YELLOW}📦 Step 2: Packaging Lambda code...${NC}"
 
@@ -249,10 +296,14 @@ fi
 
 # Plan first - validates configuration and catches errors before any changes
 cd terraform/aws
+
+echo "Selecting Terraform workspace: ${TF_WORKSPACE}"
+terraform workspace select "$TF_WORKSPACE" 2>/dev/null || terraform workspace new "$TF_WORKSPACE"
+
 echo -e "${YELLOW}📋 Planning Terraform changes...${NC}"
 if ! terraform plan \
     -out=tfplan \
-    -var="lambda_name=$LAMBDA_NAME" \
+    -var-file="${ENVIRONMENT}.tfvars" \
     -var="aws_region=$AWS_REGION" \
     -var="config_file=config.yaml"; then
     echo -e "${RED}❌ Terraform plan failed - aborting deployment${NC}"
@@ -262,8 +313,10 @@ fi
 # Require explicit approval before deploying
 echo ""
 echo -e "${YELLOW}⚠️  Deployment will apply the planned changes to AWS.${NC}"
-echo -e "   Lambda: ${LAMBDA_NAME}"
-echo -e "   Region: ${AWS_REGION}"
+echo -e "   Environment: ${ENVIRONMENT}"
+echo -e "   Workspace:   ${TF_WORKSPACE}"
+echo -e "   Lambda:      ${LAMBDA_NAME}"
+echo -e "   Region:      ${AWS_REGION}"
 echo ""
 read -r -p "Do you want to proceed with deployment? (yes/no): " CONFIRM
 if [ "$CONFIRM" != "yes" ] && [ "$CONFIRM" != "y" ]; then

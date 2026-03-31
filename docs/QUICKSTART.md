@@ -24,16 +24,16 @@ cd opencontext
 
 Edit `config.yaml` and enable **ONE** plugin:
 
-### For CKAN (e.g., data.boston.gov):
+### For CKAN (e.g., data.gov, data.gov.uk):
 
 ```yaml
-server_name: "Boston OpenData"
+server_name: "Your City OpenData"
 plugins:
   ckan:
     enabled: true
-    base_url: "https://data.boston.gov"
-    portal_url: "https://data.boston.gov"
-    city_name: "Boston"
+    base_url: "https://data.yourcity.gov"
+    portal_url: "https://data.yourcity.gov"
+    city_name: "Your City"
     timeout: 120
 ```
 
@@ -69,7 +69,7 @@ Connect using **Claude Connectors** (same steps on both Claude.ai and Claude Des
 
 1. Go to **Settings** → **Connectors** (or **Customize** → **Connectors** on claude.ai)
 2. Click **Add custom connector**
-3. Enter a name (e.g. "Boston OpenData") and your API Gateway URL
+3. Enter a name (e.g. "Your City OpenData") and your API Gateway URL
 
 Get the URL from the deploy output, or run:
 
@@ -97,7 +97,7 @@ curl -X POST http://localhost:8000 \
 Enable your connector in the chat (click "+" → Connectors → toggle on), then ask:
 
 ```
-Search for datasets about housing in Boston
+Search for datasets about housing
 ```
 
 Claude will use your MCP server to search the CKAN portal.
