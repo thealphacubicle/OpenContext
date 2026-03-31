@@ -19,15 +19,21 @@ pre-commit install          # set up git hooks
 ```bash
 # Run local dev server (http://localhost:8000/mcp)
 <<<<<<< HEAD
+<<<<<<< HEAD
 opencontext serve
 
 # Test the running server
 opencontext test --url http://localhost:8000/mcp
 =======
+=======
+>>>>>>> 21f78af (Added DX files)
 python3 scripts/local_server.py
 
 # Test the running server
 ./scripts/test_streamable_http.sh
+<<<<<<< HEAD
+>>>>>>> 21f78af (Added DX files)
+=======
 >>>>>>> 21f78af (Added DX files)
 
 # Tests
@@ -39,6 +45,7 @@ ruff format core/ plugins/ server/ tests/
 
 # CLI
 <<<<<<< HEAD
+<<<<<<< HEAD
 opencontext validate --env staging    # validate config + Terraform before deploy
 opencontext deploy --env staging
 opencontext status --env staging
@@ -47,10 +54,15 @@ opencontext plugin list               # list enabled/disabled plugins
 opencontext security                  # pip-audit vulnerability scan
 opencontext architecture              # print AWS infra diagram in terminal
 =======
+=======
+>>>>>>> 21f78af (Added DX files)
 opencontext validate        # validate config.yaml
 opencontext deploy --env staging
 opencontext status
 opencontext logs
+<<<<<<< HEAD
+>>>>>>> 21f78af (Added DX files)
+=======
 >>>>>>> 21f78af (Added DX files)
 ```
 
@@ -63,7 +75,11 @@ custom_plugins/ # Drop user plugins here — auto-discovered at startup
 cli/            # Typer CLI (opencontext command)
 server/         # HTTP adapters: local aiohttp + AWS Lambda entry point
 <<<<<<< HEAD
+<<<<<<< HEAD
 server/adapters/ # local aiohttp dev server + AWS Lambda entry point
+=======
+scripts/        # local_server.py, deploy.sh, test_streamable_http.sh
+>>>>>>> 21f78af (Added DX files)
 =======
 scripts/        # local_server.py, deploy.sh, test_streamable_http.sh
 >>>>>>> 21f78af (Added DX files)
@@ -80,7 +96,11 @@ Key files:
 - `core/validators.py` — config validation; enforces the one-plugin rule
 - `server/adapters/aws_lambda.py` — Lambda entry point
 <<<<<<< HEAD
+<<<<<<< HEAD
 - `cli/commands/serve.py` — aiohttp dev server (started via `opencontext serve`)
+=======
+- `scripts/local_server.py` — aiohttp dev server
+>>>>>>> 21f78af (Added DX files)
 =======
 - `scripts/local_server.py` — aiohttp dev server
 >>>>>>> 21f78af (Added DX files)
@@ -141,7 +161,11 @@ uv run pytest tests/ -n auto --cov=core --cov=plugins --cov-fail-under=80
 - **`config.yaml` is gitignored** → changes to it won't be committed. Use `config-example.yaml` for template changes.
 - **Coverage < 80%** → CI fails. New code needs tests; check gaps with `--cov-report=html`.
 <<<<<<< HEAD
+<<<<<<< HEAD
 - **Lambda size limit** → 250 MB max. `opencontext deploy` validates package size before uploading.
+=======
+- **Lambda size limit** → 250 MB max. `scripts/deploy.sh` validates before packaging.
+>>>>>>> 21f78af (Added DX files)
 =======
 - **Lambda size limit** → 250 MB max. `scripts/deploy.sh` validates before packaging.
 >>>>>>> 21f78af (Added DX files)
