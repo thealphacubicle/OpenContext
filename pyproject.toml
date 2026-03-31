@@ -3,7 +3,7 @@ name = "opencontext"
 version = "1.0.0"
 description = "Extensible MCP framework template for civic data platforms"
 authors = [
-    {name = "Srihari Raman", email = "srihari.raman@boston.gov"}
+    {name = "Srihari Raman", email = "srihari.raman@outlook.com"}
 ]
 license = {text = "MIT"}
 readme = "README.md"

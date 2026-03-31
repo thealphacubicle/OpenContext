@@ -1,6 +1,6 @@
 # Custom domain resources for the prod MCP server.
-# Only created when var.custom_domain is non-empty (i.e. boston-prod workspace).
-# DNS records are managed externally by city IT — no Route53 resources here.
+# Only created when var.custom_domain is non-empty (e.g. prod workspace with a custom domain).
+# DNS records are managed externally by the domain owner — no Route53 resources here.
 
 locals {
   create_custom_domain = var.custom_domain != "" ? 1 : 0
@@ -37,7 +37,7 @@ resource "aws_api_gateway_domain_name" "custom" {
 }
 
 # ── Base Path Mapping ───────────────────────────────────────────────────────
-# Empty base path so data-mcp.boston.gov/mcp hits the existing /mcp resource.
+# Empty base path so custom-domain.example.com/mcp hits the existing /mcp resource.
 
 resource "aws_api_gateway_base_path_mapping" "custom" {
   count       = local.create_custom_domain

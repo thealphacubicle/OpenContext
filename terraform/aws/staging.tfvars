@@ -1,4 +1,4 @@
-lambda_name     = "boston-opencontext-mcp-staging"
+lambda_name     = "opencontext-mcp-staging"
 stage_name      = "staging"
 aws_region      = "us-east-1"
 config_file     = "config.yaml"
@@ -7,4 +7,4 @@ lambda_timeout  = 120
 api_quota_limit = 1000
 api_rate_limit  = 5
 api_burst_limit = 10
-custom_domain = "data-mcp-staging.boston.gov"
+custom_domain = ""

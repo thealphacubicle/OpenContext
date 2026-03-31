@@ -119,7 +119,7 @@ jobs:
           cp -r server/ package/server/
           cp -r plugins/ package/plugins/
           cp -r core/ package/core/
-          cp examples/boston-opendata/config.yaml package/config.yaml
+          cp config-example.yaml package/config.yaml
 
       - name: Create Lambda ZIP
         run: |

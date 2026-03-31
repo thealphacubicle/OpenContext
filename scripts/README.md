@@ -18,7 +18,7 @@ Deployment script that validates configuration and deploys the MCP server to AWS
 | Flag | Short | Required | Description |
 |------|-------|----------|-------------|
 | `--environment` | `-e` | Yes | `staging` or `prod` |
-| `--tfworkspace` | `-w` | No | Terraform workspace name (default: `boston-staging` or `boston-prod`) |
+| `--tfworkspace` | `-w` | No | Terraform workspace name (default: `opencontext-staging` or `opencontext-prod`) |
 | `--help` | `-h` | No | Show help |
 
 **Examples:**
@@ -26,7 +26,7 @@ Deployment script that validates configuration and deploys the MCP server to AWS
 ./scripts/deploy.sh --environment staging
 ./scripts/deploy.sh -e prod
 ./scripts/deploy.sh --environment staging --tfworkspace my-workspace
-./scripts/deploy.sh -e prod -w boston-prod-v2
+./scripts/deploy.sh -e prod -w my-org-prod
 ```
 
 **What it does:**

@@ -29,7 +29,7 @@ Connect via **Claude Connectors** (same steps on both Claude.ai and Claude Deskt
 
 1. Go to **Settings** → **Connectors** (or **Customize** → **Connectors** on claude.ai)
 2. Click **Add custom connector**
-3. Enter a name (e.g. "Boston OpenData") and your API Gateway URL
+3. Enter a name (e.g. "Your City OpenData") and your API Gateway URL
 
 Get the URL: `cd terraform/aws && terraform output -raw api_gateway_url`
 
@@ -52,8 +52,7 @@ See [Getting Started](docs/GETTING_STARTED.md) for full setup.
 
 ## Examples
 
-- **Boston OpenData (CKAN):** [examples/boston-opendata/config.yaml](examples/boston-opendata/config.yaml)
-- **Custom plugin:** [examples/custom-plugin/](examples/custom-plugin/)
+See the [examples/](examples/) directory for per-city configuration samples (Boston, Chicago, Seattle, and more).
 
 ---
 
@@ -74,4 +73,4 @@ Hooks: Ruff, yamllint, gofmt. Run manually: `pre-commit run --all-files`.
 
 MIT — see [LICENSE](LICENSE).
 
-**Author:** Srihari Raman, City of Boston Department of Innovation and Technology
+**Author:** Srihari Raman

@@ -37,9 +37,11 @@ custom_plugins/         # User plugins (auto-discovered)
 ├── template/
 │   └── plugin_template.py
 
-examples/               # Example configs and plugins
-├── boston-opendata/
-└── custom-plugin/
+examples/               # Example configs per city
+├── boston/
+├── chicago/
+├── seattle/
+└── ...
 
 client/                 # Go stdio-to-HTTP client (optional)
 tests/                  # Unit tests
@@ -64,7 +66,7 @@ Each deployment enables **exactly one** plugin.
 
 ### Built-in: CKAN
 
-For CKAN-based open data portals (e.g., data.boston.gov, data.gov, data.gov.uk).
+For CKAN-based open data portals (e.g., data.gov, data.gov.uk).
 
 **Configuration:**
 
@@ -128,7 +130,7 @@ async def health_check() -> bool
 **Reference:**
 - [Plugin template](../custom_plugins/template/plugin_template.py)
 - [CKAN plugin](../plugins/ckan/) – Full implementation
-- [Examples](../examples/custom-plugin/) – Custom plugin example
+- [Examples](../examples/) – Per-city configuration examples
 
 ## Plugin Interface
 
