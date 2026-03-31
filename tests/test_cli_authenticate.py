@@ -3,6 +3,7 @@
 import subprocess
 from unittest.mock import patch
 
+import click
 import pytest
 
 
@@ -147,7 +148,7 @@ class TestAuthenticateWithFailures:
 
         with patch("cli.commands.authenticate.sys") as mock_sys:
             mock_sys.version_info = (3, 9, 0, "final", 0)
-            with pytest.raises(SystemExit):
+            with pytest.raises((SystemExit, click.exceptions.Exit)):
                 authenticate()
 
     @patch("cli.commands.authenticate.shutil.which", return_value="/usr/bin/uv")
@@ -172,7 +173,7 @@ class TestAuthenticateWithFailures:
 
         with patch("cli.commands.authenticate.sys") as mock_sys:
             mock_sys.version_info = (3, 11, 5, "final", 0)
-            with pytest.raises(SystemExit):
+            with pytest.raises((SystemExit, click.exceptions.Exit)):
                 authenticate()
 
 

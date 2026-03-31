@@ -3,6 +3,7 @@
 import subprocess
 from unittest.mock import patch
 
+import click
 import pytest
 
 
@@ -137,7 +138,7 @@ class TestLogsFallback:
             args=[], returncode=1, stdout="", stderr=""
         )
 
-        with pytest.raises(SystemExit):
+        with pytest.raises((SystemExit, click.exceptions.Exit)):
             logs(env="staging", follow=False)
 
 
@@ -173,5 +174,5 @@ class TestLogsStreamFailure:
             stderr="",
         )
 
-        with pytest.raises(SystemExit):
+        with pytest.raises((SystemExit, click.exceptions.Exit)):
             logs(env="staging", follow=False)

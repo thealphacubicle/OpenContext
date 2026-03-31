@@ -50,8 +50,8 @@ def authenticate() -> None:
     checks: list[tuple[str, bool, str]] = []
 
     # --- 1. Python >= 3.11 (cannot auto-install) ---
-    major, minor = sys.version_info[:2]
-    py_version = f"{major}.{minor}.{sys.version_info.micro}"
+    major, minor, micro = sys.version_info[:3]
+    py_version = f"{major}.{minor}.{micro}"
     if (major, minor) >= (3, 11):
         checks.append(("Python >= 3.11", True, f"Python {py_version}"))
     else:

@@ -60,6 +60,19 @@ def _get_terraform_outputs(terraform_dir, keys: list[str]) -> dict[str, str]:
     return outputs
 
 
+def _get_apigw_domain(domain: str) -> dict | None:
+    """Return the API Gateway custom domain info, or None if not found."""
+    result = subprocess.run(
+        ["aws", "apigatewayv2", "get-domain-name", "--domain-name", domain, "--output", "json"],
+        capture_output=True,
+        text=True,
+        timeout=15,
+    )
+    if result.returncode != 0:
+        return None
+    return json.loads(result.stdout)
+
+
 def _get_cert_for_domain(domain: str) -> dict | None:
     """Find the ACM certificate matching the given domain."""
     result = subprocess.run(

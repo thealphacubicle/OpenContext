@@ -2,6 +2,7 @@
 
 from unittest.mock import patch
 
+import click
 import pytest
 
 
@@ -15,7 +16,7 @@ class TestDestroyTtyRequirement:
     def test_destroy_requires_tty(self, mock_tty):
         from cli.commands.destroy import destroy
 
-        with pytest.raises(SystemExit):
+        with pytest.raises((SystemExit, click.exceptions.Exit)):
             destroy(env="staging")
 
         mock_tty.assert_called_once()
@@ -55,9 +56,9 @@ class TestDestroyConfirmation:
         # User types "prod" instead of "staging"
         mock_q.text.return_value.ask.return_value = "prod"
 
-        with pytest.raises(SystemExit) as exc_info:
+        with pytest.raises((SystemExit, click.exceptions.Exit)) as exc_info:
             destroy(env="staging")
-        assert exc_info.value.code == 0
+        assert exc_info.value.exit_code == 0
 
     @patch("cli.commands.destroy.require_tty")
     @patch("cli.commands.destroy.ensure_config_exists")
@@ -87,9 +88,9 @@ class TestDestroyConfirmation:
         # User cancels (Ctrl+C)
         mock_q.text.return_value.ask.return_value = None
 
-        with pytest.raises(SystemExit) as exc_info:
+        with pytest.raises((SystemExit, click.exceptions.Exit)) as exc_info:
             destroy(env="staging")
-        assert exc_info.value.code == 0
+        assert exc_info.value.exit_code == 0
 
     @patch("cli.commands.destroy.require_tty")
     @patch("cli.commands.destroy.ensure_config_exists")
@@ -140,7 +141,7 @@ class TestDestroyConfirmation:
         tf_dir.mkdir(parents=True)
         mock_tf_dir.return_value = tf_dir
 
-        with pytest.raises(SystemExit):
+        with pytest.raises((SystemExit, click.exceptions.Exit)):
             destroy(env="staging")
 
 

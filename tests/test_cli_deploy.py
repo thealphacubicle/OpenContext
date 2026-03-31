@@ -3,6 +3,7 @@
 from unittest.mock import MagicMock, patch
 from zipfile import ZipFile
 
+import click
 import pytest
 
 
@@ -24,14 +25,14 @@ class TestValidateSinglePlugin:
         from cli.commands.deploy import _validate_single_plugin
 
         config = {"plugins": {"ckan": {"enabled": False}}}
-        with pytest.raises(SystemExit):
+        with pytest.raises((SystemExit, click.exceptions.Exit)):
             _validate_single_plugin(config)
 
     def test_empty_plugins_exits(self):
         from cli.commands.deploy import _validate_single_plugin
 
         config = {"plugins": {}}
-        with pytest.raises(SystemExit):
+        with pytest.raises((SystemExit, click.exceptions.Exit)):
             _validate_single_plugin(config)
 
     def test_multiple_plugins_exits(self):
@@ -43,7 +44,7 @@ class TestValidateSinglePlugin:
                 "socrata": {"enabled": True},
             }
         }
-        with pytest.raises(SystemExit):
+        with pytest.raises((SystemExit, click.exceptions.Exit)):
             _validate_single_plugin(config)
 
     def test_non_dict_plugin_ignored(self):
@@ -60,7 +61,7 @@ class TestValidateSinglePlugin:
     def test_missing_plugins_key_exits(self):
         from cli.commands.deploy import _validate_single_plugin
 
-        with pytest.raises(SystemExit):
+        with pytest.raises((SystemExit, click.exceptions.Exit)):
             _validate_single_plugin({})
 
 
@@ -200,7 +201,7 @@ class TestDeployTtyRequirement:
     def test_deploy_requires_tty(self, mock_tty):
         from cli.commands.deploy import deploy
 
-        with pytest.raises(SystemExit):
+        with pytest.raises((SystemExit, click.exceptions.Exit)):
             deploy(env="staging")
 
         mock_tty.assert_called_once()

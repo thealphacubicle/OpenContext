@@ -4,6 +4,7 @@ import json
 import subprocess
 from unittest.mock import patch
 
+import click
 import pytest
 
 
@@ -112,7 +113,7 @@ class TestDomainRequiresDomain:
     def test_exits_when_no_domain_configured(self, mock_tfvars, mock_init, mock_config):
         from cli.commands.domain import domain
 
-        with pytest.raises(SystemExit):
+        with pytest.raises((SystemExit, click.exceptions.Exit)):
             domain(env="staging")
 
     @patch("cli.commands.domain.ensure_config_exists")
@@ -121,7 +122,7 @@ class TestDomainRequiresDomain:
     def test_exits_when_domain_key_missing(self, mock_tfvars, mock_init, mock_config):
         from cli.commands.domain import domain
 
-        with pytest.raises(SystemExit):
+        with pytest.raises((SystemExit, click.exceptions.Exit)):
             domain(env="staging")
 
 

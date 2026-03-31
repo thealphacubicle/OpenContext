@@ -4,6 +4,7 @@ import subprocess
 from pathlib import Path
 from unittest.mock import patch
 
+import click
 import pytest
 import yaml
 
@@ -52,7 +53,7 @@ class TestLoadConfig:
         with patch("cli.utils.get_project_root", return_value=tmp_path):
             from cli.utils import load_config
 
-            with pytest.raises(SystemExit):
+            with pytest.raises((SystemExit, click.exceptions.Exit)):
                 load_config()
 
 
@@ -102,7 +103,7 @@ class TestLoadTfvars:
         with patch("cli.utils.get_terraform_dir", return_value=tf_dir):
             from cli.utils import load_tfvars
 
-            with pytest.raises(SystemExit):
+            with pytest.raises((SystemExit, click.exceptions.Exit)):
                 load_tfvars("staging")
 
     def test_handles_empty_string_values(self, tmp_path):
@@ -189,7 +190,7 @@ class TestRequireTty:
 
         with patch("cli.utils.sys") as mock_sys:
             mock_sys.stdin.isatty.return_value = False
-            with pytest.raises(SystemExit):
+            with pytest.raises((SystemExit, click.exceptions.Exit)):
                 require_tty()
 
     def test_passes_when_tty(self):
@@ -218,7 +219,7 @@ class TestEnsureChecks:
         with patch("cli.utils.get_project_root", return_value=tmp_path):
             from cli.utils import ensure_config_exists
 
-            with pytest.raises(SystemExit):
+            with pytest.raises((SystemExit, click.exceptions.Exit)):
                 ensure_config_exists()
 
     def test_ensure_terraform_init_passes(self, tmp_path):
@@ -238,7 +239,7 @@ class TestEnsureChecks:
         with patch("cli.utils.get_terraform_dir", return_value=tf_dir):
             from cli.utils import ensure_terraform_init
 
-            with pytest.raises(SystemExit):
+            with pytest.raises((SystemExit, click.exceptions.Exit)):
                 ensure_terraform_init()
 
 
@@ -267,7 +268,7 @@ class TestRunCmd:
 
         from cli.utils import run_cmd
 
-        with pytest.raises(SystemExit):
+        with pytest.raises((SystemExit, click.exceptions.Exit)):
             run_cmd(["bad"], spinner_msg="Testing")
 
 
@@ -293,7 +294,7 @@ class TestFriendlyExit:
         def bad_func():
             raise ValueError("something broke")
 
-        with pytest.raises(SystemExit):
+        with pytest.raises((SystemExit, click.exceptions.Exit)):
             bad_func()
 
     def test_reraises_system_exit(self):
