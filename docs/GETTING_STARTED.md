@@ -10,19 +10,31 @@ OpenContext uses the Model Context Protocol (MCP), which connects AI assistants 
 - Terraform >= 1.0 (for deployment)
 - AWS CLI configured (for deployment)
 
+Run `opencontext authenticate` to check all prerequisites automatically — it will flag anything missing and try to auto-install `uv` and `awscli` if needed.
+
+---
+
 ## Quick Path: Local Testing
 
 Test the server locally before deploying.
 
 ### 1. Configure Your Plugin
 
-Create `config.yaml` from the template and enable **exactly one** plugin:
+Run the interactive wizard:
+
+```bash
+opencontext configure
+```
+
+This walks you through selecting a plugin, setting the data source URL, and configuring AWS settings. It writes `config.yaml` and the Terraform variable files for you.
+
+If you prefer to configure manually, copy the template and edit it:
 
 ```bash
 cp config-example.yaml config.yaml
 ```
 
-Edit `config.yaml`. For CKAN:
+For CKAN:
 
 ```yaml
 plugins:
@@ -73,18 +85,32 @@ You can also test with Claude by asking it to search your data, or use [Testing]
 
 1. Fork the [OpenContext repository](https://github.com/thealphacubicle/OpenContext)
 2. Clone your fork
-3. Create config: `cp config-example.yaml config.yaml`
-4. Edit `config.yaml` with **exactly one** plugin enabled
+3. Check prerequisites:
+
+```bash
+opencontext authenticate
+```
+
+4. Run the configuration wizard:
+
+```bash
+opencontext configure
+```
+
+This prompts for your organization name, city, plugin, AWS region, Lambda name, and optional custom domain. It creates `config.yaml`, the Terraform `.tfvars` file, and initializes the Terraform workspace.
 
 ### 2. Deploy to AWS
 
 ```bash
-./scripts/deploy.sh
+opencontext deploy --env staging
 ```
 
-The script validates config, packages code, and deploys to AWS Lambda. You'll receive:
-- **Lambda Function URL** – for testing (no auth)
-- **API Gateway URL** – for production (API key, rate limiting)
+The command validates config, packages code, runs `terraform plan`, asks for confirmation, then applies. At the end you'll see:
+
+```
+API Gateway URL (use for Claude Connectors):
+https://xxx.execute-api.us-east-1.amazonaws.com/staging/mcp
+```
 
 AWS creates: Lambda function, Function URL, API Gateway, IAM role, CloudWatch Log Group. Cost is roughly $1/month for 100K requests. See [Deployment](DEPLOYMENT.md) for details.
 
@@ -96,18 +122,43 @@ Connect using **Claude Connectors** (same steps on both Claude.ai and Claude Des
 2. Click **Add custom connector**
 3. Enter a name (e.g. "Your City OpenData") and your API Gateway URL
 
-Get the URL:
+To retrieve the URL later:
+
+```bash
+opencontext status --env staging
+```
+
+Or directly from Terraform:
 
 ```bash
 cd terraform/aws
 terraform output -raw api_gateway_url
 ```
 
-The output already includes `/mcp`. Use this URL for production (rate limiting, API key). For testing without auth, use the Lambda URL from `terraform output -raw lambda_url` instead.
+The output already includes `/mcp`. Use the API Gateway URL for production (rate limiting, API key). For testing without auth, use the Lambda URL from `terraform output -raw lambda_url` instead.
 
 ### 4. Updating
 
-To update config or code: edit `config.yaml` or your code, then run `./scripts/deploy.sh` again.
+To update config or code: edit `config.yaml` or your code, then run:
+
+```bash
+opencontext deploy --env staging
+```
+
+---
+
+## CLI Reference
+
+| Command | Description |
+|---------|-------------|
+| `opencontext authenticate` | Check prerequisites (Python, uv, AWS CLI, credentials, Terraform) |
+| `opencontext configure` | Interactive wizard: creates `config.yaml`, `.tfvars`, and Terraform workspace |
+| `opencontext deploy --env <env>` | Package Lambda, plan changes, confirm, and deploy |
+| `opencontext status --env <env>` | Show deployment status, URLs, and cert status |
+| `opencontext validate --env <env>` | Run pre-deployment checks without deploying |
+| `opencontext test --env <env>` | Test the deployed MCP server endpoints |
+| `opencontext logs --env <env>` | Tail CloudWatch logs (`--follow` to stream) |
+| `opencontext destroy --env <env>` | Tear down all deployed resources |
 
 ---
 
@@ -118,8 +169,9 @@ To update config or code: edit `config.yaml` or your code, then run `./scripts/d
 | `ModuleNotFoundError: aiohttp` | `pip install aiohttp` |
 | "Multiple Plugins Enabled" | Enable only one plugin in `config.yaml` |
 | Claude can't connect | Verify URL includes `/mcp`, check connector is enabled in the chat |
-| Lambda 500 error | Check CloudWatch logs, validate config |
+| Lambda 500 error | Check CloudWatch logs: `opencontext logs --env staging` |
 | Plugin init fails | Check API URLs, keys, and network connectivity |
+| Missing `.tfvars` file | Run `opencontext configure` to generate it |
 
 ---
 

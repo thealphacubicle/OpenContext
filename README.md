@@ -13,25 +13,25 @@
 ## Quick Start
 
 ```bash
-# 1. Configure (create config, enable one data source)
-cp config-example.yaml config.yaml
-# Edit config.yaml - set enabled: true for one plugin
+# 1. Check prerequisites (Python 3.11+, uv, AWS CLI, Terraform)
+opencontext authenticate
 
-# 2. Test locally
+# 2. Configure interactively (creates config.yaml + Terraform workspace)
+opencontext configure
+
+# 3. Test locally (optional)
 pip install aiohttp
 python3 scripts/local_server.py
 
-# 3. Deploy
-./scripts/deploy.sh
+# 4. Deploy
+opencontext deploy --env staging
 ```
 
 Connect via **Claude Connectors** (same steps on both Claude.ai and Claude Desktop):
 
 1. Go to **Settings** → **Connectors** (or **Customize** → **Connectors** on claude.ai)
 2. Click **Add custom connector**
-3. Enter a name (e.g. "Your City OpenData") and your API Gateway URL
-
-Get the URL: `cd terraform/aws && terraform output -raw api_gateway_url`
+3. Enter a name (e.g. "Your City OpenData") and your API Gateway URL (printed at the end of `opencontext deploy`)
 
 See [Getting Started](docs/GETTING_STARTED.md) for full setup.
 

@@ -8,6 +8,8 @@ Deploy OpenContext to AWS Lambda. See [Getting Started](GETTING_STARTED.md) for 
 - Terraform >= 1.0
 - Python 3.11+
 
+Run `opencontext authenticate` to verify all prerequisites before deploying.
+
 ## AWS Permissions
 
 - Lambda (create, update functions)
@@ -17,17 +19,25 @@ Deploy OpenContext to AWS Lambda. See [Getting Started](GETTING_STARTED.md) for 
 
 ## Deployment
 
+### Using the CLI (recommended)
+
 ```bash
-# Configure AWS
-aws configure
+# Check prerequisites
+opencontext authenticate
 
-# Create config from template (if needed)
-cp config-example.yaml config.yaml
-# Edit config.yaml - enable exactly ONE plugin
+# Configure (creates config.yaml, .tfvars, and Terraform workspace)
+opencontext configure
 
-# Deploy (validates config, packages, deploys)
-./scripts/deploy.sh
+# Validate before deploying
+opencontext validate --env staging
+
+# Deploy
+opencontext deploy --env staging
 ```
+
+`opencontext deploy` packages the Lambda, runs `terraform plan`, shows a summary of changes, asks for confirmation, then applies. The API Gateway URL is printed on success.
+
+To update after changing code or config, just run `opencontext deploy --env staging` again.
 
 ### Manual Terraform
 
@@ -43,11 +53,11 @@ Then deploy:
 ```bash
 cd terraform/aws
 terraform init
-terraform plan -var="config_file=config.yaml"
-terraform apply
+terraform plan -var-file=staging.tfvars -out=tfplan
+terraform apply tfplan
 ```
 
-The deploy script copies `config.yaml` into `terraform/aws/` before running Terraform. For manual runs, ensure `config.yaml` exists in the project root or pass the correct path.
+The `opencontext configure` command generates the `.tfvars` file. For manual runs, ensure `config.yaml` exists in the project root and `terraform/aws/staging.tfvars` has the correct values.
 
 ## Endpoints
 
@@ -59,9 +69,13 @@ The deploy script copies `config.yaml` into `terraform/aws/` before running Terr
 ### Get URLs
 
 ```bash
+# Via CLI
+opencontext status --env staging
+
+# Via Terraform directly
 cd terraform/aws
 terraform output -raw api_gateway_url   # Production (includes /mcp)
-terraform output -raw lambda_url      # Testing
+terraform output -raw lambda_url        # Testing
 ```
 
 ### API Gateway
@@ -74,7 +88,7 @@ terraform output -raw lambda_url      # Testing
 
 ## Configuration
 
-Config is passed via `OPENCONTEXT_CONFIG` env var. Create `config.yaml` from `config-example.yaml`, edit it, and run `./scripts/deploy.sh` to update.
+Config is passed via `OPENCONTEXT_CONFIG` env var. Use `opencontext configure` to generate `config.yaml`, or create it manually from `config-example.yaml`.
 
 ### Lambda Settings (in config.yaml)
 
@@ -89,17 +103,20 @@ aws:
 ## Monitoring
 
 - **CloudWatch Logs:** `/aws/lambda/<function-name>`, 14-day retention
-- **Tail logs:** `aws logs tail /aws/lambda/my-mcp-server --follow`
+- **Tail logs via CLI:** `opencontext logs --env staging`
+- **Stream logs:** `opencontext logs --env staging --follow`
+- **Raw AWS CLI:** `aws logs tail /aws/lambda/my-mcp-server --follow`
 
 ## Updating & Cleanup
 
-**Update:** Change code/config, run `./scripts/deploy.sh` again.
+**Update:** Change code or `config.yaml`, then run `opencontext deploy --env staging` again.
 
 **Destroy:**
 ```bash
-cd terraform/aws
-terraform destroy -var="config_file=config.yaml"
+opencontext destroy --env staging
 ```
+
+This runs `terraform destroy` with a confirmation prompt. You must type the environment name to confirm.
 
 ## Cost (us-east-1)
 
@@ -112,12 +129,13 @@ terraform destroy -var="config_file=config.yaml"
 | Issue | Solution |
 |-------|----------|
 | Multiple plugins | Enable only ONE in `config.yaml` |
-| Lambda timeout | Increase `lambda_timeout` |
-| 500 error | Check CloudWatch logs, validate config |
+| Lambda timeout | Increase `lambda_timeout` in `config.yaml` |
+| 500 error | `opencontext logs --env staging` |
+| Missing `.tfvars` | Run `opencontext configure` |
 | High cost | Reduce `lambda_memory`, review usage |
 
 ## Security
 
 - Use API Gateway for production (rate limiting, quota)
-- Lambda URL is public—testing only
+- Lambda URL is public — testing only
 - Store secrets in env vars, not code
