@@ -204,32 +204,30 @@ def test(
         if passed < total:
             exit_ok = False
     else:
-        with console.status("Fetching deployment URL from Terraform..."):
-            base_url = _get_api_url(env)
-
-        if not base_url:
-            console.print(
-                "[red]Could not retrieve API Gateway URL from Terraform output.[/red]\n"
-                "Ensure the Lambda has been deployed with [bold]opencontext deploy[/bold]."
-            )
-            raise typer.Exit(1)
-
-        passed, total = _run_tests(base_url)
-        total_passed += passed
-        total_tests += total
-        if passed < total:
-            exit_ok = False
-
-        # Also test custom domain if cert is ISSUED
         with console.status("Checking for custom domain..."):
             custom_url = _get_custom_domain_url(env)
 
         if custom_url:
-            console.print(f"\n[bold]Also testing custom domain:[/bold] {custom_url}")
-            passed2, total2 = _run_tests(custom_url)
-            total_passed += passed2
-            total_tests += total2
-            if passed2 < total2:
+            passed, total = _run_tests(custom_url)
+            total_passed += passed
+            total_tests += total
+            if passed < total:
+                exit_ok = False
+        else:
+            with console.status("Fetching deployment URL from Terraform..."):
+                base_url = _get_api_url(env)
+
+            if not base_url:
+                console.print(
+                    "[red]Could not retrieve API Gateway URL from Terraform output.[/red]\n"
+                    "Ensure the Lambda has been deployed with [bold]opencontext deploy[/bold]."
+                )
+                raise typer.Exit(1)
+
+            passed, total = _run_tests(base_url)
+            total_passed += passed
+            total_tests += total
+            if passed < total:
                 exit_ok = False
 
     if not exit_ok:

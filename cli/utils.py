@@ -184,6 +184,27 @@ def run_cmd_stream(
     return process.wait()
 
 
+def run_cmd_stream_capture(
+    args: list[str],
+    *,
+    cwd: Path | str | None = None,
+) -> tuple[int, str]:
+    """Stream stdout/stderr live and capture it. Returns (exit_code, output)."""
+    process = subprocess.Popen(
+        args,
+        cwd=cwd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+    )
+    assert process.stdout is not None
+    lines: list[str] = []
+    for line in process.stdout:
+        console.print(line, end="", highlight=False)
+        lines.append(line)
+    return process.wait(), "".join(lines)
+
+
 def friendly_exit(func):
     """Decorator that catches exceptions and prints a user-friendly error."""
     def wrapper(*args, **kwargs):

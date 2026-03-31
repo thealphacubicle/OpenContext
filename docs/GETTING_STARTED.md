@@ -14,6 +14,32 @@ Run `opencontext authenticate` to check all prerequisites automatically — it w
 
 ---
 
+## Installing the CLI Locally
+
+Clone the repository and install the CLI with its dependencies:
+
+```bash
+git clone https://github.com/thealphacubicle/OpenContext.git
+cd OpenContext
+pip install -e ".[cli]"
+```
+
+The `-e` flag installs in editable mode so local code changes take effect immediately. The `[cli]` extra pulls in `typer`, `questionary`, and `rich`.
+
+Verify the install:
+
+```bash
+opencontext --help
+```
+
+To also install development dependencies (pytest, ruff, etc.):
+
+```bash
+pip install -e ".[cli,dev]"
+```
+
+---
+
 ## Quick Path: Local Testing
 
 Test the server locally before deploying.

@@ -25,6 +25,7 @@ from cli.utils import (
     require_tty,
     run_cmd,
     run_cmd_stream,
+    run_cmd_stream_capture,
     select_workspace,
 )
 
@@ -160,8 +161,8 @@ def deploy(
         )
         raise typer.Exit(1)
 
-    console.print("\n[bold]Planning Terraform changes...[/bold]")
-    plan_result = run_cmd(
+    console.print("\n[bold]Planning Terraform changes...[/bold]\n")
+    plan_exit_code, plan_output = run_cmd_stream_capture(
         [
             "terraform", "plan",
             f"-var-file={env}.tfvars",
@@ -169,10 +170,12 @@ def deploy(
             "-input=false",
         ],
         cwd=terraform_dir,
-        spinner_msg="Running terraform plan",
     )
+    if plan_exit_code != 0:
+        console.print("[red]Terraform plan failed.[/red]")
+        raise typer.Exit(1)
 
-    add, change, destroy = _parse_plan_summary(plan_result.stdout)
+    add, change, destroy = _parse_plan_summary(plan_output)
     plan_table = Table(title="Planned Changes")
     plan_table.add_column("Action", style="bold")
     plan_table.add_column("Count", justify="right")

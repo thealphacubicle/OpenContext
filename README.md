@@ -13,6 +13,11 @@
 ## Quick Start
 
 ```bash
+# 0. Install the CLI
+git clone https://github.com/thealphacubicle/OpenContext.git
+cd OpenContext
+pip install -e ".[cli]"
+
 # 1. Check prerequisites (Python 3.11+, uv, AWS CLI, Terraform)
 opencontext authenticate
 
@@ -20,7 +25,6 @@ opencontext authenticate
 opencontext configure
 
 # 3. Test locally (optional)
-pip install aiohttp
 python3 scripts/local_server.py
 
 # 4. Deploy

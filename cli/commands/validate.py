@@ -160,7 +160,6 @@ def run_checks(env: str) -> bool:
         ))
 
     # 8. AWS credentials valid
-    caller_arn = ""
     try:
         result = subprocess.run(
             ["aws", "sts", "get-caller-identity", "--output", "json"],
@@ -168,7 +167,6 @@ def run_checks(env: str) -> bool:
         )
         if result.returncode == 0:
             identity = json.loads(result.stdout)
-            caller_arn = identity.get("Arn", "")
             checks.append((
                 "AWS credentials valid",
                 True,
@@ -181,66 +179,7 @@ def run_checks(env: str) -> bool:
     except (subprocess.TimeoutExpired, json.JSONDecodeError):
         checks.append(("AWS credentials valid", False, "Run: aws configure"))
 
-    # 9. AWS required permissions via IAM policy simulation
-    if caller_arn:
-        actions = [
-            "lambda:CreateFunction",
-            "lambda:UpdateFunctionCode",
-            "apigateway:POST",
-            "iam:CreateRole",
-        ]
-        if custom_domain:
-            actions.append("acm:RequestCertificate")
-
-        try:
-            result = subprocess.run(
-                [
-                    "aws", "iam", "simulate-principal-policy",
-                    "--policy-source-arn", caller_arn,
-                    "--action-names", *actions,
-                    "--resource-arns", "*",
-                    "--output", "json",
-                ],
-                capture_output=True, text=True, timeout=30,
-            )
-            if result.returncode == 0:
-                data = json.loads(result.stdout)
-                eval_results = data.get("EvaluationResults", [])
-                denied = [
-                    r["EvalActionName"]
-                    for r in eval_results
-                    if r.get("EvalDecision") != "allowed"
-                ]
-                if denied:
-                    checks.append((
-                        "AWS required permissions",
-                        False,
-                        f"Denied: {', '.join(denied)}",
-                    ))
-                else:
-                    checks.append((
-                        "AWS required permissions",
-                        True,
-                        f"All {len(actions)} actions allowed",
-                    ))
-            else:
-                # Simulation may fail for assumed-role sessions or when the principal
-                # lacks iam:SimulatePrincipalPolicy. Treat as unverifiable.
-                checks.append((
-                    "AWS required permissions",
-                    True,
-                    "Could not simulate — verify manually that your role has required IAM permissions",
-                ))
-        except (FileNotFoundError, subprocess.TimeoutExpired, json.JSONDecodeError):
-            checks.append((
-                "AWS required permissions",
-                True,
-                "Could not simulate — verify manually that your role has required IAM permissions",
-            ))
-    else:
-        checks.append(("AWS required permissions", False, "Skipped — no valid AWS credentials"))
-
-    # 10. ACM cert exists for custom domain (only if custom_domain is set)
+    # 9. ACM cert exists for custom domain (only if custom_domain is set)
     if custom_domain:
         try:
             result = subprocess.run(

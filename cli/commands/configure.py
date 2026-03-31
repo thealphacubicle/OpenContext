@@ -36,14 +36,14 @@ def _prompt_plugin_config(plugin: str, defaults: dict) -> dict:
     cfg: dict = {"enabled": True}
 
     if plugin == "CKAN":
-        cfg["base_url"] = questionary.text(
+        cfg["base_url"] = (questionary.text(
             "CKAN API base URL:",
-            default=plugin_defaults.get("base_url", "https://data.example.gov/"),
-        ).ask()
-        cfg["portal_url"] = questionary.text(
+            default=plugin_defaults.get("base_url", "https://data.example.gov"),
+        ).ask() or "").rstrip("/")
+        cfg["portal_url"] = (questionary.text(
             "CKAN public portal URL:",
             default=plugin_defaults.get("portal_url", cfg["base_url"]),
-        ).ask()
+        ).ask() or "").rstrip("/")
         cfg["city_name"] = questionary.text(
             "City name (for display):",
             default=plugin_defaults.get("city_name", "Your City"),
@@ -55,10 +55,10 @@ def _prompt_plugin_config(plugin: str, defaults: dict) -> dict:
         cfg["timeout"] = int(timeout)
 
     elif plugin == "Socrata":
-        cfg["base_url"] = questionary.text(
+        cfg["base_url"] = (questionary.text(
             "Socrata base URL:",
             default=plugin_defaults.get("base_url", "https://data.example.gov"),
-        ).ask()
+        ).ask() or "").rstrip("/")
         app_token = questionary.text(
             "Socrata app token (optional, press Enter to skip):",
             default=plugin_defaults.get("app_token", ""),
@@ -72,10 +72,10 @@ def _prompt_plugin_config(plugin: str, defaults: dict) -> dict:
         cfg["timeout"] = int(timeout)
 
     elif plugin == "ArcGIS":
-        cfg["portal_url"] = questionary.text(
+        cfg["portal_url"] = (questionary.text(
             "ArcGIS Hub portal URL:",
             default=plugin_defaults.get("portal_url", "https://hub.arcgis.com"),
-        ).ask()
+        ).ask() or "").rstrip("/")
         cfg["city_name"] = questionary.text(
             "City name (for display):",
             default=plugin_defaults.get("city_name", "Your City"),
@@ -189,7 +189,7 @@ def configure() -> None:
         raise typer.Exit(0)
 
     city_slug = city_name.lower().replace(" ", "-")
-    suggested_lambda = f"{city_slug}-opendata-mcp-{env}"
+    suggested_lambda = f"{city_slug}-opencontext-mcp-{env}"
 
     lambda_name = questionary.text(
         "Lambda function name:",
@@ -310,7 +310,11 @@ def configure() -> None:
     summary.add_row("Workspace", ws_name)
     summary.add_row(
         "Custom domain",
-        custom_domain if custom_domain else "[dim]None (no domain resources will be created)[/dim]",
+        (
+            custom_domain
+            if custom_domain
+            else "[dim]None (no domain resources will be created)[/dim]"
+        ),
     )
 
     console.print()
