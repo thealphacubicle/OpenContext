@@ -134,7 +134,7 @@ def _print_verbose(invocations: list[Invocation], log_group: str) -> None:
         console.print()
 
 
-def _stream_formatted(cmd: list[str]) -> int:
+def run_cmd_stream(cmd: list[str]) -> int:
     """Stream log lines with error/START highlighting."""
     process = subprocess.Popen(
         cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True
@@ -192,27 +192,22 @@ def logs(
     cmd = ["aws", "logs", "tail", log_group, "--since", since, "--format", "detailed"]
 
     if follow:
-        exit_code = _stream_formatted(cmd + ["--follow"])
-        if exit_code != 0:
-            console.print("[red]Failed to tail logs.[/red] Is the Lambda deployed?")
+        cmd = cmd + ["--follow"]
+
+    if verbose is True:
+        # Capture output for structured display
+        with console.status("Fetching logs…"):
+            result = subprocess.run(
+                cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True
+            )
+        if result.returncode != 0:
+            console.print("[red]Failed to fetch logs.[/red] Is the Lambda deployed?")
             raise typer.Exit(1)
+        invocations = _parse_logs(result.stdout)
+        _print_verbose(invocations, log_group)
         return
 
-    # Non-follow: capture, parse, and display
-    # Merge stderr→stdout to match _stream_formatted behaviour; aws logs tail
-    # may write log content to stderr.
-    with console.status("Fetching logs…"):
-        result = subprocess.run(
-            cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True
-        )
-
-    if result.returncode != 0:
-        console.print("[red]Failed to fetch logs.[/red] Is the Lambda deployed?")
+    exit_code = run_cmd_stream(cmd)
+    if exit_code != 0:
+        console.print("[red]Failed to tail logs.[/red] Is the Lambda deployed?")
         raise typer.Exit(1)
-
-    invocations = _parse_logs(result.stdout)
-
-    if verbose:
-        _print_verbose(invocations, log_group)
-    else:
-        _print_summary(invocations, log_group, since)
