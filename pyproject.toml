@@ -16,6 +16,7 @@ dependencies = [
     "python-json-logger>=2.0.0",
     "sqlparse>=0.4.4",
     "aiohttp>=3.8.0",
+    "pre-commit>=4.5.1",
 ]
 
 [project.optional-dependencies]
