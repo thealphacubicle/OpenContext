@@ -318,10 +318,10 @@ class TestConfigSchema:
     def test_config_schema_valid(self):
         config = ArcGISPluginConfig(
             portal_url="https://hub.arcgis.com",
-            city_name="Boston",
+            city_name="TestCity",
             timeout=60,
         )
-        assert config.city_name == "Boston"
+        assert config.city_name == "TestCity"
         assert config.portal_url == "https://hub.arcgis.com"
         assert config.timeout == 60
         assert config.token is None
@@ -330,14 +330,14 @@ class TestConfigSchema:
         with pytest.raises(ValidationError):
             ArcGISPluginConfig(
                 portal_url="https://hub.arcgis.com",
-                city_name="Boston",
+                city_name="TestCity",
                 unknown_field="oops",
             )
 
     def test_config_schema_strips_trailing_slash(self):
         config = ArcGISPluginConfig(
             portal_url="https://hub.arcgis.com/",
-            city_name="Boston",
+            city_name="TestCity",
         )
         assert config.portal_url == "https://hub.arcgis.com"
 
@@ -345,5 +345,5 @@ class TestConfigSchema:
         with pytest.raises(ValidationError):
             ArcGISPluginConfig(
                 portal_url="not-a-url",
-                city_name="Boston",
+                city_name="TestCity",
             )

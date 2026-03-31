@@ -10,12 +10,29 @@ Deployment script that validates configuration and deploys the MCP server to AWS
 
 **Usage:**
 ```bash
-./scripts/deploy.sh
+./scripts/deploy.sh --environment <staging|prod> [--tfworkspace <name>]
+```
+
+**Options:**
+
+| Flag | Short | Required | Description |
+|------|-------|----------|-------------|
+| `--environment` | `-e` | Yes | `staging` or `prod` |
+| `--tfworkspace` | `-w` | No | Terraform workspace name (default: `opencontext-staging` or `opencontext-prod`) |
+| `--help` | `-h` | No | Show help |
+
+**Examples:**
+```bash
+./scripts/deploy.sh --environment staging
+./scripts/deploy.sh -e prod
+./scripts/deploy.sh --environment staging --tfworkspace my-workspace
+./scripts/deploy.sh -e prod -w my-org-prod
 ```
 
 **What it does:**
 - Validates that exactly ONE plugin is enabled
 - Packages the code for Lambda deployment
+- Selects (or creates) the specified Terraform workspace
 - Deploys to AWS using Terraform
 - Outputs the API Gateway URL and Lambda Function URL
 

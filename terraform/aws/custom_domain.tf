@@ -1,9 +1,6 @@
-# Custom domain resources for the MCP server.
-# Only created when var.custom_domain is non-empty.
-# DNS records are managed externally by city IT — no Route53 resources here.
-#
-# When custom_domain = "" (user declined), count = 0 and nothing is created.
-# Terraform will not touch or delete any other resources.
+# Custom domain resources for the prod MCP server.
+# Only created when var.custom_domain is non-empty (e.g. prod workspace with a custom domain).
+# DNS records are managed externally by the domain owner — no Route53 resources here.
 
 locals {
   create_custom_domain = var.custom_domain != "" ? 1 : 0
@@ -40,7 +37,7 @@ resource "aws_api_gateway_domain_name" "custom" {
 }
 
 # ── Base Path Mapping ───────────────────────────────────────────────────────
-# Empty base path so {custom_domain}/mcp hits the existing /mcp resource.
+# Empty base path so custom-domain.example.com/mcp hits the existing /mcp resource.
 
 resource "aws_api_gateway_base_path_mapping" "custom" {
   count       = local.create_custom_domain

@@ -22,9 +22,9 @@
 
 ---
 # Server metadata
-server_name: "Your Organization OpenData MCP" # e.g., "Boston OpenData MCP"
+server_name: "Your Organization OpenData MCP" # e.g., "Chicago OpenData MCP"
 description: "Your organization's open data MCP server - Safe, conversational access to your open data"
-organization: "Your Organization Name" # e.g., "City of Boston"
+organization: "Your Organization Name" # e.g., "City of Chicago"
 
 # Plugin configuration
 # ====================
@@ -34,7 +34,7 @@ organization: "Your Organization Name" # e.g., "City of Boston"
 #
 plugins:
   # Built-in: CKAN (for CKAN-based open data portals)
-  # Examples: data.boston.gov, data.gov, data.gov.uk
+  # Examples: data.gov, data.gov.uk
   ckan:
     enabled: false # Set to true to use
     base_url: "https://data.example.gov/" # CKAN API base URL
@@ -44,7 +44,7 @@ plugins:
     # api_key: "${CKAN_API_KEY}"  # Optional: CKAN API key for authenticated requests
 
   # Built-in: ArcGIS Hub (for ArcGIS Hub open data portals)
-  # Examples: hub.arcgis.com, data-boston.hub.arcgis.com
+  # Examples: hub.arcgis.com, data-yourcity.hub.arcgis.com
   arcgis:
     enabled: false # Set to true to use
     portal_url: "https://hub.arcgis.com"

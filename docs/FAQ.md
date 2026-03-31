@@ -44,7 +44,7 @@ Edit `config.yaml` and run `./scripts/deploy.sh` again. Terraform will update th
 
 Built-in plugins:
 
-- **CKAN** - For CKAN-based portals (data.boston.gov, data.gov, data.gov.uk)
+- **CKAN** - For CKAN-based portals (e.g., data.gov, data.gov.uk)
 
 You can also create custom plugins in `custom_plugins/`.
 
@@ -161,9 +161,9 @@ from plugins.ckan.plugin import CKANPlugin
 
 async def test():
     plugin = CKANPlugin({
-        "base_url": "https://data.boston.gov",
-        "portal_url": "https://data.boston.gov",
-        "city_name": "Boston",
+        "base_url": "https://data.yourcity.gov",
+        "portal_url": "https://data.yourcity.gov",
+        "city_name": "Your City",
         "timeout": 120,
     })
     await plugin.initialize()

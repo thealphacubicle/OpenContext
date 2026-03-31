@@ -17,9 +17,9 @@ class TestPluginInitialization:
     def socrata_config(self):
         """Standard Socrata plugin configuration."""
         return {
-            "base_url": "https://data.cityofboston.gov",
-            "portal_url": "https://data.cityofboston.gov",
-            "city_name": "Boston",
+            "base_url": "https://data.example.gov",
+            "portal_url": "https://data.example.gov",
+            "city_name": "Example City",
             "app_token": "test-app-token-123",
             "timeout": 30.0,
         }
@@ -123,9 +123,9 @@ class TestGetTools:
     @pytest.fixture
     def socrata_config(self):
         return {
-            "base_url": "https://data.cityofboston.gov",
-            "portal_url": "https://data.cityofboston.gov",
-            "city_name": "Boston",
+            "base_url": "https://data.example.gov",
+            "portal_url": "https://data.example.gov",
+            "city_name": "Example City",
             "app_token": "test-token",
         }
 
@@ -150,7 +150,7 @@ class TestGetTools:
 
         for tool in tools:
             if tool.name != "execute_sql":  # execute_sql has generic description
-                assert "Boston" in tool.description
+                assert "Example City" in tool.description
 
     def test_get_tools_has_correct_input_schemas(self, socrata_config):
         """Test that tools have correct input schemas."""
@@ -177,9 +177,9 @@ class TestSearchDatasets:
     @pytest.fixture
     def socrata_config(self):
         return {
-            "base_url": "https://data.cityofboston.gov",
-            "portal_url": "https://data.cityofboston.gov",
-            "city_name": "Boston",
+            "base_url": "https://data.example.gov",
+            "portal_url": "https://data.example.gov",
+            "city_name": "Example City",
             "app_token": "test-token",
         }
 
@@ -225,7 +225,7 @@ class TestSearchDatasets:
             assert len(get_calls) >= 2
             params = get_calls[1][1].get("params", {})
             assert "domains" in params
-            assert "data.cityofboston.gov" in str(params.get("domains", ""))
+            assert "data.example.gov" in str(params.get("domains", ""))
 
 
 class TestGetDataset:
@@ -234,9 +234,9 @@ class TestGetDataset:
     @pytest.fixture
     def socrata_config(self):
         return {
-            "base_url": "https://data.cityofboston.gov",
-            "portal_url": "https://data.cityofboston.gov",
-            "city_name": "Boston",
+            "base_url": "https://data.example.gov",
+            "portal_url": "https://data.example.gov",
+            "city_name": "Example City",
             "app_token": "test-token",
         }
 
@@ -284,9 +284,9 @@ class TestGetSchema:
     @pytest.fixture
     def socrata_config(self):
         return {
-            "base_url": "https://data.cityofboston.gov",
-            "portal_url": "https://data.cityofboston.gov",
-            "city_name": "Boston",
+            "base_url": "https://data.example.gov",
+            "portal_url": "https://data.example.gov",
+            "city_name": "Example City",
             "app_token": "test-token",
         }
 
@@ -339,9 +339,9 @@ class TestQueryDataset:
     @pytest.fixture
     def socrata_config(self):
         return {
-            "base_url": "https://data.cityofboston.gov",
-            "portal_url": "https://data.cityofboston.gov",
-            "city_name": "Boston",
+            "base_url": "https://data.example.gov",
+            "portal_url": "https://data.example.gov",
+            "city_name": "Example City",
             "app_token": "test-token",
         }
 
@@ -387,9 +387,9 @@ class TestListCategories:
     @pytest.fixture
     def socrata_config(self):
         return {
-            "base_url": "https://data.cityofboston.gov",
-            "portal_url": "https://data.cityofboston.gov",
-            "city_name": "Boston",
+            "base_url": "https://data.example.gov",
+            "portal_url": "https://data.example.gov",
+            "city_name": "Example City",
             "app_token": "test-token",
         }
 
@@ -439,9 +439,9 @@ class TestExecuteTool:
     @pytest.fixture
     def socrata_config(self):
         return {
-            "base_url": "https://data.cityofboston.gov",
-            "portal_url": "https://data.cityofboston.gov",
-            "city_name": "Boston",
+            "base_url": "https://data.example.gov",
+            "portal_url": "https://data.example.gov",
+            "city_name": "Example City",
             "app_token": "test-token",
         }
 
@@ -662,9 +662,9 @@ class TestHealthCheck:
     @pytest.fixture
     def socrata_config(self):
         return {
-            "base_url": "https://data.cityofboston.gov",
-            "portal_url": "https://data.cityofboston.gov",
-            "city_name": "Boston",
+            "base_url": "https://data.example.gov",
+            "portal_url": "https://data.example.gov",
+            "city_name": "Example City",
             "app_token": "test-token",
         }
 
@@ -716,9 +716,9 @@ class TestQueryData:
     @pytest.fixture
     def socrata_config(self):
         return {
-            "base_url": "https://data.cityofboston.gov",
-            "portal_url": "https://data.cityofboston.gov",
-            "city_name": "Boston",
+            "base_url": "https://data.example.gov",
+            "portal_url": "https://data.example.gov",
+            "city_name": "Example City",
             "app_token": "test-token",
         }
 
@@ -791,9 +791,9 @@ class TestFormatMethods:
     def plugin(self):
         return SocrataPlugin(
             {
-                "base_url": "https://data.cityofboston.gov",
-                "portal_url": "https://data.cityofboston.gov",
-                "city_name": "Boston",
+                "base_url": "https://data.example.gov",
+                "portal_url": "https://data.example.gov",
+                "city_name": "Example City",
                 "app_token": "test-token",
             }
         )
@@ -810,7 +810,7 @@ class TestFormatMethods:
                     "name": "Budget Data",
                     "description": "City budget",
                     "category": "Finance",
-                    "permalink": "https://data.cityofboston.gov/d/abc-1234",
+                    "permalink": "https://data.example.gov/d/abc-1234",
                 }
             }
         ]
@@ -831,7 +831,7 @@ class TestFormatMethods:
         ]
         result = plugin._format_search_results(datasets)
         assert "abc-1234" in result
-        assert "data.cityofboston.gov/d/abc-1234" in result
+        assert "data.example.gov/d/abc-1234" in result
 
     def test_format_dataset(self, plugin):
         dataset = {
@@ -928,9 +928,9 @@ class TestExecuteToolMissingParams:
     @pytest.fixture
     def socrata_config(self):
         return {
-            "base_url": "https://data.cityofboston.gov",
-            "portal_url": "https://data.cityofboston.gov",
-            "city_name": "Boston",
+            "base_url": "https://data.example.gov",
+            "portal_url": "https://data.example.gov",
+            "city_name": "Example City",
             "app_token": "test-token",
         }
 
@@ -1020,9 +1020,9 @@ class TestParseSoqlLimit:
     def plugin(self):
         return SocrataPlugin(
             {
-                "base_url": "https://data.cityofboston.gov",
-                "portal_url": "https://data.cityofboston.gov",
-                "city_name": "Boston",
+                "base_url": "https://data.example.gov",
+                "portal_url": "https://data.example.gov",
+                "city_name": "Example City",
                 "app_token": "test-token",
             }
         )
@@ -1043,9 +1043,9 @@ class TestQueryDatasetRowExtraction:
     @pytest.fixture
     def socrata_config(self):
         return {
-            "base_url": "https://data.cityofboston.gov",
-            "portal_url": "https://data.cityofboston.gov",
-            "city_name": "Boston",
+            "base_url": "https://data.example.gov",
+            "portal_url": "https://data.example.gov",
+            "city_name": "Example City",
             "app_token": "test-token",
         }
 

@@ -4,7 +4,7 @@ OpenContext includes built-in plugins for CKAN and Socrata open data portals.
 
 ## CKAN Plugin
 
-For CKAN-based open data portals (e.g., data.boston.gov, data.gov, data.gov.uk).
+For CKAN-based open data portals (e.g., data.gov, data.gov.uk).
 
 ### Configuration
 
@@ -30,7 +30,7 @@ plugins:
 
 **Search datasets:**
 ```
-Search for datasets about housing in Boston
+Search for datasets about housing
 ```
 
 **Get dataset:**
@@ -64,9 +64,9 @@ For Socrata-based open data portals (e.g., data.cityofchicago.org, data.cityofne
 plugins:
   socrata:
     enabled: true
-    base_url: "https://data.cityofboston.gov"
-    portal_url: "https://data.cityofboston.gov"
-    city_name: "Boston"
+    base_url: "https://data.yourcity.gov"
+    portal_url: "https://data.yourcity.gov"
+    city_name: "Your City"
     app_token: "${SOCRATA_APP_TOKEN}"   # Required
     timeout: 30.0                        # HTTP timeout (default: 30)
 ```
@@ -84,7 +84,7 @@ plugins:
 
 **Search datasets:**
 ```
-Search for datasets about housing in Boston
+Search for datasets about housing
 ```
 
 **Get dataset:**
@@ -104,7 +104,7 @@ Query dataset wc4w-4jew with: SELECT * WHERE year > 2020 LIMIT 50
 
 **List categories:**
 ```
-List all dataset categories on Boston's open data portal
+List all dataset categories on the open data portal
 ```
 
 ### Socrata API
