@@ -1,0 +1,5 @@
+lambda_name   = "boston-opendata-mcp-staging"
+stage_name    = "staging"
+aws_region    = "us-east-1"
+config_file   = "config.yaml"
+custom_domain = ""

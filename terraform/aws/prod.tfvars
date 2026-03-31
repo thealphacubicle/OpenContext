@@ -1,0 +1,5 @@
+lambda_name   = "boston-opendata-mcp-prod"
+stage_name    = "prod"
+aws_region    = "us-east-1"
+config_file   = "config.yaml"
+custom_domain = "data-mcp.boston.gov"
