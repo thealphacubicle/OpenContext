@@ -126,7 +126,7 @@ class SocrataPlugin(DataPlugin):
             raise RuntimeError("Plugin not initialized")
 
         domain = self._get_domain()
-        params = {**params, "domains": domain}
+        params = {**params, "domains": domain, "search_context": domain}
 
         try:
             response = await self.discovery_client.get("/api/catalog/v1", params=params)
