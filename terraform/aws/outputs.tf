@@ -1,8 +1,3 @@
-output "lambda_url" {
-  description = "Lambda Function URL for MCP server (for local testing)"
-  value       = aws_lambda_function_url.mcp_server_url.function_url
-}
-
 output "lambda_function_name" {
   description = "Name of the Lambda function"
   value       = aws_lambda_function.mcp_server.function_name

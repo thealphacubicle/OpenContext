@@ -92,20 +92,6 @@ resource "aws_lambda_function" "mcp_server" {
   ]
 }
 
-# Lambda Function URL
-resource "aws_lambda_function_url" "mcp_server_url" {
-  function_name      = aws_lambda_function.mcp_server.function_name
-  authorization_type = "NONE"
-
-  cors {
-    allow_origins  = ["*"]
-    allow_methods  = ["POST"]
-    allow_headers  = ["content-type"]
-    expose_headers = ["x-request-id", "mcp-session-id"]
-    max_age        = 86400
-  }
-}
-
 # CloudWatch Log Group
 resource "aws_cloudwatch_log_group" "lambda_logs" {
   name              = "/aws/lambda/${local.lambda_name}"
