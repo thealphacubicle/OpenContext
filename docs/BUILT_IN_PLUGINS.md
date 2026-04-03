@@ -28,6 +28,7 @@ plugins:
 | `ckan__query_data(resource_id, filters, limit)` | Query data from a resource |
 | `ckan__get_schema(resource_id)` | Get schema for a resource |
 | `ckan__execute_sql(sql)` | Execute PostgreSQL SELECT queries (advanced) |
+| `ckan__aggregate_data(resource_id, metrics, group_by, filters, having, order_by, limit)` | Aggregate data with GROUP BY — supports `count(*)`, `sum()`, `avg()`, `min()`, `max()`, `stddev()` |
 
 ### SQL Execution
 
@@ -87,7 +88,7 @@ This plugin uses two API layers:
 
 For Socrata-based open data portals (e.g., data.cityofchicago.org, data.cityofnewyork.us, data.seattle.gov).
 
-**Note:** A free Socrata app token is strongly recommended. Register at [https://dev.socrata.com/register](https://dev.socrata.com/register).
+**Note:** A Socrata app token is **required**. Register for a free token at [https://dev.socrata.com/register](https://dev.socrata.com/register).
 
 ### Configuration
 
@@ -98,7 +99,7 @@ plugins:
     base_url: "https://data.yourcity.gov"
     portal_url: "https://data.yourcity.gov"
     city_name: "Your City"
-    app_token: "${SOCRATA_APP_TOKEN}"   # Recommended
+    app_token: "${SOCRATA_APP_TOKEN}"   # Required
     timeout: 30                          # HTTP timeout in seconds (default: 30)
 ```
 

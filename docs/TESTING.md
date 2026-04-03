@@ -119,11 +119,11 @@ pytest --cov=core --cov=plugins
 
 ## Testing Against Production
 
-To test a deployed server, use the Lambda URL or API Gateway URL:
+To test a deployed server, use the API Gateway URL:
 
 ```bash
-LAMBDA_URL="https://your-lambda-url.lambda-url.us-east-1.on.aws"
-curl -X POST $LAMBDA_URL/mcp \
+API_GW_URL=$(cd terraform/aws && terraform output -raw api_gateway_url)
+curl -X POST $API_GW_URL \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc":"2.0","id":1,"method":"ping"}'
 ```

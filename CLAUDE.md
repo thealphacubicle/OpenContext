@@ -61,7 +61,7 @@ Key files:
 - `core/plugin_manager.py` — discovery, loading, one-plugin enforcement
 - `core/validators.py` — config validation; enforces the one-plugin rule
 - `server/adapters/aws_lambda.py` — Lambda entry point
-- `server/adapters/local.py` — aiohttp dev server (started via `opencontext serve`)
+- `cli/commands/serve.py` — aiohttp dev server (started via `opencontext serve`)
 
 ## Plugin System
 

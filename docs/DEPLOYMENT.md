@@ -15,7 +15,10 @@ Run `opencontext authenticate` to verify all prerequisites before deploying.
 - Lambda (create, update functions)
 - IAM (roles, policies)
 - CloudWatch Logs
-- API Gateway / Lambda Function URLs
+- API Gateway
+- SQS (Dead Letter Queue for Lambda failures)
+- X-Ray (tracing, via AWSXRayDaemonWriteAccess)
+- ACM (only required when configuring a custom domain)
 
 ## Deployment
 
@@ -61,12 +64,13 @@ The `opencontext configure` command generates the `.tfvars` file. For manual run
 
 ## Endpoints
 
+All traffic — development, staging, and production — goes through the API Gateway URL. There is no separate no-auth endpoint.
+
 | Endpoint | Use Case | Auth |
 |----------|----------|------|
-| **API Gateway** | Production | Rate limiting, daily quota |
-| **Lambda Function URL** | Testing | None |
+| **API Gateway** | All environments | Rate limiting, daily quota |
 
-### Get URLs
+### Get the URL
 
 ```bash
 # Via CLI
@@ -74,8 +78,7 @@ opencontext status --env staging
 
 # Via Terraform directly
 cd terraform/aws
-terraform output -raw api_gateway_url   # Production (includes /mcp)
-terraform output -raw lambda_url        # Testing
+terraform output -raw api_gateway_url   # Includes /mcp suffix
 ```
 
 ### API Gateway
@@ -84,7 +87,6 @@ terraform output -raw lambda_url        # Testing
 - **Daily quota:** Configurable via `api_quota_limit` Terraform variable
 - **Stage name:** Default is `staging`; URL format: `https://...execute-api.region.amazonaws.com/staging/mcp`
 - **HTTP 429** when rate or quota is exceeded
-- Use for production; Lambda URL has no auth
 
 ## Configuration
 
@@ -121,7 +123,7 @@ This runs `terraform destroy` with a confirmation prompt. You must type the envi
 ## Cost (us-east-1)
 
 - Lambda: ~$0.20/1M requests, ~$0.0000166667/GB-second
-- Function URL: Free
+- API Gateway: ~$3.50/1M requests
 - Example: 100K req/month, 512 MB, 1s avg ≈ **$1/month**
 
 ## Troubleshooting
@@ -136,6 +138,5 @@ This runs `terraform destroy` with a confirmation prompt. You must type the envi
 
 ## Security
 
-- Use API Gateway for production (rate limiting, quota)
-- Lambda URL is public — testing only
+- API Gateway enforces rate limiting and daily quotas for all environments
 - Store secrets in env vars, not code

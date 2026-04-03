@@ -160,7 +160,7 @@ cd terraform/aws
 terraform output -raw api_gateway_url
 ```
 
-The output already includes `/mcp`. Use the API Gateway URL for production (rate limiting, API key). For testing without auth, use the Lambda URL from `terraform output -raw lambda_url` instead.
+The output already includes `/mcp`. Use the API Gateway URL for all testing and production traffic.
 
 ### 4. Updating
 
