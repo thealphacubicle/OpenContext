@@ -306,6 +306,8 @@ def configure() -> None:
     summary.add_row("AWS region", region)
     summary.add_row("Lambda memory", f"{lambda_memory} MB")
     summary.add_row("Lambda timeout", f"{lambda_timeout}s")
+    summary.add_row("X-Ray Tracing", "Enabled")
+    summary.add_row("Dead Letter Queue", "Enabled (failures → SQS)")
     summary.add_row("Workspace", ws_name)
     summary.add_row(
         "Custom domain",
