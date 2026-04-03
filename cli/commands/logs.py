@@ -174,6 +174,7 @@ def logs(
         cwd=terraform_dir,
         capture_output=True,
         text=True,
+        timeout=15,
     )
     if result.returncode == 0 and result.stdout.strip():
         log_group = result.stdout.strip()
@@ -198,7 +199,8 @@ def logs(
         # Capture output for structured display
         with console.status("Fetching logs…"):
             result = subprocess.run(
-                cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True
+                cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+                timeout=30,
             )
         if result.returncode != 0:
             console.print("[red]Failed to fetch logs.[/red] Is the Lambda deployed?")

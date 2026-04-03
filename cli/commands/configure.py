@@ -267,6 +267,7 @@ def configure() -> None:
         cwd=terraform_dir,
         capture_output=True,
         text=True,
+        timeout=15,
     )
     existing = [w.strip().lstrip("* ") for w in result.stdout.splitlines()]
 

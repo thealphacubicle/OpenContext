@@ -57,6 +57,7 @@ def status(
             cwd=terraform_dir,
             capture_output=True,
             text=True,
+            timeout=15,
         )
         if result.returncode == 0 and result.stdout.strip():
             raw = json.loads(result.stdout)
@@ -75,6 +76,7 @@ def status(
                 ],
                 capture_output=True,
                 text=True,
+                timeout=15,
             )
             if result.returncode == 0:
                 data = json.loads(result.stdout)

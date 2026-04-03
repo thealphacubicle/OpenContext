@@ -20,13 +20,14 @@ PROTECTED_FILES = {
 PROTECTED_PREFIXES = ("examples/",)
 
 
-def _run_git(args: list[str], cwd=None, check: bool = False) -> subprocess.CompletedProcess:
+def _run_git(args: list[str], cwd=None, check: bool = False, timeout: int = 30) -> subprocess.CompletedProcess:
     return subprocess.run(
         ["git", *args],
         cwd=cwd,
         capture_output=True,
         text=True,
         check=check,
+        timeout=timeout,
     )
 
 
@@ -76,7 +77,7 @@ def upgrade(
     # 2. Fetch upstream
     console.print("\n[bold]Fetching upstream...[/bold]")
     with console.status("git fetch upstream"):
-        result = _run_git(["fetch", "upstream"], cwd=project_root)
+        result = _run_git(["fetch", "upstream"], cwd=project_root, timeout=60)
     if result.returncode != 0:
         console.print(f"[red]Failed to fetch upstream:[/red] {result.stderr.strip()}")
         raise typer.Exit(1)
@@ -134,6 +135,7 @@ def upgrade(
         result = _run_git(
             ["merge", "upstream/main", "--no-commit", "--no-ff"],
             cwd=project_root,
+            timeout=120,
         )
 
 
