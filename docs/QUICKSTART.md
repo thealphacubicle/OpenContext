@@ -36,7 +36,7 @@ opencontext configure
 
 The interactive wizard prompts for:
 - Organization name and city
-- Plugin (CKAN, Socrata, or ArcGIS) and data source URL
+- Plugin (CKAN, ArcGIS, or Socrata) and data source URL
 - AWS region and Lambda settings
 - Optional custom domain
 
@@ -84,8 +84,7 @@ opencontext status --env staging
 
 ```bash
 # Start local server
-pip install aiohttp
-python3 scripts/local_server.py
+opencontext serve
 
 # In another terminal, test with curl
 curl -X POST http://localhost:8000/mcp \

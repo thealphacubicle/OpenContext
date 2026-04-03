@@ -3,6 +3,8 @@ from __future__ import annotations
 import subprocess
 from pathlib import Path
 
+import boto3
+import botocore.exceptions
 import questionary
 import typer
 import yaml
@@ -17,6 +19,67 @@ from cli.utils import (
 )
 
 PLUGINS = ["CKAN", "Socrata", "ArcGIS"]
+
+# Bucket name must match the `backend "s3"` block in terraform/aws/main.tf.
+TERRAFORM_STATE_BUCKET = "opencontext-terraform-state"
+
+
+def _ensure_state_bucket(bucket_name: str, region: str) -> None:
+    """Check that the Terraform S3 state bucket exists; create it if not.
+
+    Versioning and server-side encryption are enabled on newly created buckets.
+    No DynamoDB table is created — the Terraform backend does not use state
+    locking.
+    """
+    s3 = boto3.client("s3", region_name=region)
+
+    try:
+        s3.head_bucket(Bucket=bucket_name)
+        console.print(
+            f"[dim]Terraform state bucket [bold]{bucket_name}[/bold] already exists.[/dim]"
+        )
+        return
+    except botocore.exceptions.ClientError as e:
+        error_code = e.response["Error"]["Code"]
+        if error_code not in ("404", "NoSuchBucket"):
+            raise
+
+    # Bucket does not exist — create it.
+    console.print(
+        f"[yellow]Terraform state bucket [bold]{bucket_name}[/bold] not found. Creating...[/yellow]"
+    )
+
+    if region == "us-east-1":
+        # us-east-1 does not accept a LocationConstraint.
+        s3.create_bucket(Bucket=bucket_name)
+    else:
+        s3.create_bucket(
+            Bucket=bucket_name,
+            CreateBucketConfiguration={"LocationConstraint": region},
+        )
+
+    s3.put_bucket_versioning(
+        Bucket=bucket_name,
+        VersioningConfiguration={"Status": "Enabled"},
+    )
+
+    s3.put_bucket_encryption(
+        Bucket=bucket_name,
+        ServerSideEncryptionConfiguration={
+            "Rules": [
+                {
+                    "ApplyServerSideEncryptionByDefault": {
+                        "SSEAlgorithm": "AES256",
+                    }
+                }
+            ]
+        },
+    )
+
+    console.print(
+        f"[green]Created S3 bucket [bold]{bucket_name}[/bold] "
+        f"(region: {region}, versioning: enabled, encryption: AES256).[/green]"
+    )
 
 
 def _load_example_defaults(project_root: Path) -> dict:
@@ -35,14 +98,20 @@ def _prompt_plugin_config(plugin: str, defaults: dict) -> dict:
     cfg: dict = {"enabled": True}
 
     if plugin == "CKAN":
-        cfg["base_url"] = (questionary.text(
-            "CKAN API base URL:",
-            default=plugin_defaults.get("base_url", "https://data.example.gov"),
-        ).ask() or "").rstrip("/")
-        cfg["portal_url"] = (questionary.text(
-            "CKAN public portal URL:",
-            default=plugin_defaults.get("portal_url", cfg["base_url"]),
-        ).ask() or "").rstrip("/")
+        cfg["base_url"] = (
+            questionary.text(
+                "CKAN API base URL:",
+                default=plugin_defaults.get("base_url", "https://data.example.gov"),
+            ).ask()
+            or ""
+        ).rstrip("/")
+        cfg["portal_url"] = (
+            questionary.text(
+                "CKAN public portal URL:",
+                default=plugin_defaults.get("portal_url", cfg["base_url"]),
+            ).ask()
+            or ""
+        ).rstrip("/")
         cfg["city_name"] = questionary.text(
             "City name (for display):",
             default=plugin_defaults.get("city_name", "Your City"),
@@ -54,10 +123,13 @@ def _prompt_plugin_config(plugin: str, defaults: dict) -> dict:
         cfg["timeout"] = int(timeout)
 
     elif plugin == "Socrata":
-        cfg["base_url"] = (questionary.text(
-            "Socrata base URL:",
-            default=plugin_defaults.get("base_url", "https://data.example.gov"),
-        ).ask() or "").rstrip("/")
+        cfg["base_url"] = (
+            questionary.text(
+                "Socrata base URL:",
+                default=plugin_defaults.get("base_url", "https://data.example.gov"),
+            ).ask()
+            or ""
+        ).rstrip("/")
         app_token = questionary.text(
             "Socrata app token (optional, press Enter to skip):",
             default=plugin_defaults.get("app_token", ""),
@@ -71,10 +143,13 @@ def _prompt_plugin_config(plugin: str, defaults: dict) -> dict:
         cfg["timeout"] = int(timeout)
 
     elif plugin == "ArcGIS":
-        cfg["portal_url"] = (questionary.text(
-            "ArcGIS Hub portal URL:",
-            default=plugin_defaults.get("portal_url", "https://hub.arcgis.com"),
-        ).ask() or "").rstrip("/")
+        cfg["portal_url"] = (
+            questionary.text(
+                "ArcGIS Hub portal URL:",
+                default=plugin_defaults.get("portal_url", "https://hub.arcgis.com"),
+            ).ask()
+            or ""
+        ).rstrip("/")
         cfg["city_name"] = questionary.text(
             "City name (for display):",
             default=plugin_defaults.get("city_name", "Your City"),
@@ -123,8 +198,19 @@ def _write_tfvars(
 
 
 @friendly_exit
-def configure() -> None:
+def configure(
+    state_bucket: str = typer.Option(
+        TERRAFORM_STATE_BUCKET,
+        "--state-bucket",
+        help="S3 bucket name for Terraform state (default: opencontext-terraform-state)",
+    ),
+) -> None:
     """Interactive wizard to configure your OpenContext MCP server."""
+    # When called programmatically (e.g. in tests), Typer does not resolve
+    # Option defaults — guard against receiving the raw OptionInfo sentinel.
+    if not isinstance(state_bucket, str):
+        state_bucket = TERRAFORM_STATE_BUCKET
+
     project_root = get_project_root()
     terraform_dir = get_terraform_dir()
 
@@ -262,6 +348,20 @@ def configure() -> None:
     # Terraform workspace
     ws_name = f"{city_slug}-{env}"
 
+    # Ensure the S3 state bucket exists before Terraform tries to use it.
+    _ensure_state_bucket(state_bucket, region)
+
+    # Terraform init must run before any workspace commands.
+    if not (terraform_dir / ".terraform").exists():
+        init_cmd = ["terraform", "init"]
+        if state_bucket != TERRAFORM_STATE_BUCKET:
+            init_cmd += [f"-backend-config=bucket={state_bucket}"]
+        run_cmd(
+            init_cmd,
+            cwd=terraform_dir,
+            spinner_msg="Initializing Terraform",
+        )
+
     result = subprocess.run(
         ["terraform", "workspace", "list"],
         cwd=terraform_dir,
@@ -282,14 +382,6 @@ def configure() -> None:
             ["terraform", "workspace", "new", ws_name],
             cwd=terraform_dir,
             spinner_msg=f"Creating workspace [bold]{ws_name}[/bold]",
-        )
-
-    # Terraform init if needed
-    if not (terraform_dir / ".terraform").exists():
-        run_cmd(
-            ["terraform", "init"],
-            cwd=terraform_dir,
-            spinner_msg="Initializing Terraform",
         )
 
     # Print summary

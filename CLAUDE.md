@@ -18,10 +18,10 @@ pre-commit install          # set up git hooks
 
 ```bash
 # Run local dev server (http://localhost:8000/mcp)
-python3 scripts/local_server.py
+opencontext serve
 
 # Test the running server
-./scripts/test_streamable_http.sh
+opencontext test --url http://localhost:8000/mcp
 
 # Tests
 pytest tests/ -n auto --cov=core --cov=plugins --cov-fail-under=80
@@ -31,10 +31,13 @@ ruff check core/ plugins/ server/ tests/ --fix --unsafe-fixes
 ruff format core/ plugins/ server/ tests/
 
 # CLI
-opencontext validate        # validate config.yaml
+opencontext validate --env staging    # validate config + Terraform before deploy
 opencontext deploy --env staging
-opencontext status
-opencontext logs
+opencontext status --env staging
+opencontext logs --env staging
+opencontext plugin list               # list enabled/disabled plugins
+opencontext security                  # pip-audit vulnerability scan
+opencontext architecture              # print AWS infra diagram in terminal
 ```
 
 ## Project Layout
@@ -45,7 +48,7 @@ plugins/        # Built-in plugins: ckan/, arcgis/, socrata/
 custom_plugins/ # Drop user plugins here — auto-discovered at startup
 cli/            # Typer CLI (opencontext command)
 server/         # HTTP adapters: local aiohttp + AWS Lambda entry point
-scripts/        # local_server.py, deploy.sh, test_streamable_http.sh
+server/adapters/ # local aiohttp dev server + AWS Lambda entry point
 tests/          # pytest suite (80% coverage required)
 terraform/aws/  # Lambda + API Gateway + IAM IaC
 examples/       # Per-city config.yaml examples (Boston, Chicago, Seattle, etc.)
@@ -58,7 +61,7 @@ Key files:
 - `core/plugin_manager.py` — discovery, loading, one-plugin enforcement
 - `core/validators.py` — config validation; enforces the one-plugin rule
 - `server/adapters/aws_lambda.py` — Lambda entry point
-- `scripts/local_server.py` — aiohttp dev server
+- `server/adapters/local.py` — aiohttp dev server (started via `opencontext serve`)
 
 ## Plugin System
 
@@ -115,6 +118,6 @@ uv run pytest tests/ -n auto --cov=core --cov=plugins --cov-fail-under=80
 - **Tool prefix required** → call `ckan__search_datasets`, not `search_datasets`.
 - **`config.yaml` is gitignored** → changes to it won't be committed. Use `config-example.yaml` for template changes.
 - **Coverage < 80%** → CI fails. New code needs tests; check gaps with `--cov-report=html`.
-- **Lambda size limit** → 250 MB max. `scripts/deploy.sh` validates before packaging.
+- **Lambda size limit** → 250 MB max. `opencontext deploy` validates package size before uploading.
 - **Python 3.11+ required** → match this in any new tooling or containers.
 - **Go client** (`client/`) is an optional stdio-to-HTTP bridge for tools that only speak stdio MCP.

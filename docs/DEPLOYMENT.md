@@ -80,10 +80,10 @@ terraform output -raw lambda_url        # Testing
 
 ### API Gateway
 
-- **Rate limit:** 100 burst, 50 sustained req/s (configurable via Terraform variables)
-- **Daily quota:** 1000 requests/day (configurable via `api_quota_limit`)
+- **Throttling:** Default 10 burst / 5 sustained req/s; configurable via `api_burst_limit` and `api_rate_limit` Terraform variables
+- **Daily quota:** Configurable via `api_quota_limit` Terraform variable
 - **Stage name:** Default is `staging`; URL format: `https://...execute-api.region.amazonaws.com/staging/mcp`
-- **429** when exceeded
+- **HTTP 429** when rate or quota is exceeded
 - Use for production; Lambda URL has no auth
 
 ## Configuration

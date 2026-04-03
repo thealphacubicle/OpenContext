@@ -77,8 +77,7 @@ Each deployment connects to one data source. To connect another source, deploy a
 ### 2. Start the Local Server
 
 ```bash
-pip install aiohttp
-python3 scripts/local_server.py
+opencontext serve
 ```
 
 The server runs at `http://localhost:8000/mcp`. Keep this terminal open.
@@ -175,15 +174,24 @@ opencontext deploy --env staging
 
 ## CLI Reference
 
+See [CLI Guide](CLI.md) for full flag documentation.
+
 | Command | Description |
 |---------|-------------|
 | `opencontext authenticate` | Check prerequisites (Python, uv, AWS CLI, credentials, Terraform) |
 | `opencontext configure` | Interactive wizard: creates `config.yaml`, `.tfvars`, and Terraform workspace |
+| `opencontext serve` | Start local dev server at `http://localhost:8000/mcp` (no AWS required) |
 | `opencontext deploy --env <env>` | Package Lambda, plan changes, confirm, and deploy |
 | `opencontext status --env <env>` | Show deployment status, URLs, and cert status |
 | `opencontext validate --env <env>` | Run pre-deployment checks without deploying |
 | `opencontext test --env <env>` | Test the deployed MCP server endpoints |
-| `opencontext logs --env <env>` | Tail CloudWatch logs (`--follow` to stream) |
+| `opencontext logs --env <env>` | Tail CloudWatch logs (`--follow` to stream, `--verbose` for structured view) |
+| `opencontext domain --env <env>` | Check custom domain and certificate status |
+| `opencontext architecture` | Show AWS architecture diagram in the terminal |
+| `opencontext plugin list` | List all plugins and their enabled/disabled status |
+| `opencontext security` | Run a pip-audit vulnerability scan (`--export` to save report) |
+| `opencontext cost --env <env>` | Estimate AWS costs from CloudWatch metrics (`--days` to adjust window) |
+| `opencontext upgrade` | Merge updates from the upstream OpenContext template |
 | `opencontext destroy --env <env>` | Tear down all deployed resources |
 
 ---
@@ -192,7 +200,6 @@ opencontext deploy --env staging
 
 | Issue | Solution |
 |-------|----------|
-| `ModuleNotFoundError: aiohttp` | `pip install aiohttp` |
 | "Multiple Plugins Enabled" | Enable only one plugin in `config.yaml` |
 | Claude can't connect | Verify URL includes `/mcp`, check connector is enabled in the chat |
 | Lambda 500 error | Check CloudWatch logs: `opencontext logs --env staging` |
@@ -203,9 +210,11 @@ opencontext deploy --env staging
 
 ## Next Steps
 
-- [Architecture](ARCHITECTURE.md) – System design, built-in plugins, custom plugins
-- [Deployment](DEPLOYMENT.md) – AWS details, monitoring, cost
-- [Testing](TESTING.md) – Local testing (Terminal, Claude, MCP Inspector)
+- [CLI Reference](CLI.md) — All commands and flags in detail
+- [Architecture](ARCHITECTURE.md) — System design, built-in plugins, custom plugins
+- [Built-in Plugins](BUILT_IN_PLUGINS.md) — CKAN, ArcGIS Hub, and Socrata tool reference
+- [Deployment](DEPLOYMENT.md) — AWS details, monitoring, cost
+- [Testing](TESTING.md) — Local testing (Terminal, Claude, MCP Inspector)
 
 ---
 

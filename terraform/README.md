@@ -16,13 +16,13 @@ terraform apply
 
 ### Deploy OpenContext
 
-Use the main deploy script (recommended):
+Use the CLI (recommended):
 
 ```bash
-./scripts/deploy.sh
+opencontext deploy --env staging
 ```
 
-Or deploy manually:
+Or deploy manually via Terraform:
 
 ```bash
 cd aws
@@ -35,7 +35,7 @@ terraform apply
 
 ### Alternative: Per-account backend
 
-Use [scripts/setup-backend.sh](../scripts/setup-backend.sh) to create a per-account S3 bucket and DynamoDB table, then generate `terraform/aws/backend.tf` with custom bucket name. Use this if you need a separate state bucket per AWS account.
+Use `opencontext configure --state-bucket <custom-name>` to create a per-account S3 bucket and generate `terraform/aws/backend.tf` with a custom bucket name. Use this if you need a separate state bucket per AWS account.
 
 ## Other Clouds
 

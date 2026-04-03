@@ -38,7 +38,7 @@
     {
       "label": "Dev: start local server",
       "type": "shell",
-      "command": "python3 scripts/local_server.py",
+      "command": "opencontext serve",
       "presentation": {
         "reveal": "always",
         "panel": "dedicated"
