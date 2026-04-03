@@ -37,6 +37,12 @@ locals {
 
   # Serialize config to JSON for environment variable
   config_json = jsonencode(local.config)
+
+  common_tags = {
+    Project     = "opencontext"
+    Environment = var.stage_name
+    ManagedBy   = "terraform"
+  }
 }
 
 # IAM role for Lambda
@@ -55,12 +61,20 @@ resource "aws_iam_role" "lambda_role" {
       }
     ]
   })
+
+  tags = local.common_tags
 }
 
 # Basic Lambda execution policy
 resource "aws_iam_role_policy_attachment" "lambda_basic" {
   role       = aws_iam_role.lambda_role.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+}
+
+# X-Ray tracing policy
+resource "aws_iam_role_policy_attachment" "lambda_xray" {
+  role       = aws_iam_role.lambda_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess"
 }
 
 # Lambda deployment package (created by scripts/deploy.sh)
@@ -87,8 +101,20 @@ resource "aws_lambda_function" "mcp_server" {
     }
   }
 
+  tracing_config {
+    mode = "Active"
+  }
+
+  dead_letter_config {
+    target_arn = aws_sqs_queue.lambda_dlq.arn
+  }
+
+  tags = local.common_tags
+
   depends_on = [
     aws_iam_role_policy_attachment.lambda_basic,
+    aws_iam_role_policy_attachment.lambda_xray,
+    aws_iam_role_policy.lambda_dlq,
   ]
 }
 
@@ -96,4 +122,26 @@ resource "aws_lambda_function" "mcp_server" {
 resource "aws_cloudwatch_log_group" "lambda_logs" {
   name              = "/aws/lambda/${local.lambda_name}"
   retention_in_days = 14
+  tags              = local.common_tags
+}
+
+# Dead Letter Queue for failed async Lambda invocations
+resource "aws_sqs_queue" "lambda_dlq" {
+  name                      = "${local.lambda_name}-dlq"
+  message_retention_seconds = 1209600 # 14 days — matches log retention
+  sqs_managed_sse_enabled   = true
+  tags                      = local.common_tags
+}
+
+# Allow Lambda to write failures to the DLQ
+resource "aws_iam_role_policy" "lambda_dlq" {
+  role = aws_iam_role.lambda_role.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect   = "Allow"
+      Action   = ["sqs:SendMessage"]
+      Resource = aws_sqs_queue.lambda_dlq.arn
+    }]
+  })
 }
