@@ -248,7 +248,7 @@ def deploy(
     custom_domain = tfvars.get("custom_domain", "")
     if custom_domain:
         regional = outputs.get("custom_domain_target")
-        cert_arn = outputs.get("acm_certificate_arn")
+        outputs.get("acm_certificate_arn")
         val_name = outputs.get("acm_validation_cname_name")
         val_value = outputs.get("acm_validation_cname_value")
 

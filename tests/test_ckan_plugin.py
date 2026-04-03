@@ -822,3 +822,92 @@ class TestRetryLogic:
             except Exception:
                 # If retry fails, exception is raised
                 pass
+
+
+class TestAggregateDataValidation:
+    """Test input validation in aggregate_data."""
+
+    @pytest.fixture
+    def ckan_config(self):
+        return {
+            "base_url": "https://data.example.com",
+            "portal_url": "https://data.example.com",
+            "city_name": "TestCity",
+        }
+
+    @pytest.mark.asyncio
+    async def test_aggregate_data_rejects_injected_group_by(self, ckan_config):
+        plugin = CKANPlugin(ckan_config)
+        with pytest.raises(ValueError, match="Invalid identifier"):
+            await plugin.aggregate_data(
+                resource_id="abc-123-def-456-ghi-789-012-345-678-901",
+                group_by=["field; DROP TABLE x --"],
+                metrics={"total": "count(*)"},
+            )
+
+    @pytest.mark.asyncio
+    async def test_aggregate_data_rejects_injected_metric_expr(self, ckan_config):
+        plugin = CKANPlugin(ckan_config)
+        with pytest.raises(ValueError, match="Disallowed metric expression"):
+            await plugin.aggregate_data(
+                resource_id="abc-123-def-456-ghi-789-012-345-678-901",
+                group_by=["category"],
+                metrics={"x": "count(*) UNION SELECT 1"},
+            )
+
+    @pytest.mark.asyncio
+    async def test_aggregate_data_rejects_injected_order_by(self, ckan_config):
+        plugin = CKANPlugin(ckan_config)
+        with pytest.raises(ValueError, match="Invalid identifier"):
+            await plugin.aggregate_data(
+                resource_id="abc-123-def-456-ghi-789-012-345-678-901",
+                group_by=["category"],
+                metrics={"total": "count(*)"},
+                order_by="field; DROP TABLE x",
+            )
+
+    @pytest.mark.asyncio
+    async def test_aggregate_data_rejects_injected_filter_field(self, ckan_config):
+        plugin = CKANPlugin(ckan_config)
+        with pytest.raises(ValueError, match="Invalid identifier"):
+            await plugin.aggregate_data(
+                resource_id="abc-123-def-456-ghi-789-012-345-678-901",
+                group_by=["category"],
+                metrics={"total": "count(*)"},
+                filters={"field; DROP TABLE x": "val"},
+            )
+
+    @pytest.mark.asyncio
+    async def test_aggregate_data_valid_inputs_pass(self, ckan_config):
+        plugin = CKANPlugin(ckan_config)
+
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_response_init = Mock()
+            mock_response_init.json.return_value = {"success": True}
+            mock_response_init.raise_for_status = Mock()
+            mock_response_sql = Mock()
+            mock_response_sql.json.return_value = {
+                "result": {
+                    "records": [{"category": "A", "total": 5}],
+                    "fields": [],
+                }
+            }
+            mock_response_sql.raise_for_status = Mock()
+            mock_client.post = AsyncMock(
+                side_effect=[mock_response_init, mock_response_sql]
+            )
+            mock_client_class.return_value = mock_client
+
+            await plugin.initialize()
+            result = await plugin.aggregate_data(
+                resource_id="abc-123-def-456-ghi-789-012-345-678-901",
+                group_by=["category"],
+                metrics={"total": "count(*)"},
+                filters={"status": "Open"},
+                order_by="category",
+                limit=10,
+            )
+
+        assert result.get("success") is True
+        assert mock_client.post.call_count == 2

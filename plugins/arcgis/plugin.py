@@ -8,6 +8,7 @@ import logging
 import re
 from datetime import datetime
 from typing import Any, Dict, List, Optional
+from urllib.parse import urlparse
 
 import httpx
 
@@ -359,6 +360,7 @@ class ArcGISPlugin(DataPlugin):
         out_fields = filters.get("out_fields", "*") if filters else "*"
 
         service_url = self._ensure_layer_url(service_url)
+        self._validate_feature_url(service_url, self.plugin_config.portal_url)
         query_url = f"{service_url}/query"
         record_count = min(limit, 1000)
         params = {
@@ -463,6 +465,24 @@ class ArcGISPlugin(DataPlugin):
         if re.search(r"/(FeatureServer|MapServer)$", stripped, re.IGNORECASE):
             return f"{stripped}/0"
         return stripped
+
+    @staticmethod
+    def _validate_feature_url(service_url: str, portal_url: str) -> str:
+        parsed = urlparse(service_url)
+        portal_netloc = urlparse(portal_url).netloc
+
+        if parsed.scheme not in ("http", "https"):
+            raise ValueError(
+                f"Feature service URL has invalid scheme: {parsed.scheme!r}"
+            )
+
+        host = parsed.netloc.lower()
+        if not (host.endswith(".arcgis.com") or host == portal_netloc.lower()):
+            raise ValueError(
+                f"Feature service URL host {host!r} is not within allowed domains "
+                f"(*.arcgis.com or {portal_netloc})"
+            )
+        return service_url
 
     @staticmethod
     def _epoch_ms_to_iso(epoch_ms: Any) -> str:

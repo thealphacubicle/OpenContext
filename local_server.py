@@ -3,7 +3,6 @@
 
 import asyncio
 import json
-from pathlib import Path
 
 import yaml
 from aiohttp import web
@@ -82,7 +81,7 @@ async def start_server():
     print("\n" + "=" * 50)
     print("🌐 Local MCP Server running!")
     print("=" * 50)
-    print(f"URL: http://localhost:8000")
+    print("URL: http://localhost:8000")
     print("\nTest with:")
     print("  opencontext-client http://localhost:8000")
     print("\nPress Ctrl+C to stop")

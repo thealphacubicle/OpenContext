@@ -136,7 +136,6 @@ def upgrade(
             cwd=project_root,
         )
 
-    merge_failed = result.returncode != 0
 
     # 8. Handle conflicts
     conflict_result = _run_git(

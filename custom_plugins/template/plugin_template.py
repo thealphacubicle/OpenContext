@@ -134,7 +134,7 @@ class MyCustomPlugin(MCPPlugin):
         try:
             if tool_name == "example_tool":  # TODO: Match your tool name
                 # TODO: Implement tool logic
-                param1 = arguments.get("param1")
+                arguments.get("param1")
 
                 # Example implementation:
                 # result = await self._call_api(param1)

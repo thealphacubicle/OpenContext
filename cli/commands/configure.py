@@ -6,7 +6,6 @@ from pathlib import Path
 import questionary
 import typer
 import yaml
-from rich.panel import Panel
 from rich.table import Table
 
 from cli.utils import (
@@ -115,7 +114,7 @@ def _write_tfvars(
         f'lambda_name   = "{lambda_name}"',
         f'stage_name    = "{env}"',
         f'aws_region    = "{region}"',
-        f'config_file   = "config.yaml"',
+        'config_file   = "config.yaml"',
         f'custom_domain = "{custom_domain}"',
     ]
     with open(path, "w") as f:
