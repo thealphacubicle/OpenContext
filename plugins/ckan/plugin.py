@@ -4,6 +4,7 @@ This plugin provides access to CKAN-based open data portals.
 """
 
 import logging
+import re as _re
 from typing import Any, Dict, List, Optional
 
 import httpx
@@ -19,6 +20,28 @@ from plugins.ckan.config_schema import CKANPluginConfig
 from plugins.ckan.sql_validator import SQLValidator
 
 logger = logging.getLogger(__name__)
+
+_SAFE_IDENTIFIER = _re.compile(r"^[a-zA-Z_][a-zA-Z0-9_]{0,63}$")
+_SAFE_METRIC_EXPR = _re.compile(
+    r"^(count\(\s*\*?\s*\)|(?:sum|avg|min|max|stddev|variance)\(\s*[a-zA-Z_][a-zA-Z0-9_]{0,63}\s*\))$",
+    _re.IGNORECASE,
+)
+
+
+def _validate_identifier(name: str) -> str:
+    if not _SAFE_IDENTIFIER.match(name):
+        raise ValueError(
+            f"Invalid identifier {name!r}: only letters, digits, underscores allowed"
+        )
+    return name
+
+
+def _validate_metric_expr(expr: str) -> str:
+    if not _SAFE_METRIC_EXPR.match(expr.strip()):
+        raise ValueError(
+            f"Disallowed metric expression {expr!r}: must be count(*) or sum/avg/min/max/stddev/variance(field)"
+        )
+    return expr
 
 
 class CKANPlugin(DataPlugin):
@@ -574,8 +597,21 @@ Supports: count(*), sum(), avg(), min(), max(), stddev()
         Returns:
             Dictionary with success flag, records, fields, or error message
         """
+        safe_group_by = [_validate_identifier(f) for f in group_by]
+        for alias, expr in metrics.items():
+            _validate_identifier(alias)
+            _validate_metric_expr(expr)
+        if filters:
+            for field in filters:
+                _validate_identifier(field)
+        if having:
+            for expr in having:
+                _validate_identifier(expr)
+        if order_by:
+            _validate_identifier(order_by.lstrip("-").strip())
+
         # SELECT
-        select_fields = ", ".join(group_by) if group_by else ""
+        select_fields = ", ".join(safe_group_by) if safe_group_by else ""
         select_metrics = ", ".join(
             [f"{expr} as {name}" for name, expr in metrics.items()]
         )
@@ -599,7 +635,7 @@ Supports: count(*), sum(), avg(), min(), max(), stddev()
             where_clause = "WHERE " + " AND ".join(conditions)
 
         # GROUP BY
-        group_clause = f"GROUP BY {', '.join(group_by)}" if group_by else ""
+        group_clause = f"GROUP BY {', '.join(safe_group_by)}" if safe_group_by else ""
 
         # HAVING
         having_clause = ""

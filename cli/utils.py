@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 import re
 import subprocess
 import sys
@@ -125,6 +124,7 @@ def select_workspace(env: str, terraform_dir: Path | None = None) -> None:
         cwd=tf_dir,
         capture_output=True,
         text=True,
+        timeout=15,
     )
     existing = [w.strip().lstrip("* ") for w in result.stdout.splitlines()]
 
@@ -148,15 +148,23 @@ def run_cmd(
     cwd: Path | str | None = None,
     spinner_msg: str = "Running",
     capture: bool = True,
+    timeout: int | None = 300,
 ) -> subprocess.CompletedProcess[str]:
     """Run a subprocess with a rich spinner. On failure, print stderr and exit."""
     with console.status(spinner_msg):
-        result = subprocess.run(
-            args,
-            cwd=cwd,
-            capture_output=capture,
-            text=True,
-        )
+        try:
+            result = subprocess.run(
+                args,
+                cwd=cwd,
+                capture_output=capture,
+                text=True,
+                timeout=timeout,
+            )
+        except subprocess.TimeoutExpired:
+            console.print(
+                f"[red]Command timed out after {timeout}s:[/red] {' '.join(args)}"
+            )
+            raise typer.Exit(1)
     if result.returncode != 0:
         console.print(f"[red]Command failed:[/red] {' '.join(args)}")
         if capture and result.stderr:

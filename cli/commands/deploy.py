@@ -222,6 +222,7 @@ def deploy(
             cwd=terraform_dir,
             capture_output=True,
             text=True,
+            timeout=15,
         )
         if result.returncode == 0 and result.stdout.strip():
             raw = json.loads(result.stdout)
@@ -233,13 +234,10 @@ def deploy(
     output_table.add_column("Value")
 
     api_gw = outputs.get("api_gateway_url")
-    lambda_url = outputs.get("lambda_url")
     log_group = outputs.get("cloudwatch_log_group")
 
     if api_gw:
         output_table.add_row("API Gateway URL", str(api_gw))
-    if lambda_url:
-        output_table.add_row("Lambda Function URL", str(lambda_url))
     if log_group:
         output_table.add_row("CloudWatch Log Group", str(log_group))
 
@@ -248,7 +246,7 @@ def deploy(
     custom_domain = tfvars.get("custom_domain", "")
     if custom_domain:
         regional = outputs.get("custom_domain_target")
-        cert_arn = outputs.get("acm_certificate_arn")
+        outputs.get("acm_certificate_arn")
         val_name = outputs.get("acm_validation_cname_name")
         val_value = outputs.get("acm_validation_cname_value")
 
@@ -280,6 +278,12 @@ def deploy(
             "  2. Click 'Add custom connector'\n"
             f"  3. Enter URL: {api_gw}"
         )
+
+    console.print(
+        "\n[dim]To enable cost filtering in AWS Cost Explorer, activate the Project, "
+        "Environment, and ManagedBy tags at: "
+        "AWS Console \u2192 Billing \u2192 Cost allocation tags[/dim]"
+    )
 
 
 def _print_cert_status(domain: str, env: str) -> None:

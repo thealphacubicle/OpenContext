@@ -347,3 +347,67 @@ class TestConfigSchema:
                 portal_url="not-a-url",
                 city_name="TestCity",
             )
+
+
+# ── _validate_feature_url ──────────────────────────────────────────────
+
+
+class TestValidateFeatureUrl:
+    PORTAL_URL = "https://hub.arcgis.com"
+
+    def test_allows_arcgis_com_subdomain(self):
+        url = "https://services.arcgis.com/xyz/FeatureServer/0"
+        result = ArcGISPlugin._validate_feature_url(url, self.PORTAL_URL)
+        assert result == url
+
+    def test_allows_configured_portal_host(self):
+        url = "https://hub.arcgis.com/datasets/abc/FeatureServer/0"
+        result = ArcGISPlugin._validate_feature_url(url, self.PORTAL_URL)
+        assert result == url
+
+    def test_rejects_aws_metadata_url(self):
+        with pytest.raises(ValueError, match="not within allowed domains"):
+            ArcGISPlugin._validate_feature_url(
+                "http://169.254.169.254/latest/meta-data/",
+                self.PORTAL_URL,
+            )
+
+    def test_rejects_arbitrary_external_host(self):
+        with pytest.raises(ValueError, match="not within allowed domains"):
+            ArcGISPlugin._validate_feature_url(
+                "https://evil.com/steal/data",
+                self.PORTAL_URL,
+            )
+
+    def test_rejects_non_http_scheme(self):
+        with pytest.raises(ValueError, match="invalid scheme"):
+            ArcGISPlugin._validate_feature_url(
+                "ftp://services.arcgis.com/xyz/FeatureServer/0",
+                self.PORTAL_URL,
+            )
+
+
+class TestQueryDataSSRFGuard:
+    @pytest.mark.asyncio
+    async def test_query_data_rejects_disallowed_service_url(self, arcgis_config):
+        """query_data raises ValueError for a disallowed service_url before any HTTP call."""
+        plugin = ArcGISPlugin(arcgis_config)
+        plugin.plugin_config = ArcGISPluginConfig(**arcgis_config)
+
+        mock_feature_client = AsyncMock()
+        plugin.feature_client = mock_feature_client
+
+        with patch.object(
+            plugin,
+            "get_dataset",
+            new_callable=AsyncMock,
+            return_value={
+                "id": "abc123",
+                "title": "Malicious Dataset",
+                "service_url": "https://evil.com/steal/FeatureServer/0",
+            },
+        ):
+            with pytest.raises(ValueError, match="not within allowed domains"):
+                await plugin.query_data("abc123", {"where": "1=1"}, 100)
+
+        mock_feature_client.get.assert_not_called()

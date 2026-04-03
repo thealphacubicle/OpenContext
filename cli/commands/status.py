@@ -57,6 +57,7 @@ def status(
             cwd=terraform_dir,
             capture_output=True,
             text=True,
+            timeout=15,
         )
         if result.returncode == 0 and result.stdout.strip():
             raw = json.loads(result.stdout)
@@ -75,6 +76,7 @@ def status(
                 ],
                 capture_output=True,
                 text=True,
+                timeout=15,
             )
             if result.returncode == 0:
                 data = json.loads(result.stdout)
@@ -105,10 +107,6 @@ def status(
     table.add_row(
         "API Gateway URL",
         str(tf_outputs.get("api_gateway_url") or "N/A"),
-    )
-    table.add_row(
-        "Lambda Function URL",
-        str(tf_outputs.get("lambda_url") or "N/A"),
     )
 
     if custom_domain:

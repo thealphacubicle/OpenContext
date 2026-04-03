@@ -6,7 +6,6 @@ from pathlib import Path
 import questionary
 import typer
 import yaml
-from rich.panel import Panel
 from rich.table import Table
 
 from cli.utils import (
@@ -115,7 +114,7 @@ def _write_tfvars(
         f'lambda_name   = "{lambda_name}"',
         f'stage_name    = "{env}"',
         f'aws_region    = "{region}"',
-        f'config_file   = "config.yaml"',
+        'config_file   = "config.yaml"',
         f'custom_domain = "{custom_domain}"',
     ]
     with open(path, "w") as f:
@@ -268,6 +267,7 @@ def configure() -> None:
         cwd=terraform_dir,
         capture_output=True,
         text=True,
+        timeout=15,
     )
     existing = [w.strip().lstrip("* ") for w in result.stdout.splitlines()]
 
@@ -307,6 +307,8 @@ def configure() -> None:
     summary.add_row("AWS region", region)
     summary.add_row("Lambda memory", f"{lambda_memory} MB")
     summary.add_row("Lambda timeout", f"{lambda_timeout}s")
+    summary.add_row("X-Ray Tracing", "Enabled")
+    summary.add_row("Dead Letter Queue", "Enabled (failures → SQS)")
     summary.add_row("Workspace", ws_name)
     summary.add_row(
         "Custom domain",
