@@ -4,8 +4,8 @@ name: Release
 on:
   push:
     tags:
-      - "v*.*.*" # Triggers on version tags like v1.0.0, v2.1.3, etc.
-  workflow_dispatch: # Allows manual triggering
+      - "v*.*.*"
+  workflow_dispatch:
     inputs:
       version:
         description: "Version tag (e.g., v1.0.0)"
@@ -17,11 +17,68 @@ env:
   GO_VERSION: "1.21"
 
 jobs:
+  validate:
+    name: Pre-release validation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
+      - name: Install dependencies
+        run: uv sync --all-extras
+
+      - name: Ruff lint
+        run: uv run ruff check core/ plugins/ server/ tests/
+
+      - name: Audit dependencies for known CVEs
+        run: uv run pip-audit -r requirements.txt
+
+      - name: Run Python tests with coverage
+        run: |
+          uv run pytest tests/ \
+            -n auto \
+            --cov=core \
+            --cov=plugins \
+            --cov-report=term-missing \
+            --cov-fail-under=80
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Check Go formatting
+        working-directory: ./client
+        run: |
+          UNFORMATTED=$(gofmt -l .)
+          if [ -n "$UNFORMATTED" ]; then
+            echo "The following files need formatting:"
+            echo "$UNFORMATTED"
+            exit 1
+          fi
+
+      - name: Run Go tests
+        working-directory: ./client
+        run: go test ./...
+
   build:
     name: Build binaries
+    needs: validate
     runs-on: ubuntu-latest
     permissions:
-      contents: write # Required to create releases and upload assets
+      contents: write
 
     strategy:
       matrix:
@@ -46,7 +103,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # Fetch all history for proper versioning
+          fetch-depth: 0
 
       - name: Set up Go
         uses: actions/setup-go@v5
@@ -84,6 +141,7 @@ jobs:
 
   build-lambda-zip:
     name: Build Lambda ZIP
+    needs: validate
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -172,7 +230,6 @@ jobs:
         run: |
           cd artifacts
           echo "=== Flattening artifacts ==="
-          # Find all release files (binaries + lambda zip) in subdirectories and move to root
           find . -mindepth 2 -type f \( -name "opencontext-client-*" -o -name "opencontext-lambda-*" \) | while read file; do
             filename=$(basename "$file")
             dirname=$(dirname "$file")
@@ -182,7 +239,6 @@ jobs:
             rmdir "$dirname" 2>/dev/null || true
             mv "$tempname" "$filename"
           done
-          # Remove any remaining empty subdirectories
           find . -mindepth 1 -type d -empty -delete
           echo "=== Flattening complete ==="
 

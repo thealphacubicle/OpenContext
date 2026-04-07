@@ -14,27 +14,13 @@ on:
       - "terraform/**"
 
 jobs:
-  terraform-validate:
-    name: Terraform validate
+  terraform-lint:
+    name: Terraform lint & validate
     runs-on: ubuntu-latest
-    env:
-      TF_PLUGIN_CACHE_DIR: ${{ runner.temp }}/.terraform.d/plugin-cache
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
-      - name: Cache Terraform providers
-        uses: actions/cache@v4
-        with:
-          path: ${{ runner.temp }}/.terraform.d/plugin-cache
-          key: ${{ runner.os }}-terraform-${{ hashFiles('terraform/**/.terraform.lock.hcl') }}
-
-      - name: Cache Terraform init
-        uses: actions/cache@v4
-        with:
-          path: terraform/aws/.terraform
-          key: ${{ runner.os }}-tf-init-${{ hashFiles('terraform/**/.terraform.lock.hcl') }}
 
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v3
@@ -43,29 +29,44 @@ jobs:
         working-directory: ./terraform
         run: |
           if ! terraform fmt -check -recursive; then
-            echo "Terraform files are not properly formatted."
+            echo "::error::Terraform files are not properly formatted."
             echo "Run 'terraform fmt -recursive' locally and commit the result."
             exit 1
           fi
 
-      - name: Terraform init (no backend)
-        working-directory: ./terraform/aws
-        run: terraform init -backend=false
-
-      - name: Create placeholder Lambda zip for validation
-        working-directory: ./terraform/aws
+      - name: Validate all Terraform directories
         run: |
-          python3 -c "import zipfile; zipfile.ZipFile('lambda-deployment.zip', 'w').close()"
-
-      - name: Terraform validate
-        working-directory: ./terraform/aws
-        run: terraform validate
+          failed=0
+          for dir in terraform/*/; do
+            if ls "$dir"*.tf 1>/dev/null 2>&1; then
+              echo "--- Validating $dir ---"
+              terraform -chdir="$dir" init -backend=false -input=false
+              if ! terraform -chdir="$dir" validate; then
+                echo "::error::Validation failed in $dir"
+                failed=1
+              fi
+            else
+              echo "--- Skipping $dir (no .tf files) ---"
+            fi
+          done
+          exit $failed
 
       - name: Set up TFLint
         uses: terraform-linters/setup-tflint@v4
 
-      - name: Run TFLint
-        run: tflint --chdir=terraform/aws
+      - name: Run TFLint on all directories
+        run: |
+          failed=0
+          for dir in terraform/*/; do
+            if ls "$dir"*.tf 1>/dev/null 2>&1; then
+              echo "--- TFLint: $dir ---"
+              if ! tflint --chdir="$dir"; then
+                echo "::warning::TFLint issues in $dir"
+                failed=1
+              fi
+            fi
+          done
+          exit $failed
 
       - name: Run tfsec
         uses: aquasecurity/tfsec-action@v1.0.3
