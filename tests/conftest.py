@@ -1,9 +1,10 @@
 """Shared pytest fixtures and sys.modules stubs for the OpenContext test suite.
 
-boto3 and botocore are AWS SDK packages that are not listed as project
-dependencies (they are available at runtime inside Lambda but not required for
-local development or CI).  Several CLI modules import them at the top level, so
-we register lightweight stubs here before any test module is collected.
+boto3 and botocore are listed as project dependencies in pyproject.toml and will
+be present in any standard install (``uv sync --all-extras``).  The lightweight
+stubs below act as a fallback for minimal/partial installs that omit the AWS SDK
+— they allow import-time resolution of CLI modules that reference boto3 at the
+top level so the rest of the test suite can still run.
 """
 
 from __future__ import annotations

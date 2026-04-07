@@ -348,14 +348,17 @@ def configure(
     # Terraform workspace
     ws_name = f"{city_slug}-{env}"
 
-    # Ensure the S3 state bucket exists before Terraform tries to use it.
     _ensure_state_bucket(state_bucket, region)
 
-    # Terraform init must run before any workspace commands.
+    # Override the backend config at init time so Terraform uses the correct
+    # bucket and region instead of the defaults hard-coded in main.tf.
     if not (terraform_dir / ".terraform").exists():
-        init_cmd = ["terraform", "init"]
-        if state_bucket != TERRAFORM_STATE_BUCKET:
-            init_cmd += [f"-backend-config=bucket={state_bucket}"]
+        init_cmd = [
+            "terraform",
+            "init",
+            f"-backend-config=bucket={state_bucket}",
+            f"-backend-config=region={region}",
+        ]
         run_cmd(
             init_cmd,
             cwd=terraform_dir,

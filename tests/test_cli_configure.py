@@ -658,20 +658,21 @@ class TestStateBucketFlag:
 
         mock_s3.head_bucket.assert_called_once_with(Bucket=custom)
 
-    def test_default_bucket_does_not_add_backend_config_to_init(self, tmp_path):
-        """With the default bucket, terraform init is called WITHOUT -backend-config."""
+    def test_default_bucket_passes_backend_config_to_init(self, tmp_path):
+        """With the default bucket, terraform init includes -backend-config for bucket and region."""
         from cli.commands.configure import TERRAFORM_STATE_BUCKET
 
         calls, _ = _run_configure_wizard(tmp_path)
         init_calls = [c for c in calls if "init" in str(c)]
         assert init_calls, "Expected at least one terraform init call"
-        # None of the init calls should include -backend-config when default bucket is used
-        for call in init_calls:
-            cmd_args = call[0][0]  # positional first arg is the cmd list
-            assert not any(
-                f"-backend-config=bucket={TERRAFORM_STATE_BUCKET}" in arg
-                for arg in cmd_args
-            ), f"Default bucket should not add -backend-config flag; got: {cmd_args}"
+        cmd_args = init_calls[0][0][0]
+        assert any(
+            f"-backend-config=bucket={TERRAFORM_STATE_BUCKET}" in arg
+            for arg in cmd_args
+        ), f"Expected -backend-config=bucket in terraform init; got: {cmd_args}"
+        assert any("-backend-config=region=" in arg for arg in cmd_args), (
+            f"Expected -backend-config=region in terraform init; got: {cmd_args}"
+        )
 
     def test_custom_bucket_adds_backend_config_to_init(self, tmp_path):
         """With a custom bucket, terraform init is called WITH -backend-config=bucket=<name>."""
@@ -679,13 +680,11 @@ class TestStateBucketFlag:
         calls, _ = _run_configure_wizard(tmp_path, {"state_bucket": custom})
         init_calls = [c for c in calls if "init" in str(c)]
         assert init_calls, "Expected at least one terraform init call"
-        found = False
-        for call in init_calls:
-            cmd_args = call[0][0]
-            if any(f"-backend-config=bucket={custom}" in arg for arg in cmd_args):
-                found = True
-                break
-        assert found, (
+        cmd_args = init_calls[0][0][0]
+        assert any(f"-backend-config=bucket={custom}" in arg for arg in cmd_args), (
             f"Expected -backend-config=bucket={custom} in a terraform init call; "
             f"init calls were: {init_calls}"
+        )
+        assert any("-backend-config=region=" in arg for arg in cmd_args), (
+            f"Expected -backend-config=region in terraform init; got: {cmd_args}"
         )
