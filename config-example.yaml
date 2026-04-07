@@ -52,6 +52,16 @@ plugins:
     timeout: 120
     # token: "${ARCGIS_TOKEN}"  # Optional: Bearer token for private items
 
+  # Built-in: Socrata (for Socrata open data portals)
+  # Examples: data.cityofchicago.org, data.cityofnewyork.us, data.seattle.gov
+  socrata:
+    enabled: false # Set to true to use
+    base_url: "https://data.example.gov" # Socrata portal base URL
+    portal_url: "https://data.example.gov" # Public portal URL
+    city_name: "Your City"
+    timeout: 30
+    # app_token: "${SOCRATA_APP_TOKEN}"  # Recommended; register at dev.socrata.com/register
+
   # yamllint disable rule:comments-indentation
   # Custom: Add your own plugins here
   # Example:

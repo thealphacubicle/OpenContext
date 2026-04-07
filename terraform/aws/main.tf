@@ -77,8 +77,8 @@ resource "aws_iam_role_policy_attachment" "lambda_xray" {
   policy_arn = "arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess"
 }
 
-# Lambda deployment package (created by scripts/deploy.sh)
-# deploy.sh builds .deploy/ and lambda-deployment.zip, then copies the zip here.
+# Lambda deployment package (created by `opencontext deploy`)
+# `opencontext deploy` builds .deploy/ and lambda-deployment.zip, then copies the zip here.
 locals {
   lambda_zip_path = "${path.module}/lambda-deployment.zip"
   lambda_zip_hash = filebase64sha256(local.lambda_zip_path)

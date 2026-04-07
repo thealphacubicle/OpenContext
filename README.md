@@ -25,7 +25,7 @@ opencontext authenticate
 opencontext configure
 
 # 3. Test locally (optional)
-python3 scripts/local_server.py
+opencontext serve
 
 # 4. Deploy
 opencontext deploy --env staging
@@ -47,7 +47,10 @@ See [Getting Started](docs/GETTING_STARTED.md) for full setup.
 | Doc                                        | Description                                     |
 | ------------------------------------------ | ----------------------------------------------- |
 | [Getting Started](docs/GETTING_STARTED.md) | Setup and usage                                 |
+| [CLI Reference](docs/CLI.md)               | All CLI commands and flags                      |
 | [Architecture](docs/ARCHITECTURE.md)       | System design and plugins                       |
+| [Built-in Plugins](docs/BUILT_IN_PLUGINS.md) | CKAN, ArcGIS Hub, Socrata plugin details      |
+| [Custom Plugins](docs/CUSTOM_PLUGINS.md)   | How to write your own plugin                    |
 | [Deployment](docs/DEPLOYMENT.md)           | AWS, Terraform, monitoring                      |
 | [Testing](docs/TESTING.md)                 | Local testing (Terminal, Claude, MCP Inspector) |
 

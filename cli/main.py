@@ -10,6 +10,7 @@ from cli.commands.domain import domain
 from cli.commands.logs import logs
 from cli.commands.plugin import plugin_app
 from cli.commands.security import app as security_app
+from cli.commands.serve import app as serve_app
 from cli.commands.status import status
 from cli.commands.test import app as test_app
 from cli.commands.upgrade import app as upgrade_app
@@ -31,6 +32,7 @@ app.command()(destroy)
 app.command()(logs)
 app.command()(architecture)
 
+app.add_typer(serve_app, name="serve")
 app.add_typer(validate_app, name="validate")
 app.add_typer(test_app, name="test")
 app.add_typer(upgrade_app, name="upgrade")

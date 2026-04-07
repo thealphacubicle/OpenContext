@@ -1,6 +1,8 @@
 # Terraform Backend Bootstrap
 
-Creates the S3 bucket and DynamoDB table used by the main OpenContext Terraform configuration for remote state storage.
+Creates the S3 bucket used by the main OpenContext Terraform configuration for remote state storage.
+
+> **Note:** For most users, `opencontext configure` automatically creates the default `opencontext-terraform-state` S3 bucket. This bootstrap module is only needed if you want a custom per-account bucket name instead of that default.
 
 ## Prerequisites
 
@@ -20,7 +22,6 @@ terraform apply
 This creates:
 
 - **S3 bucket** `opencontext-terraform-state` – stores Terraform state with versioning and encryption
-- **DynamoDB table** `terraform-state-lock` – available for state locking (optional)
 
 **Note:** The main `terraform/aws` configuration uses the S3 bucket for state. The bucket name must match the `bucket` in `terraform/aws/main.tf` backend block.
 
@@ -30,7 +31,6 @@ This creates:
 |----------|---------|-------------|
 | `aws_region` | `us-east-1` | AWS region for backend resources |
 | `state_bucket_name` | `opencontext-terraform-state` | S3 bucket name (must match `terraform/aws/main.tf`) |
-| `lock_table_name` | `terraform-state-lock` | DynamoDB table name |
 
 ## After Bootstrap
 
@@ -43,4 +43,4 @@ terraform plan -var="config_file=config.yaml"
 terraform apply
 ```
 
-Or use the deploy script from the project root: `./scripts/deploy.sh`
+Or use the CLI from the project root: `opencontext deploy --env staging`
