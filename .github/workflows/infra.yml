@@ -34,6 +34,10 @@ jobs:
             exit 1
           fi
 
+      - name: Create placeholder artifacts for validation
+        run: |
+          python3 -c "import zipfile; zipfile.ZipFile('terraform/aws/lambda-deployment.zip', 'w').close()"
+
       - name: Validate all Terraform directories
         run: |
           failed=0
