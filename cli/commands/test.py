@@ -85,6 +85,14 @@ def _post_mcp(client: httpx.Client, base_url: str, payload: dict) -> tuple[bool,
         return False, elapsed_ms, str(e)
 
 
+def _is_auth_gated(body: Any) -> bool:
+    """Return True if the response is an AWS API Gateway auth error (not a real MCP response)."""
+    if isinstance(body, dict):
+        msg = body.get("message", "")
+        return isinstance(msg, str) and "authentication token" in msg.lower()
+    return False
+
+
 def _run_tests(base_url: str) -> tuple[int, int]:
     """Run all MCP endpoint tests against base_url. Returns (passed, total)."""
     console.print(f"\n[bold]Testing:[/bold] {base_url}\n")
@@ -96,6 +104,12 @@ def _run_tests(base_url: str) -> tuple[int, int]:
         ok, ms, body = _post_mcp(client, base_url, {
             "jsonrpc": "2.0", "id": 1, "method": "ping",
         })
+        if _is_auth_gated(body):
+            console.print(
+                "[yellow]⚠ Skipped — API Gateway requires authentication on this URL "
+                "(direct invocation is auth-gated). Use the custom domain to test.[/yellow]\n"
+            )
+            return 0, 0
         results.append(("Ping", ok, ms, _summarize(body)))
 
         # 2. Initialize
@@ -201,7 +215,7 @@ def test(
         passed, total = _run_tests(base_url)
         total_passed += passed
         total_tests += total
-        if passed < total:
+        if total > 0 and passed < total:
             exit_ok = False
     else:
         with console.status("Fetching deployment URL from Terraform..."):
@@ -217,7 +231,7 @@ def test(
         passed, total = _run_tests(base_url)
         total_passed += passed
         total_tests += total
-        if passed < total:
+        if total > 0 and passed < total:
             exit_ok = False
 
         with console.status("Checking for custom domain..."):
