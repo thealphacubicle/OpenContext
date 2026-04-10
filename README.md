@@ -13,25 +13,29 @@
 ## Quick Start
 
 ```bash
-# 1. Configure (create config, enable one data source)
-cp config-example.yaml config.yaml
-# Edit config.yaml - set enabled: true for one plugin
+# 0. Install the CLI
+git clone https://github.com/thealphacubicle/OpenContext.git
+cd OpenContext
+pip install -e ".[cli]"
 
-# 2. Test locally
-pip install aiohttp
-python3 scripts/local_server.py
+# 1. Check prerequisites (Python 3.11+, uv, AWS CLI, Terraform)
+opencontext authenticate
 
-# 3. Deploy
-./scripts/deploy.sh
+# 2. Configure interactively (creates config.yaml + Terraform workspace)
+opencontext configure
+
+# 3. Test locally (optional)
+opencontext serve
+
+# 4. Deploy
+opencontext deploy --env staging
 ```
 
 Connect via **Claude Connectors** (same steps on both Claude.ai and Claude Desktop):
 
 1. Go to **Settings** → **Connectors** (or **Customize** → **Connectors** on claude.ai)
 2. Click **Add custom connector**
-3. Enter a name (e.g. "Boston OpenData") and your API Gateway URL
-
-Get the URL: `cd terraform/aws && terraform output -raw api_gateway_url`
+3. Enter a name (e.g. "Your City OpenData") and your API Gateway URL (printed at the end of `opencontext deploy`)
 
 See [Getting Started](docs/GETTING_STARTED.md) for full setup.
 
@@ -43,7 +47,10 @@ See [Getting Started](docs/GETTING_STARTED.md) for full setup.
 | Doc                                        | Description                                     |
 | ------------------------------------------ | ----------------------------------------------- |
 | [Getting Started](docs/GETTING_STARTED.md) | Setup and usage                                 |
+| [CLI Reference](docs/CLI.md)               | All CLI commands and flags                      |
 | [Architecture](docs/ARCHITECTURE.md)       | System design and plugins                       |
+| [Built-in Plugins](docs/BUILT_IN_PLUGINS.md) | CKAN, ArcGIS Hub, Socrata plugin details      |
+| [Custom Plugins](docs/CUSTOM_PLUGINS.md)   | How to write your own plugin                    |
 | [Deployment](docs/DEPLOYMENT.md)           | AWS, Terraform, monitoring                      |
 | [Testing](docs/TESTING.md)                 | Local testing (Terminal, Claude, MCP Inspector) |
 
@@ -52,8 +59,7 @@ See [Getting Started](docs/GETTING_STARTED.md) for full setup.
 
 ## Examples
 
-- **Boston OpenData (CKAN):** [examples/boston-opendata/config.yaml](examples/boston-opendata/config.yaml)
-- **Custom plugin:** [examples/custom-plugin/](examples/custom-plugin/)
+See the [examples/](examples/) directory for per-city configuration samples (Boston, Chicago, Seattle, and more).
 
 ---
 
@@ -74,4 +80,4 @@ Hooks: Ruff, yamllint, gofmt. Run manually: `pre-commit run --all-files`.
 
 MIT — see [LICENSE](LICENSE).
 
-**Author:** Srihari Raman, City of Boston Department of Innovation and Technology
+**Author:** Srihari Raman

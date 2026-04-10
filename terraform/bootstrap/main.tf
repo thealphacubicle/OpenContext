@@ -1,5 +1,5 @@
 # Bootstrap Terraform Backend
-# Creates S3 bucket and DynamoDB table for Terraform state storage and locking.
+# Creates the S3 bucket used by the main OpenContext Terraform configuration for remote state storage.
 # Run this once with local backend before using the main AWS configuration.
 #
 # Usage:
@@ -51,21 +51,5 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "terraform_state" 
     apply_server_side_encryption_by_default {
       sse_algorithm = "AES256"
     }
-  }
-}
-
-# DynamoDB table for state locking
-resource "aws_dynamodb_table" "terraform_lock" {
-  name         = var.lock_table_name
-  billing_mode = "PAY_PER_REQUEST"
-  hash_key     = "LockID"
-
-  attribute {
-    name = "LockID"
-    type = "S"
-  }
-
-  lifecycle {
-    prevent_destroy = true
   }
 }

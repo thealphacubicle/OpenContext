@@ -22,9 +22,9 @@
 
 ---
 # Server metadata
-server_name: "Your Organization OpenData MCP" # e.g., "Boston OpenData MCP"
+server_name: "Your Organization OpenData MCP" # e.g., "Chicago OpenData MCP"
 description: "Your organization's open data MCP server - Safe, conversational access to your open data"
-organization: "Your Organization Name" # e.g., "City of Boston"
+organization: "Your Organization Name" # e.g., "City of Chicago"
 
 # Plugin configuration
 # ====================
@@ -34,7 +34,7 @@ organization: "Your Organization Name" # e.g., "City of Boston"
 #
 plugins:
   # Built-in: CKAN (for CKAN-based open data portals)
-  # Examples: data.boston.gov, data.gov, data.gov.uk
+  # Examples: data.gov, data.gov.uk
   ckan:
     enabled: false # Set to true to use
     base_url: "https://data.example.gov/" # CKAN API base URL
@@ -42,6 +42,25 @@ plugins:
     city_name: "Your City" # City/organization name
     timeout: 120 # HTTP timeout in seconds
     # api_key: "${CKAN_API_KEY}"  # Optional: CKAN API key for authenticated requests
+
+  # Built-in: ArcGIS Hub (for ArcGIS Hub open data portals)
+  # Examples: hub.arcgis.com, data-yourcity.hub.arcgis.com
+  arcgis:
+    enabled: false # Set to true to use
+    portal_url: "https://hub.arcgis.com"
+    city_name: "Your City"
+    timeout: 120
+    # token: "${ARCGIS_TOKEN}"  # Optional: Bearer token for private items
+
+  # Built-in: Socrata (for Socrata open data portals)
+  # Examples: data.cityofchicago.org, data.cityofnewyork.us, data.seattle.gov
+  socrata:
+    enabled: false # Set to true to use
+    base_url: "https://data.example.gov" # Socrata portal base URL
+    portal_url: "https://data.example.gov" # Public portal URL
+    city_name: "Your City"
+    timeout: 30
+    # app_token: "${SOCRATA_APP_TOKEN}"  # Recommended; register at dev.socrata.com/register
 
   # yamllint disable rule:comments-indentation
   # Custom: Add your own plugins here

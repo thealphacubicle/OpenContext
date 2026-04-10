@@ -7,8 +7,8 @@ OpenContext is a plugin-based framework. Each deployment runs **one** server wit
 ## One Fork = One Server
 
 **Enforcement:**
-- `scripts/deploy.sh` validates config before deployment
-- `plugin_manager.py` fails if multiple plugins are enabled
+- `opencontext deploy` validates config before deployment
+- `plugin_manager.py` fails at startup if multiple plugins are enabled
 
 **Multiple servers:** Fork again per plugin, deploy each separately.
 
@@ -27,19 +27,34 @@ server/
 │   └── aws_lambda.py   # Lambda handler entry point
 └── http_handler.py     # HTTP request handling
 
-plugins/                # Built-in (CKAN)
-├── ckan/
+plugins/                # Built-in plugins
+├── ckan/               # CKAN open data portals
 │   ├── plugin.py
 │   ├── config_schema.py
 │   └── sql_validator.py
+├── arcgis/             # ArcGIS Hub portals
+│   ├── plugin.py
+│   ├── config_schema.py
+│   └── where_validator.py
+└── socrata/            # Socrata open data portals
+    ├── plugin.py
+    ├── config_schema.py
+    └── soql_validator.py
+
+cli/                    # Typer CLI (opencontext command)
+├── main.py             # Command registration
+├── commands/           # One file per command group
+└── utils.py            # Shared helpers
 
 custom_plugins/         # User plugins (auto-discovered)
 ├── template/
 │   └── plugin_template.py
 
-examples/               # Example configs and plugins
-├── boston-opendata/
-└── custom-plugin/
+examples/               # Example configs per city
+├── boston/
+├── chicago/
+├── seattle/
+└── ...
 
 client/                 # Go stdio-to-HTTP client (optional)
 tests/                  # Unit tests
@@ -48,14 +63,19 @@ tests/                  # Unit tests
 ### Request Flow
 
 ```
-Claude Desktop / App
-    → stdio bridge (npx) or Go client
-Lambda / Local Server
-    → server.adapters.aws_lambda or local_server.py
+Claude / MCP Client
+    → Claude Connectors (HTTPS) or Go stdio client
+API Gateway (REST, Regional)
+    → Lambda (server.adapters.aws_lambda.lambda_handler)
     → MCP Server (core/mcp_server.py)
-    → Plugin Manager
-    → Plugin (e.g., CKAN)
+    → Plugin Manager (core/plugin_manager.py)
+    → Plugin (CKAN / ArcGIS / Socrata / custom)
     → External API
+
+Logs & traces:
+    Lambda → CloudWatch Logs (/aws/lambda/<function-name>)
+    Lambda → X-Ray (active tracing)
+    Failed async invocations → SQS Dead Letter Queue
 ```
 
 ## Plugins
@@ -64,7 +84,7 @@ Each deployment enables **exactly one** plugin.
 
 ### Built-in: CKAN
 
-For CKAN-based open data portals (e.g., data.boston.gov, data.gov, data.gov.uk).
+For CKAN-based open data portals (e.g., data.gov, data.gov.uk).
 
 **Configuration:**
 
@@ -89,7 +109,60 @@ plugins:
 | `ckan__get_schema(resource_id)` | Get schema for a resource |
 | `ckan__execute_sql(sql)` | Execute PostgreSQL SELECT queries (advanced) |
 
-**SQL execution:** The `execute_sql` tool allows complex PostgreSQL queries (CTEs, window functions, joins). Only SELECT is allowed. INSERT, UPDATE, DELETE, DROP, and other destructive operations are blocked. Resource IDs must be valid UUIDs in double quotes: `FROM "uuid-here"`. See [CKAN API docs](https://docs.ckan.org/en/latest/api/) for details.
+**SQL execution:** Only SELECT is allowed. Resource IDs must be valid UUIDs in double quotes: `FROM "uuid-here"`. See [CKAN API docs](https://docs.ckan.org/en/latest/api/) for details.
+
+### Built-in: ArcGIS Hub
+
+For ArcGIS Hub open data portals (e.g., hub.arcgis.com, data-yourcity.hub.arcgis.com).
+
+**Configuration:**
+
+```yaml
+plugins:
+  arcgis:
+    enabled: true
+    portal_url: "https://hub.arcgis.com"
+    city_name: "Your City"
+    timeout: 120
+    token: "${ARCGIS_TOKEN}"  # Optional: bearer token for private items
+```
+
+**Tools:**
+
+| Tool | Description |
+|------|-------------|
+| `arcgis__search_datasets(q, limit)` | Search the Hub catalog |
+| `arcgis__get_dataset(dataset_id)` | Get metadata for a Hub item (32-char hex ID) |
+| `arcgis__get_aggregations(field, q)` | Facet counts for type, tags, categories, or access |
+| `arcgis__query_data(dataset_id, where, out_fields, limit)` | Query a Feature Service |
+
+### Built-in: Socrata
+
+For Socrata-based open data portals (e.g., data.cityofchicago.org, data.seattle.gov).
+
+**Configuration:**
+
+```yaml
+plugins:
+  socrata:
+    enabled: true
+    base_url: "https://data.yourcity.gov"
+    portal_url: "https://data.yourcity.gov"
+    city_name: "Your City"
+    app_token: "${SOCRATA_APP_TOKEN}"  # Recommended; register at dev.socrata.com
+    timeout: 30
+```
+
+**Tools:**
+
+| Tool | Description |
+|------|-------------|
+| `socrata__search_datasets(query, limit)` | Search the portal catalog |
+| `socrata__get_dataset(dataset_id)` | Get metadata for a dataset (4x4 ID) |
+| `socrata__get_schema(dataset_id)` | Get column schema for constructing SoQL queries |
+| `socrata__query_dataset(dataset_id, soql_query)` | Query data using SoQL |
+| `socrata__list_categories()` | List all categories with dataset counts |
+| `socrata__execute_sql(dataset_id, soql)` | Execute raw SoQL SELECT (advanced) |
 
 ### Custom Plugins
 
@@ -102,7 +175,7 @@ mkdir -p custom_plugins/my_plugin
 cp custom_plugins/template/plugin_template.py custom_plugins/my_plugin/plugin.py
 ```
 
-Edit the plugin, add config to `config.yaml` (create from `config-example.yaml` if needed), then `./scripts/deploy.sh`.
+Edit the plugin, add config to `config.yaml` (create from `config-example.yaml` if needed), then `opencontext deploy --env staging`.
 
 **Structure:**
 - Inherit from `MCPPlugin` (or `DataPlugin` for data sources)
@@ -128,7 +201,7 @@ async def health_check() -> bool
 **Reference:**
 - [Plugin template](../custom_plugins/template/plugin_template.py)
 - [CKAN plugin](../plugins/ckan/) – Full implementation
-- [Examples](../examples/custom-plugin/) – Custom plugin example
+- [Examples](../examples/) – Per-city configuration examples
 
 ## Plugin Interface
 
@@ -149,16 +222,18 @@ class MCPPlugin(ABC):
 
 | Endpoint | Auth | Use |
 |----------|------|-----|
-| API Gateway | Rate limit, quota | Production |
-| Lambda Function URL | None | Testing |
+| API Gateway | Throttling + usage plan quota | Production |
+| Lambda Function URL | None | Testing only |
 
 ## Configuration
 
-Single `config.yaml`; passed to Lambda via `OPENCONTEXT_CONFIG`. Validated at deploy and runtime.
+Single `config.yaml`; JSON-encoded and injected as the `OPENCONTEXT_CONFIG` Lambda environment variable at deploy time. Validated at deploy and runtime.
 
 ## Security & Scalability
 
-- **API Gateway:** Rate limiting (100 burst, 50 sustained/s), configurable daily quota
-- **Lambda URL:** Public—testing only
+- **API Gateway:** Configurable throttling (default: 10 burst / 5 sustained req/s) and daily quota via `api_quota_limit`, `api_burst_limit`, `api_rate_limit` Terraform variables
+- **Lambda URL:** Public — testing only; use API Gateway for production
+- **X-Ray:** Active tracing on all Lambda invocations and API Gateway stage
+- **SQS DLQ:** Failed async invocations written to `<function-name>-dlq` for inspection
 - **Stateless:** No shared state; Lambda auto-scales
-- **Logging:** CloudWatch, structured JSON, request IDs
+- **Logging:** CloudWatch Logs, structured JSON, 14-day retention

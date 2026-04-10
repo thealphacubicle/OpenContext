@@ -8,26 +8,39 @@ Deploy OpenContext to AWS Lambda. See [Getting Started](GETTING_STARTED.md) for 
 - Terraform >= 1.0
 - Python 3.11+
 
+Run `opencontext authenticate` to verify all prerequisites before deploying.
+
 ## AWS Permissions
 
 - Lambda (create, update functions)
 - IAM (roles, policies)
 - CloudWatch Logs
-- API Gateway / Lambda Function URLs
+- API Gateway
+- SQS (Dead Letter Queue for Lambda failures)
+- X-Ray (tracing, via AWSXRayDaemonWriteAccess)
+- ACM (only required when configuring a custom domain)
 
 ## Deployment
 
+### Using the CLI (recommended)
+
 ```bash
-# Configure AWS
-aws configure
+# Check prerequisites
+opencontext authenticate
 
-# Create config from template (if needed)
-cp config-example.yaml config.yaml
-# Edit config.yaml - enable exactly ONE plugin
+# Configure (creates config.yaml, .tfvars, and Terraform workspace)
+opencontext configure
 
-# Deploy (validates config, packages, deploys)
-./scripts/deploy.sh
+# Validate before deploying
+opencontext validate --env staging
+
+# Deploy
+opencontext deploy --env staging
 ```
+
+`opencontext deploy` packages the Lambda, runs `terraform plan`, shows a summary of changes, asks for confirmation, then applies. The API Gateway URL is printed on success.
+
+To update after changing code or config, just run `opencontext deploy --env staging` again.
 
 ### Manual Terraform
 
@@ -43,38 +56,41 @@ Then deploy:
 ```bash
 cd terraform/aws
 terraform init
-terraform plan -var="config_file=config.yaml"
-terraform apply
+terraform plan -var-file=staging.tfvars -out=tfplan
+terraform apply tfplan
 ```
 
-The deploy script copies `config.yaml` into `terraform/aws/` before running Terraform. For manual runs, ensure `config.yaml` exists in the project root or pass the correct path.
+The `opencontext configure` command generates the `.tfvars` file. For manual runs, ensure `config.yaml` exists in the project root and `terraform/aws/staging.tfvars` has the correct values.
 
 ## Endpoints
 
+All traffic — development, staging, and production — goes through the API Gateway URL. There is no separate no-auth endpoint.
+
 | Endpoint | Use Case | Auth |
 |----------|----------|------|
-| **API Gateway** | Production | Rate limiting, daily quota |
-| **Lambda Function URL** | Testing | None |
+| **API Gateway** | All environments | Rate limiting, daily quota |
 
-### Get URLs
+### Get the URL
 
 ```bash
+# Via CLI
+opencontext status --env staging
+
+# Via Terraform directly
 cd terraform/aws
-terraform output -raw api_gateway_url   # Production (includes /mcp)
-terraform output -raw lambda_url      # Testing
+terraform output -raw api_gateway_url   # Includes /mcp suffix
 ```
 
 ### API Gateway
 
-- **Rate limit:** 100 burst, 50 sustained req/s (configurable via Terraform variables)
-- **Daily quota:** 1000 requests/day (configurable via `api_quota_limit`)
+- **Throttling:** Default 10 burst / 5 sustained req/s; configurable via `api_burst_limit` and `api_rate_limit` Terraform variables
+- **Daily quota:** Configurable via `api_quota_limit` Terraform variable
 - **Stage name:** Default is `staging`; URL format: `https://...execute-api.region.amazonaws.com/staging/mcp`
-- **429** when exceeded
-- Use for production; Lambda URL has no auth
+- **HTTP 429** when rate or quota is exceeded
 
 ## Configuration
 
-Config is passed via `OPENCONTEXT_CONFIG` env var. Create `config.yaml` from `config-example.yaml`, edit it, and run `./scripts/deploy.sh` to update.
+Config is passed via `OPENCONTEXT_CONFIG` env var. Use `opencontext configure` to generate `config.yaml`, or create it manually from `config-example.yaml`.
 
 ### Lambda Settings (in config.yaml)
 
@@ -89,22 +105,25 @@ aws:
 ## Monitoring
 
 - **CloudWatch Logs:** `/aws/lambda/<function-name>`, 14-day retention
-- **Tail logs:** `aws logs tail /aws/lambda/my-mcp-server --follow`
+- **Tail logs via CLI:** `opencontext logs --env staging`
+- **Stream logs:** `opencontext logs --env staging --follow`
+- **Raw AWS CLI:** `aws logs tail /aws/lambda/my-mcp-server --follow`
 
 ## Updating & Cleanup
 
-**Update:** Change code/config, run `./scripts/deploy.sh` again.
+**Update:** Change code or `config.yaml`, then run `opencontext deploy --env staging` again.
 
 **Destroy:**
 ```bash
-cd terraform/aws
-terraform destroy -var="config_file=config.yaml"
+opencontext destroy --env staging
 ```
+
+This runs `terraform destroy` with a confirmation prompt. You must type the environment name to confirm.
 
 ## Cost (us-east-1)
 
 - Lambda: ~$0.20/1M requests, ~$0.0000166667/GB-second
-- Function URL: Free
+- API Gateway: ~$3.50/1M requests
 - Example: 100K req/month, 512 MB, 1s avg ≈ **$1/month**
 
 ## Troubleshooting
@@ -112,12 +131,12 @@ terraform destroy -var="config_file=config.yaml"
 | Issue | Solution |
 |-------|----------|
 | Multiple plugins | Enable only ONE in `config.yaml` |
-| Lambda timeout | Increase `lambda_timeout` |
-| 500 error | Check CloudWatch logs, validate config |
+| Lambda timeout | Increase `lambda_timeout` in `config.yaml` |
+| 500 error | `opencontext logs --env staging` |
+| Missing `.tfvars` | Run `opencontext configure` |
 | High cost | Reduce `lambda_memory`, review usage |
 
 ## Security
 
-- Use API Gateway for production (rate limiting, quota)
-- Lambda URL is public—testing only
+- API Gateway enforces rate limiting and daily quotas for all environments
 - Store secrets in env vars, not code

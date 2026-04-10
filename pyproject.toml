@@ -3,7 +3,7 @@ name = "opencontext"
 version = "1.0.0"
 description = "Extensible MCP framework template for civic data platforms"
 authors = [
-    {name = "Srihari Raman", email = "srihari.raman@boston.gov"}
+    {name = "Srihari Raman", email = "srihari.raman@outlook.com"}
 ]
 license = {text = "MIT"}
 readme = "README.md"
@@ -15,7 +15,13 @@ dependencies = [
     "tenacity>=8.0.0",
     "python-json-logger>=2.0.0",
     "sqlparse>=0.4.4",
-    "aiohttp>=3.8.0",
+    "aiohttp>=3.13.4",
+    "pygments>=2.20.0",
+    "requests>=2.33.0",
+    "pre-commit>=4.5.1",
+    "boto3>=1.42.83",
+    "botocore>=1.42.83",
+    "click>=8.3.1",
 ]
 
 [project.optional-dependencies]
@@ -27,6 +33,14 @@ dev = [
     "ruff>=0.1.0",
     "pip-audit>=2.0.0",
 ]
+cli = [
+    "typer>=0.9.0",
+    "questionary>=2.0.0",
+    "rich>=13.0.0",
+]
+
+[project.scripts]
+opencontext = "cli.main:app"
 
 [project.urls]
 Homepage = "https://github.com/thealphacubicle/OpenContext"
@@ -38,7 +52,7 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
-include = ["core*", "server*", "plugins*", "custom_plugins*"]
+include = ["core*", "server*", "plugins*", "custom_plugins*", "cli*"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

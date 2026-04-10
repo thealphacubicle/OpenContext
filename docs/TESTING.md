@@ -7,8 +7,7 @@ This guide covers three ways to test your OpenContext server locally.
 Before testing:
 
 1. Create `config.yaml` from `config-example.yaml` and enable exactly one plugin
-2. Install dependencies: `pip install aiohttp`
-3. Start the server: `python3 scripts/local_server.py`
+2. Start the server: `opencontext serve`
 
 The server runs at `http://localhost:8000/mcp`. Keep it running while you test.
 
@@ -45,7 +44,7 @@ curl -X POST http://localhost:8000/mcp \
 For a full test (initialize, list tools, call tool), run:
 
 ```bash
-./scripts/test_streamable_http.sh
+opencontext test --url http://localhost:8000/mcp
 ```
 
 ---
@@ -120,11 +119,11 @@ pytest --cov=core --cov=plugins
 
 ## Testing Against Production
 
-To test a deployed server, use the Lambda URL or API Gateway URL:
+To test a deployed server, use the API Gateway URL:
 
 ```bash
-LAMBDA_URL="https://your-lambda-url.lambda-url.us-east-1.on.aws"
-curl -X POST $LAMBDA_URL/mcp \
+API_GW_URL=$(cd terraform/aws && terraform output -raw api_gateway_url)
+curl -X POST $API_GW_URL \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc":"2.0","id":1,"method":"ping"}'
 ```

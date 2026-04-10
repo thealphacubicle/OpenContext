@@ -36,7 +36,7 @@ Yes, but they must be resolved before deployment. Terraform will set the final c
 
 ### What if I need to change configuration after deployment?
 
-Edit `config.yaml` and run `./scripts/deploy.sh` again. Terraform will update the Lambda environment variable.
+Edit `config.yaml` and run `opencontext deploy --env staging` again. Terraform will update the Lambda environment variable.
 
 ## Plugins
 
@@ -44,7 +44,9 @@ Edit `config.yaml` and run `./scripts/deploy.sh` again. Terraform will update th
 
 Built-in plugins:
 
-- **CKAN** - For CKAN-based portals (data.boston.gov, data.gov, data.gov.uk)
+- **CKAN** — For CKAN-based portals (e.g., data.gov, data.gov.uk)
+- **ArcGIS Hub** — For ArcGIS Hub portals (e.g., hub.arcgis.com)
+- **Socrata** — For Socrata portals (e.g., data.cityofchicago.org)
 
 You can also create custom plugins in `custom_plugins/`.
 
@@ -75,7 +77,7 @@ The current implementation is AWS-specific. Contributions for other providers ar
 
 ### How do I update an existing deployment?
 
-Run `./scripts/deploy.sh` again. Terraform will update the Lambda function.
+Run `opencontext deploy --env staging` again. Terraform will update the Lambda function.
 
 ## Usage
 
@@ -139,14 +141,11 @@ curl -X POST https://your-lambda-url \
 **Option 1: Use the local server**
 
 ```bash
-# Install aiohttp if needed
-pip install aiohttp
-
 # Start local server
-python3 local_server.py
+opencontext serve
 
 # In another terminal, test with curl
-curl -X POST http://localhost:8000 \
+curl -X POST http://localhost:8000/mcp \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
 ```
@@ -161,9 +160,9 @@ from plugins.ckan.plugin import CKANPlugin
 
 async def test():
     plugin = CKANPlugin({
-        "base_url": "https://data.boston.gov",
-        "portal_url": "https://data.boston.gov",
-        "city_name": "Boston",
+        "base_url": "https://data.yourcity.gov",
+        "portal_url": "https://data.yourcity.gov",
+        "city_name": "Your City",
         "timeout": 120,
     })
     await plugin.initialize()

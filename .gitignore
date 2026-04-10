@@ -228,3 +228,7 @@ client/opencontext-client-*
 # Config yaml
 config.yaml
 examples/
+
+# Terraform variable files (may contain real secrets — use *.tfvars.example as templates)
+terraform/**/*.tfvars
+.claude/

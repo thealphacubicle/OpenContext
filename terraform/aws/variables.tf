@@ -13,7 +13,7 @@ variable "aws_region" {
 variable "config_file" {
   description = "Path to config.yaml file"
   type        = string
-  default = "../../config.yaml"
+  default     = "../../config.yaml"
 }
 
 variable "lambda_memory" {
@@ -50,4 +50,10 @@ variable "stage_name" {
   description = "API Gateway stage name (e.g. prod, dev, staging)"
   type        = string
   default     = "staging"
+}
+
+variable "custom_domain" {
+  description = "Custom domain name for API Gateway (leave empty to skip custom domain setup)"
+  type        = string
+  default     = ""
 }

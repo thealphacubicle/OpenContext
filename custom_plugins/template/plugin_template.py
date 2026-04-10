@@ -95,7 +95,7 @@ class MyCustomPlugin(MCPPlugin):
         """Get list of tools provided by this plugin.
 
         Tool names should NOT include the plugin prefix (e.g., use "search"
-        not "my_custom_plugin.search"). The Plugin Manager will add the prefix.
+        not "my_custom_plugin__search"). The Plugin Manager will add the prefix.
 
         Returns:
             List of tool definitions
@@ -134,7 +134,7 @@ class MyCustomPlugin(MCPPlugin):
         try:
             if tool_name == "example_tool":  # TODO: Match your tool name
                 # TODO: Implement tool logic
-                param1 = arguments.get("param1")
+                arguments.get("param1")
 
                 # Example implementation:
                 # result = await self._call_api(param1)

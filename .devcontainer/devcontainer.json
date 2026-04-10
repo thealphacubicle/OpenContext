@@ -1,0 +1,50 @@
+{
+  "name": "OpenContext",
+  "image": "mcr.microsoft.com/devcontainers/python:3.11",
+
+  "features": {
+    "ghcr.io/devcontainers/features/go:1": {
+      "version": "latest"
+    },
+    "ghcr.io/devcontainers-contrib/features/uv:1": {}
+  },
+
+  "postCreateCommand": {
+    "python": "uv sync --all-extras && pre-commit install",
+    "claude": "curl -fsSL https://claude.ai/install.sh | bash"
+  },
+
+  // Local MCP dev server
+  "forwardPorts": [8000],
+  "portsAttributes": {
+    "8000": {
+      "label": "MCP Server",
+      "onAutoForward": "notify"
+    }
+  },
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "charliermarsh.ruff",
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "golang.go",
+        "redhat.vscode-yaml",
+        "hashicorp.terraform",
+        "tamasfe.even-better-toml"
+      ],
+      "settings": {
+        "python.defaultInterpreterPath": ".venv/bin/python",
+        "[python]": {
+          "editor.defaultFormatter": "charliermarsh.ruff",
+          "editor.formatOnSave": true,
+          "editor.codeActionsOnSave": {
+            "source.fixAll.ruff": "explicit"
+          }
+        },
+        "ruff.lint.args": ["--config=pyproject.toml"]
+      }
+    }
+  }
+}

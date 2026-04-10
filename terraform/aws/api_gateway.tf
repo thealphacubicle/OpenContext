@@ -6,6 +6,8 @@ resource "aws_api_gateway_rest_api" "mcp_api" {
   endpoint_configuration {
     types = ["REGIONAL"]
   }
+
+  tags = local.common_tags
 }
 
 # API Gateway Resource: /mcp
@@ -151,6 +153,8 @@ resource "aws_api_gateway_stage" "prod" {
   stage_name    = var.stage_name
 
   xray_tracing_enabled = true
+
+  tags = local.common_tags
 }
 
 # Method Settings: Throttling for all methods in stage (AWS format: */* not /*/*)

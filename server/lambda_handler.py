@@ -10,7 +10,7 @@ import logging
 import os
 from typing import Any, Dict
 
-from pythonjsonlogger import jsonlogger
+from pythonjsonlogger import json as jsonlogger
 
 from core.mcp_server import MCPServer
 from core.plugin_manager import PluginManager

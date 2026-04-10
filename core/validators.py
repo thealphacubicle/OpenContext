@@ -69,7 +69,7 @@ def validate_plugin_count(config: Dict[str, Any]) -> Tuple[List[str], int]:
             f"     Fork #1: Enable {enabled_plugins[0]} only\n"
             f"     Fork #2: Enable {enabled_plugins[1]} only\n\n"
             f"  3. Deploy each fork separately\n"
-            f"     ./scripts/deploy.sh (in each fork)\n\n"
+            f"     opencontext deploy --env <env> (in each fork)\n\n"
             f"See docs/ARCHITECTURE.md for details."
         )
 

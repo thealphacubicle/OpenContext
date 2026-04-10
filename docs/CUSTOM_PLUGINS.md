@@ -27,7 +27,7 @@ Custom plugins allow you to integrate OpenContext with your own APIs, databases,
        api_key: "${MY_API_KEY}"
    ```
 
-4. Deploy: `./scripts/deploy.sh`
+4. Deploy: `opencontext deploy --env staging`
 
 ## Plugin Structure
 
@@ -134,24 +134,87 @@ async def health_check(self) -> bool:
 
 ## DataPlugin Interface
 
-If your plugin provides data operations, inherit from `DataPlugin` instead:
+If your plugin provides data operations, inherit from `DataPlugin` instead of `MCPPlugin` directly.
+
+`DataPlugin` extends `MCPPlugin`, so a `DataPlugin` subclass must implement **all 8 abstract methods** — the 5 from `MCPPlugin` plus the 3 defined on `DataPlugin` itself. Omitting any of these will raise a `TypeError` at startup.
+
+### The 5 required methods inherited from `MCPPlugin`
+
+These are the same methods documented in the [Required Methods](#required-methods) section above. `DataPlugin` does not override or relax any of them:
+
+| Method | Signature |
+|---|---|
+| `initialize` | `async def initialize(self) -> bool` |
+| `shutdown` | `async def shutdown(self) -> None` |
+| `get_tools` | `def get_tools(self) -> List[ToolDefinition]` |
+| `execute_tool` | `async def execute_tool(self, tool_name: str, arguments: Dict[str, Any]) -> ToolResult` |
+| `health_check` | `async def health_check(self) -> bool` |
+
+### The 3 additional methods defined by `DataPlugin`
+
+| Method | Signature |
+|---|---|
+| `search_datasets` | `async def search_datasets(self, query: str, limit: int = 20) -> List[Dict[str, Any]]` |
+| `get_dataset` | `async def get_dataset(self, dataset_id: str) -> Dict[str, Any]` |
+| `query_data` | `async def query_data(self, resource_id: str, filters: Optional[Dict[str, Any]] = None, limit: int = 100) -> List[Dict[str, Any]]` |
+
+### Minimal skeleton
 
 ```python
-from core.interfaces import DataPlugin
+from typing import Any, Dict, List, Optional
+from core.interfaces import DataPlugin, PluginType, ToolDefinition, ToolResult
 
 class MyDataPlugin(DataPlugin):
-    async def search_datasets(self, query: str, limit: int = 20):
-        # Implement dataset search
+    plugin_name = "my_data"
+    plugin_type = PluginType.OPEN_DATA
+    plugin_version = "1.0.0"
+
+    def __init__(self, config: Dict[str, Any]) -> None:
+        super().__init__(config)
+
+    # --- 5 required methods from MCPPlugin ---
+
+    async def initialize(self) -> bool:
+        # Create clients, validate config, set self._initialized = True
+        self._initialized = True
+        return True
+
+    async def shutdown(self) -> None:
+        # Close clients, release resources
+        self._initialized = False
+
+    def get_tools(self) -> List[ToolDefinition]:
+        # Return ToolDefinition objects for each tool this plugin exposes
+        return []
+
+    async def execute_tool(self, tool_name: str, arguments: Dict[str, Any]) -> ToolResult:
+        # Dispatch to the correct tool implementation
+        return ToolResult(content=[], success=False, error_message=f"Unknown tool: {tool_name}")
+
+    async def health_check(self) -> bool:
+        return self._initialized
+
+    # --- 3 required methods from DataPlugin ---
+
+    async def search_datasets(self, query: str, limit: int = 20) -> List[Dict[str, Any]]:
+        # Return a list of dataset metadata dicts matching the query
         pass
 
-    async def get_dataset(self, dataset_id: str):
-        # Implement dataset retrieval
+    async def get_dataset(self, dataset_id: str) -> Dict[str, Any]:
+        # Return full metadata for a single dataset
         pass
 
-    async def query_data(self, resource_id: str, filters: Optional[Dict] = None, limit: int = 100):
-        # Implement data querying
+    async def query_data(
+        self,
+        resource_id: str,
+        filters: Optional[Dict[str, Any]] = None,
+        limit: int = 100,
+    ) -> List[Dict[str, Any]]:
+        # Return records from the specified resource
         pass
 ```
+
+See `custom_plugins/template/plugin_template.py` for the canonical, fully-annotated starting point (it inherits `MCPPlugin` directly, which is fine for non-data plugins).
 
 ## Best Practices
 
