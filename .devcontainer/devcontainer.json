@@ -9,20 +9,10 @@
     "ghcr.io/devcontainers-contrib/features/uv:1": {}
   },
 
-<<<<<<< HEAD
-<<<<<<< HEAD
   "postCreateCommand": {
     "python": "uv sync --all-extras && pre-commit install",
     "claude": "curl -fsSL https://claude.ai/install.sh | bash"
   },
-=======
-  // Install all deps (including cli + dev extras) and set up git hooks
-  "postCreateCommand": "uv sync --all-extras && pre-commit install",
->>>>>>> 21f78af (Added DX files)
-=======
-  // Install all deps (including cli + dev extras) and set up git hooks
-  "postCreateCommand": "uv sync --all-extras && pre-commit install",
->>>>>>> 21f78af (Added DX files)
 
   // Local MCP dev server
   "forwardPorts": [8000],
