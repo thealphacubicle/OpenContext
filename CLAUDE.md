@@ -24,11 +24,11 @@ opencontext serve
 opencontext test --url http://localhost:8000/mcp
 
 # Tests
-pytest tests/ -n auto --cov=core --cov=plugins --cov-fail-under=80
+uv run pytest tests/ -n auto --cov=core --cov=plugins --cov-fail-under=80
 
 # Lint + format (matches CI)
-ruff check core/ plugins/ server/ tests/ --fix --unsafe-fixes
-ruff format core/ plugins/ server/ tests/
+uv run ruff check core/ plugins/ server/ tests/ --fix --unsafe-fixes
+uv run ruff format core/ plugins/ server/ tests/
 
 # CLI
 opencontext validate --env staging    # validate config + Terraform before deploy
@@ -47,11 +47,9 @@ core/           # Framework kernel — interfaces, MCP server, plugin manager, v
 plugins/        # Built-in plugins: ckan/, arcgis/, socrata/
 custom_plugins/ # Drop user plugins here — auto-discovered at startup
 cli/            # Typer CLI (opencontext command)
-server/         # HTTP adapters: local aiohttp + AWS Lambda entry point
 server/adapters/ # local aiohttp dev server + AWS Lambda entry point
 tests/          # pytest suite (80% coverage required)
 terraform/aws/  # Lambda + API Gateway + IAM IaC
-examples/       # Per-city config.yaml examples (Boston, Chicago, Seattle, etc.)
 docs/           # Architecture, deployment, plugin authoring guides
 ```
 
@@ -72,7 +70,7 @@ To add a custom plugin:
 2. Implement: `initialize`, `shutdown`, `get_tools`, `execute_tool`, `health_check`
 3. Enable in `config.yaml` under `plugins.my_plugin.enabled: true`
 
-See `docs/CUSTOM_PLUGINS.md` for full interface contract.
+See `docs/CUSTOM_PLUGINS.md` for the interface contract and `.claude/skills/add-plugin/SKILL.md` for the step-by-step workflow.
 
 ## Config (`config.yaml`)
 
@@ -111,6 +109,15 @@ uv run ruff check core/ plugins/ server/ tests/
 uv run pip-audit -r requirements.txt
 uv run pytest tests/ -n auto --cov=core --cov=plugins --cov-fail-under=80
 ```
+
+## Branching
+
+Branch off `develop`: `feature/`, `bugfix/`, `docs/`, `chore/`. PRs target `develop`, not `main`.
+Terraform workspace naming: `{city}-{env}` (e.g., `chicago-staging`) — created by `opencontext configure`.
+
+## Conventions
+
+Coding style, test patterns, plugin authoring, and infrastructure rules live in `.claude/rules/` and load automatically for relevant file types.
 
 ## Gotchas
 
