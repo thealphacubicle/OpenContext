@@ -213,6 +213,7 @@ lambda-deployment.zip
 terraform/*/.terraform/
 terraform/*/.terraform.lock.hcl
 terraform/*/lambda-deployment.zip
+terraform/*/gcf-deployment.zip
 
 # Terraform state (contains secrets, ignore across all folders)
 **/*.tfstate
