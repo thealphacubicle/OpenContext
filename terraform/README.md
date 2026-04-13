@@ -39,5 +39,5 @@ Use `opencontext configure --state-bucket <custom-name>` to create a per-account
 
 ## Other Clouds
 
-- **GCP:** [gcp/](gcp/) – Coming soon
+- **GCP:** [gcp/](gcp/) — Cloud Functions gen2 + GCS artifact (see [gcp/README.md](gcp/README.md); bootstrap state in [gcp/bootstrap/](gcp/bootstrap/))
 - **Azure:** [azure/](azure/) – Coming soon

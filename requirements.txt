@@ -8,3 +8,4 @@ aiohttp>=3.13.4
 pygments>=2.20.0
 requests>=2.33.0
 pre-commit>=4.5.1
+functions-framework>=3.4.0
