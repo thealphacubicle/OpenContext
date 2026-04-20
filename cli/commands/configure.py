@@ -20,9 +20,6 @@ from cli.utils import (
 
 PLUGINS = ["CKAN", "Socrata", "ArcGIS"]
 
-# Bucket name must match the `backend "s3"` block in terraform/aws/main.tf.
-TERRAFORM_STATE_BUCKET = "opencontext-terraform-state-govex-dc"
-
 
 def _ensure_state_bucket(bucket_name: str, region: str) -> None:
     """Check that the Terraform S3 state bucket exists; create it if not.
@@ -198,19 +195,8 @@ def _write_tfvars(
 
 
 @friendly_exit
-def configure(
-    state_bucket: str = typer.Option(
-        TERRAFORM_STATE_BUCKET,
-        "--state-bucket",
-        help="S3 bucket name for Terraform state (default: opencontext-terraform-state)",
-    ),
-) -> None:
+def configure() -> None:
     """Interactive wizard to configure your OpenContext MCP server."""
-    # When called programmatically (e.g. in tests), Typer does not resolve
-    # Option defaults — guard against receiving the raw OptionInfo sentinel.
-    if not isinstance(state_bucket, str):
-        state_bucket = TERRAFORM_STATE_BUCKET
-
     project_root = get_project_root()
     terraform_dir = get_terraform_dir()
 
@@ -274,6 +260,19 @@ def configure(
         raise typer.Exit(0)
 
     city_slug = city_name.lower().replace(" ", "-")
+
+    # Prompt for a unique S3 bucket name for Terraform state.
+    # S3 bucket names are globally unique across all AWS accounts, so the
+    # default includes the org city slug to avoid collisions with other
+    # deployments of this project.
+    suggested_bucket = f"opencontext-terraform-state-{city_slug}"
+    state_bucket = questionary.text(
+        "S3 bucket name for Terraform state:",
+        default=suggested_bucket,
+    ).ask()
+    if state_bucket is None:
+        raise typer.Exit(0)
+
     suggested_lambda = f"{city_slug}-opencontext-mcp-{env}"
 
     lambda_name = questionary.text(
@@ -398,6 +397,7 @@ def configure(
     summary.add_row("City", city_name)
     summary.add_row("Environment", env)
     summary.add_row("Plugin", plugin)
+    summary.add_row("Terraform state bucket", state_bucket)
     summary.add_row("Lambda name", lambda_name)
     summary.add_row("AWS region", region)
     summary.add_row("Lambda memory", f"{lambda_memory} MB")
