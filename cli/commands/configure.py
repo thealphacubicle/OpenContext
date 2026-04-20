@@ -21,7 +21,7 @@ from cli.utils import (
 PLUGINS = ["CKAN", "Socrata", "ArcGIS"]
 
 # Bucket name must match the `backend "s3"` block in terraform/aws/main.tf.
-TERRAFORM_STATE_BUCKET = "opencontext-terraform-state"
+TERRAFORM_STATE_BUCKET = "opencontext-terraform-state-govex-dc"
 
 
 def _ensure_state_bucket(bucket_name: str, region: str) -> None:
