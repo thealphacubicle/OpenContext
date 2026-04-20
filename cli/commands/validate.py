@@ -130,36 +130,13 @@ def run_checks(env: str) -> bool:
         ".terraform directory found" if tf_initialized else "Run: opencontext configure",
     ))
 
-    # 7. terraform validate
-    if tf_installed and tf_initialized:
-        try:
-            result = subprocess.run(
-                ["terraform", "validate", "-json"],
-                cwd=terraform_dir,
-                capture_output=True, text=True, timeout=30,
-            )
-            if result.returncode == 0:
-                checks.append(("terraform validate", True, "Configuration valid"))
-            else:
-                error_msg = ""
-                try:
-                    data = json.loads(result.stdout)
-                    error_msg = data.get("error_message", "")
-                except Exception:
-                    pass
-                if not error_msg:
-                    error_msg = (result.stderr or result.stdout or "Validation failed").strip()
-                checks.append(("terraform validate", False, error_msg[:100]))
-        except (FileNotFoundError, subprocess.TimeoutExpired) as e:
-            checks.append(("terraform validate", False, str(e)[:80]))
-    else:
-        checks.append((
-            "terraform validate",
-            False,
-            "Skipped — terraform not installed or not initialized",
-        ))
+    # Note: terraform validate is intentionally skipped here because it
+    # references lambda-deployment.zip, which does not exist until the
+    # packaging step inside `opencontext deploy`. Running validate before
+    # packaging would always fail. Terraform plan (run inside deploy) catches
+    # the same configuration errors after the zip has been created.
 
-    # 8. AWS credentials valid
+    # 7. AWS credentials valid
     try:
         result = subprocess.run(
             ["aws", "sts", "get-caller-identity", "--output", "json"],
@@ -179,7 +156,7 @@ def run_checks(env: str) -> bool:
     except (subprocess.TimeoutExpired, json.JSONDecodeError):
         checks.append(("AWS credentials valid", False, "Run: aws configure"))
 
-    # 9. ACM cert exists for custom domain (only if custom_domain is set)
+    # 8. ACM cert exists for custom domain (only if custom_domain is set)
     if custom_domain:
         try:
             result = subprocess.run(
