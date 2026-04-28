@@ -1,0 +1,72 @@
+{
+  "$schema": "https://schemas.anthropic.com/claude-code/settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(uv run *)",
+      "Bash(uv sync *)",
+      "Bash(opencontext serve*)",
+      "Bash(opencontext test*)",
+      "Bash(opencontext validate*)",
+      "Bash(opencontext status*)",
+      "Bash(opencontext logs*)",
+      "Bash(opencontext plugin*)",
+      "Bash(opencontext security*)",
+      "Bash(opencontext architecture*)",
+      "Bash(pre-commit run *)",
+      "Bash(git log *)",
+      "Bash(git diff *)",
+      "Bash(git status *)",
+      "Bash(git branch *)",
+      "Bash(git show *)",
+      "Bash(git stash list)",
+      "Bash(terraform fmt *)",
+      "Bash(terraform validate *)",
+      "Bash(terraform output *)",
+      "Bash(cd client && make build)",
+      "Bash(cd client && go test *)"
+    ],
+    "deny": [
+      "Read(config.yaml)",
+      "Write(config.yaml)",
+      "Edit(config.yaml)",
+      "Read(.env)",
+      "Write(.env)",
+      "Edit(.env)",
+      "Read(.env.*)",
+      "Write(.env.*)",
+      "Edit(.env.*)",
+      "Read(.envrc)",
+      "Write(.envrc)",
+      "Edit(.envrc)",
+      "Read(terraform/**/*.tfvars)",
+      "Write(terraform/**/*.tfvars)",
+      "Edit(terraform/**/*.tfvars)",
+      "Read(terraform/**/*.tfstate)",
+      "Read(terraform/**/*.tfstate.*)",
+      "Bash(rm *)",
+      "Bash(git push *)",
+      "Bash(git reset *)",
+      "Bash(git clean *)",
+      "Bash(git restore *)",
+      "Bash(git checkout -- *)",
+      "Bash(terraform apply *)",
+      "Bash(terraform destroy *)",
+      "Bash(opencontext deploy *)",
+      "Bash(opencontext destroy *)",
+      "Bash(opencontext configure *)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -c \"import sys,json,subprocess; d=json.load(sys.stdin); fp=d.get('tool_input',{}).get('file_path',''); fp.endswith('.py') and subprocess.run(['uv','run','ruff','format',fp],capture_output=True)\""
+          }
+        ]
+      }
+    ]
+  }
+}

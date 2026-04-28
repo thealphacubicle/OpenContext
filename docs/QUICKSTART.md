@@ -20,10 +20,16 @@ git clone https://github.com/your-org/opencontext.git
 cd opencontext
 ```
 
+Install [uv](https://docs.astral.sh/uv/getting-started/installation/) if needed, then install dependencies and the `opencontext` CLI:
+
+```bash
+uv sync --extra cli
+```
+
 ## Step 2: Check Prerequisites
 
 ```bash
-opencontext authenticate
+uv run opencontext authenticate
 ```
 
 This checks Python 3.11+, `uv`, AWS CLI, AWS credentials, and Terraform — and auto-installs `uv` and `awscli` if missing.
@@ -31,7 +37,7 @@ This checks Python 3.11+, `uv`, AWS CLI, AWS credentials, and Terraform — and 
 ## Step 3: Configure
 
 ```bash
-opencontext configure
+uv run opencontext configure
 ```
 
 The interactive wizard prompts for:
@@ -47,7 +53,7 @@ It writes `config.yaml`, the Terraform `.tfvars` file, and initializes your Terr
 ## Step 4: Deploy
 
 ```bash
-opencontext deploy --env staging
+uv run opencontext deploy --env staging
 ```
 
 The command:
@@ -75,7 +81,7 @@ Connect using **Claude Connectors** (same steps on both Claude.ai and Claude Des
 To retrieve the URL later:
 
 ```bash
-opencontext status --env staging
+uv run opencontext status --env staging
 ```
 
 ## Step 6: Test
@@ -84,7 +90,7 @@ opencontext status --env staging
 
 ```bash
 # Start local server
-opencontext serve
+uv run opencontext serve
 
 # In another terminal, test with curl
 curl -X POST http://localhost:8000/mcp \
@@ -95,7 +101,7 @@ curl -X POST http://localhost:8000/mcp \
 **Test deployed server:**
 
 ```bash
-opencontext test --env staging
+uv run opencontext test --env staging
 ```
 
 **Test in Claude:**
@@ -112,11 +118,11 @@ Claude will use your MCP server to search the data portal.
 
 ### Prerequisites fail
 
-Run `opencontext authenticate` and follow the instructions for any failing check.
+Run `uv run opencontext authenticate` and follow the instructions for any failing check.
 
 ### Deploy Script Fails: "Multiple Plugins Enabled"
 
-**Solution:** Enable only ONE plugin in `config.yaml`, or re-run `opencontext configure`.
+**Solution:** Enable only ONE plugin in `config.yaml`, or re-run `uv run opencontext configure`.
 
 ### Lambda URL Not Working
 
