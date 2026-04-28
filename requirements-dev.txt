@@ -1,5 +1,6 @@
-# Development dependencies for testing
-# Install with: pip install -r requirements-dev.txt
+# Development dependencies for testing (legacy companion to requirements.txt).
+# Prefer: uv sync --all-extras   (uses pyproject.toml + uv.lock)
+# Or:     uv pip install -r requirements-dev.txt
 
 -r requirements.txt
 
@@ -21,5 +22,5 @@ rich>=13.0.0
 boto3>=1.42.83
 botocore>=1.42.83
 
-# Pre-commit hooks (run: pre-commit install)
+# Pre-commit hooks (run: uv run pre-commit install)
 pre-commit>=4.0.0

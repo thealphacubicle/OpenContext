@@ -176,8 +176,8 @@ asyncio.run(test())
 **Option 3: Run unit tests**
 
 ```bash
-pip install pytest pytest-asyncio
-pytest tests/
+uv sync --all-extras
+uv run pytest tests/
 ```
 
 ### Can I contribute?

@@ -38,7 +38,7 @@ opencontext validate --env staging
 opencontext deploy --env staging
 ```
 
-`opencontext deploy` packages the Lambda, runs `terraform plan`, shows a summary of changes, asks for confirmation, then applies. The API Gateway URL is printed on success.
+`opencontext deploy` packages the Lambda (Python dependencies are installed from `requirements.txt` via `uv pip install` into the bundle), runs `terraform plan`, shows a summary of changes, asks for confirmation, then applies. The API Gateway URL is printed on success.
 
 To update after changing code or config, just run `opencontext deploy --env staging` again.
 

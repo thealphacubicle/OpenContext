@@ -11,8 +11,10 @@ Each repo fork runs **exactly one** plugin. `core/validators.py` and `core/plugi
 ```bash
 uv sync --all-extras        # install all deps including cli + dev
 cp config-example.yaml config.yaml   # then edit for your data source
-pre-commit install          # set up git hooks
+uv run pre-commit install          # set up git hooks
 ```
+
+`requirements.txt` pins dependencies for Lambda bundles and `pip-audit` in CI; local development uses `uv sync`, not `pip install -r requirements.txt`.
 
 ## Common Commands
 

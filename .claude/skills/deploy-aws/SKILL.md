@@ -27,7 +27,7 @@ Checks config.yaml structure + Terraform syntax. Fix any errors before proceedin
 ```bash
 opencontext security
 ```
-Run pip-audit before every deploy. Fix any HIGH/CRITICAL findings first.
+Runs `pip-audit` internally before every deploy path; fix any HIGH/CRITICAL findings first.
 
 ### 3. First-time setup only
 ```bash

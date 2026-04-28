@@ -9,7 +9,7 @@ git clone https://github.com/thealphacubicle/OpenContext.git
 cd OpenContext
 uv sync --all-extras          # install all deps including cli + dev
 cp config-example.yaml config.yaml   # edit for your data source
-pre-commit install            # set up lint/format hooks
+uv run pre-commit install            # set up lint/format hooks
 ```
 
 ## Branching & PRs
@@ -32,7 +32,7 @@ uv run ruff check core/ plugins/ server/ tests/ --fix --unsafe-fixes
 uv run ruff format core/ plugins/ server/ tests/
 
 # Or via pre-commit (runs on every commit)
-pre-commit run --all-files
+uv run pre-commit run --all-files
 ```
 
 Hooks: Ruff (Python), yamllint, gofmt. Type hints are expected on all public methods.
