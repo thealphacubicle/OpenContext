@@ -94,7 +94,7 @@ plugins:
 
 **WHERE clause validation.** The `where` parameter is validated by `WhereValidator` before being sent to the Feature Service. Malformed SQL WHERE clauses are rejected before the network call.
 
-**Feature Service host restriction.** For security, Feature Service URLs are restricted to `*.arcgis.com` or the `portal_url` domain configured in `config.yaml`. URLs that redirect to external hosts are rejected.
+**Feature Service host restriction.** For security, Feature Service URLs are restricted to `*.arcgis.com` or the `portal_url` domain configured in `config.yaml`. The plugin validates the URL's host against this allowlist before querying the service.
 
 **Auto layer index.** If the dataset's service URL points at a `FeatureServer` or `MapServer` root without a layer index (e.g. `.../FeatureServer`), the plugin automatically appends `/0` to target the default layer.
 

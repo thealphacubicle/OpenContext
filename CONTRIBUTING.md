@@ -105,7 +105,6 @@ Built-in plugins live in `plugins/` and ship with the framework.
 2. Create `plugins/{name}/config_schema.py` with a Pydantic `BaseModel` for config validation
 3. Add tests in `tests/plugins/{name}/`
 4. Document tools and config in `docs/BUILT_IN_PLUGINS.md`
-5. Add an example city config in `examples/{city}/config.yaml`
 
 See existing plugins (`plugins/ckan/`, `plugins/arcgis/`, `plugins/socrata/`) as reference implementations.
 
