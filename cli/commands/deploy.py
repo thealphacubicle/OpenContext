@@ -67,11 +67,17 @@ def _package_lambda(project_root: Path) -> Path:
     if req_file.exists():
         run_cmd(
             [
-                "uv", "pip", "install",
-                "-r", str(req_file),
-                "--target", str(deploy_dir),
-                "--python-platform", "x86_64-manylinux2014",
-                "--python-version", "3.11",
+                "uv",
+                "pip",
+                "install",
+                "-r",
+                str(req_file),
+                "--target",
+                str(deploy_dir),
+                "--python-platform",
+                "x86_64-manylinux2014",
+                "--python-version",
+                "3.11",
                 "--no-compile",
             ],
             cwd=project_root,
@@ -106,9 +112,7 @@ def _package_lambda(project_root: Path) -> Path:
 
 def _parse_plan_summary(output: str) -> tuple[int, int, int]:
     """Extract add/change/destroy counts from terraform plan output."""
-    match = re.search(
-        r"(\d+) to add, (\d+) to change, (\d+) to destroy", output
-    )
+    match = re.search(r"(\d+) to add, (\d+) to change, (\d+) to destroy", output)
     if match:
         return int(match.group(1)), int(match.group(2)), int(match.group(3))
     return 0, 0, 0
@@ -123,7 +127,7 @@ def deploy(
 
     # Validate configuration before doing any work
     console.print("\n[bold]Validating configuration before deploy...[/bold]")
-    if not _run_validate_checks(env):
+    if not _run_validate_checks(env, include_artifact_checks=False):
         console.print(
             "\n[red bold]Validation failed.[/red bold] "
             "Fix the issues above before redeploying."
@@ -149,6 +153,15 @@ def deploy(
     shutil.copy2(zip_path, terraform_dir / "lambda-deployment.zip")
     shutil.copy2(project_root / "config.yaml", terraform_dir / "config.yaml")
 
+    # Re-run full validation once deployment artifact exists.
+    console.print("\n[bold]Running full validation with deployment artifact...[/bold]")
+    if not _run_validate_checks(env, include_artifact_checks=True):
+        console.print(
+            "\n[red bold]Validation failed after packaging.[/red bold] "
+            "Fix the issues above before redeploying."
+        )
+        raise typer.Exit(1)
+
     # Select workspace
     select_workspace(env, terraform_dir)
 
@@ -164,7 +177,8 @@ def deploy(
     console.print("\n[bold]Planning Terraform changes...[/bold]\n")
     plan_exit_code, plan_output = run_cmd_stream_capture(
         [
-            "terraform", "plan",
+            "terraform",
+            "plan",
             f"-var-file={env}.tfvars",
             "-out=tfplan",
             "-input=false",
@@ -187,9 +201,7 @@ def deploy(
     console.print()
 
     # Mandatory confirmation
-    proceed = questionary.confirm(
-        "Proceed with deployment?", default=False
-    ).ask()
+    proceed = questionary.confirm("Proceed with deployment?", default=False).ask()
     if not proceed:
         tfplan = terraform_dir / "tfplan"
         if tfplan.exists():
