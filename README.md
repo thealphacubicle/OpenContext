@@ -68,12 +68,6 @@ Details: [Getting Started — full walkthrough](docs/GETTING_STARTED.md) (sectio
 
 ---
 
-## Examples
-
-See the [examples/](examples/) directory for per-city configuration samples (Boston, Chicago, Seattle, and more).
-
----
-
 ## Contributing
 
 Pre-commit hooks (optional):
