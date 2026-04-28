@@ -22,7 +22,7 @@ from core.plugin_manager import PluginManager
 ```
 
 ## Type Hints
-Required on all public method signatures. Use `Optional[X]` not `X | None` for Python 3.11 compatibility.
+Required on all public method signatures. Prefer `X | None` for optional types, consistent with the Python >=3.11 baseline and existing codebase usage.
 
 ## Docstrings
 Google-style, triple-quoted. Class docstring before `__init__`. Methods get a one-liner minimum.
