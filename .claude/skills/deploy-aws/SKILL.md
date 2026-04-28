@@ -11,6 +11,7 @@ command: /deploy-aws
 # Deploy to AWS Workflow
 
 ## Prerequisites
+- `source .venv/bin/activate` (local virtual environment is activated)
 - `config.yaml` exists with exactly one plugin enabled
 - AWS credentials configured (`aws configure` or env vars)
 - `uv sync --all-extras` already run
@@ -19,33 +20,33 @@ command: /deploy-aws
 
 ### 1. Validate config
 ```bash
-opencontext validate --env {env}
+uv run opencontext validate --env {env}
 ```
 Checks config.yaml structure + Terraform syntax. Fix any errors before proceeding.
 
 ### 2. Security scan
 ```bash
-opencontext security
+uv run opencontext security
 ```
 Runs `pip-audit` internally before every deploy path; fix any HIGH/CRITICAL findings first.
 
 ### 3. First-time setup only
 ```bash
-opencontext configure
+uv run opencontext configure
 ```
 Interactive: creates `terraform/aws/{env}.tfvars`, initializes Terraform workspace `{city}-{env}`.
 Workspace naming: `{city}-{env}` — e.g., `chicago-staging`, `boston-prod`.
 
 ### 4. Deploy
 ```bash
-opencontext deploy --env {env}
+uv run opencontext deploy --env {env}
 ```
 This packages the Lambda ZIP (validates <250 MB), applies Terraform, outputs the API Gateway URL.
 
 ### 5. Verify deployment
 ```bash
-opencontext status --env {env}
-opencontext test --url {api_gateway_url}/mcp
+uv run opencontext status --env {env}
+uv run opencontext test --url {api_gateway_url}/mcp
 ```
 
 ### 6. Connect to Claude
@@ -63,8 +64,8 @@ Copy the API Gateway URL → Claude Desktop → Settings → Connectors → Add 
 
 ## Debugging Production
 ```bash
-opencontext logs --env {env}              # tail CloudWatch logs
-opencontext status --env {env}            # deployment health
+uv run opencontext logs --env {env}              # tail CloudWatch logs
+uv run opencontext status --env {env}            # deployment health
 ```
 Set `logging.level: "DEBUG"` in `config.yaml` and redeploy for verbose output.
 Logs are JSON-structured. CloudWatch Insights query:

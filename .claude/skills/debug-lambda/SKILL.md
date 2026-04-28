@@ -12,13 +12,13 @@ command: /debug-lambda
 
 ## 1. Check deployment health
 ```bash
-opencontext status --env {env}
+uv run opencontext status --env {env}
 ```
 Confirms Lambda is deployed and reachable. If this fails, the issue is infrastructure — check Terraform state.
 
 ## 2. Tail logs
 ```bash
-opencontext logs --env {env}
+uv run opencontext logs --env {env}
 ```
 Streams CloudWatch logs. Logs are JSON-structured. Key fields: `level`, `message`, `exc_info`.
 
@@ -51,7 +51,7 @@ Then redeploy: `opencontext deploy --env {env}`. This logs all request/response 
 
 ## 5. Test MCP tools directly
 ```bash
-opencontext test --url {api_gateway_url}/mcp
+uv run opencontext test --url {api_gateway_url}/mcp
 ```
 Runs the full MCP Inspector check: initialize → tools/list → tools/call for each tool.
 
@@ -59,5 +59,5 @@ Runs the full MCP Inspector check: initialize → tools/list → tools/call for 
 ```bash
 # Re-deploy a previous known-good config
 git stash  # or checkout previous config-example.yaml
-opencontext deploy --env {env}
+uv run opencontext deploy --env {env}
 ```

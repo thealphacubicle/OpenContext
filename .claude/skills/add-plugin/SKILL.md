@@ -61,9 +61,9 @@ plugins:
 
 ### 4. Smoke test locally
 ```bash
-opencontext serve
+uv run opencontext serve
 # in another terminal:
-opencontext test --url http://localhost:8000/mcp
+uv run opencontext test --url http://localhost:8000/mcp
 ```
 
 ### 5. Write tests

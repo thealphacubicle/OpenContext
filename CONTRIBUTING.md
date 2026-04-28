@@ -91,8 +91,8 @@ Each repo fork runs **exactly one** plugin. `core/validators.py` and `core/plugi
 
 5. Test locally:
    ```bash
-   opencontext serve        # starts at http://localhost:8000/mcp
-   opencontext test --url http://localhost:8000/mcp
+   uv run opencontext serve        # starts at http://localhost:8000/mcp
+   uv run opencontext test --url http://localhost:8000/mcp
    ```
 
 Full interface contract and examples: [`docs/CUSTOM_PLUGINS.md`](docs/CUSTOM_PLUGINS.md)
