@@ -1,0 +1,24 @@
+---
+name: Notify Bulletin
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    if: github.repository == 'thealphacubicle/OpenContext'
+
+    steps:
+      - name: Publish bulletin
+        run: |
+          curl --fail -X POST https://opencontext-mcp.vercel.app/api/bulletin/publish \
+            -H "Content-Type: application/json" \
+            -H "X-Bulletin-Secret: ${{ secrets.BULLETIN_SECRET }}" \
+            -d '{
+            "commits": ${{ toJson(github.event.commits.*.message) }},
+            "pusher": "${{ github.actor }}",
+            "compare_url": "${{ github.event.compare }}"
+            }'
