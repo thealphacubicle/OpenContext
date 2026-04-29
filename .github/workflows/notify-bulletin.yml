@@ -13,12 +13,19 @@ jobs:
 
     steps:
       - name: Publish bulletin
+        env:
+          BULLETIN_SECRET: ${{ secrets.BULLETIN_SECRET }}
+          COMMITS: ${{ toJson(github.event.commits.*.message) }}
+          PUSHER: ${{ github.actor }}
+          COMPARE_URL: ${{ github.event.compare }}
         run: |
+          PAYLOAD=$(jq -n \
+            --argjson commits "$COMMITS" \
+            --arg pusher "$PUSHER" \
+            --arg compare_url "$COMPARE_URL" \
+            '{commits: $commits, pusher: $pusher, compare_url: $compare_url}')
+
           curl --fail -X POST https://opencontext-mcp.vercel.app/api/bulletin/publish \
             -H "Content-Type: application/json" \
-            -H "X-Bulletin-Secret: ${{ secrets.BULLETIN_SECRET }}" \
-            -d '{
-            "commits": ${{ toJson(github.event.commits.*.message) }},
-            "pusher": "${{ github.actor }}",
-            "compare_url": "${{ github.event.compare }}"
-            }'
+            -H "X-Bulletin-Secret: $BULLETIN_SECRET" \
+            --data-raw "$PAYLOAD"
