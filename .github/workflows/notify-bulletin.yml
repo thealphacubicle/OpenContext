@@ -18,12 +18,14 @@ jobs:
           COMMITS: ${{ toJson(github.event.commits.*.message) }}
           PUSHER: ${{ github.actor }}
           COMPARE_URL: ${{ github.event.compare }}
+          TIMESTAMP: ${{ github.event.head_commit.timestamp }}
         run: |
           PAYLOAD=$(jq -n \
             --argjson commits "$COMMITS" \
             --arg pusher "$PUSHER" \
             --arg compare_url "$COMPARE_URL" \
-            '{commits: $commits, pusher: $pusher, compare_url: $compare_url}')
+            --arg timestamp "$TIMESTAMP" \
+            '{commits: $commits, pusher: $pusher, compare_url: $compare_url, timestamp: $timestamp}')
 
           curl --fail -X POST https://opencontext-mcp.vercel.app/api/bulletin/publish \
             -H "Content-Type: application/json" \
