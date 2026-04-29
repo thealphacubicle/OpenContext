@@ -16,27 +16,42 @@ Run `opencontext authenticate` to check all prerequisites automatically — it w
 
 ## Installing the CLI Locally
 
-Clone the repository and install the CLI with its dependencies:
+Install [uv](https://docs.astral.sh/uv/getting-started/installation/) if you do not have it yet.
+
+Clone the repository and install the project plus CLI extras:
 
 ```bash
 git clone https://github.com/thealphacubicle/OpenContext.git
 cd OpenContext
-pip install -e ".[cli]"
+uv sync --extra cli
 ```
 
-The `-e` flag installs in editable mode so local code changes take effect immediately. The `[cli]` extra pulls in `typer`, `questionary`, and `rich`.
+`uv sync` installs the package into `.venv` from `pyproject.toml` and the lockfile (editable-style layout: local changes are used on the next run). The `cli` extra pulls in `typer`, `questionary`, and `rich`.
 
-Verify the install:
+Verify the install (use the venv or `uv run`):
 
 ```bash
-opencontext --help
+uv run opencontext --help
 ```
 
-To also install development dependencies (pytest, ruff, etc.):
+To also install development dependencies (pytest, ruff, pip-audit, etc.):
 
 ```bash
-pip install -e ".[cli,dev]"
+uv sync --all-extras
 ```
+
+**Optional (pip-compatible install):** If you need a traditional editable install, use:
+
+```bash
+uv pip install -e ".[cli]"
+```
+
+---
+
+## Using uv with requirements.txt
+
+- **Daily use:** Prefer `uv sync --extra cli` or `uv sync --all-extras`. Run tools with `uv run <command>` (for example `uv run pytest`) so they use the project `.venv`.
+- **Why `requirements.txt` exists:** It is used by **Lambda deployment** (`opencontext deploy` bundles dependencies with `uv pip install … -r requirements.txt`) and by **CI** for vulnerability scanning (`uv run pip-audit -r requirements.txt`). You do not need `pip install -r requirements.txt` for normal local development unless you are reproducing those exact flows.
 
 ---
 
