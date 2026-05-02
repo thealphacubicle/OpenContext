@@ -43,9 +43,10 @@ Self-evident dirs (`core/`, `plugins/`, `cli/`, `tests/`, `docs/`, `terraform/`)
 - **MCP tool names are namespaced `plugin__tool_name`** (double underscore, prepended automatically). Plugins must NOT include the prefix in their own `get_tools()` names.
 - **Lambda packaging targets `x86_64-manylinux2014` + Python 3.11.** `cli/commands/deploy.py::_package_lambda` runs `uv pip install -r requirements.txt --python-platform x86_64-manylinux2014 --python-version 3.11`. New deps must be wheel-compatible with that target — local `uv sync` success is not sufficient proof.
 - **Lambda bundle uses `requirements.txt`, not the `uv` lockfile.** Update both when adding deps; `pip-audit` in CI scans `requirements.txt`.
-- **`asyncio_mode = "auto"`** is set in `pyproject.toml`. Do not add `@pytest.mark.asyncio` to async tests — it's redundant.
+- **`asyncio_mode = "auto"`** is set in `pyproject.toml`. `@pytest.mark.asyncio` is present on existing tests (redundant but harmless); omit it in new tests.
 - **Never modify `config.yaml`, `.env*`, `terraform/**/*.tfvars`, or `terraform/**/*.tfstate*`** from agent tools; these are denied in `.claude/settings.json` and contain secrets / state.
 - **Plugins inherit `MCPPlugin`** (`core/interfaces.py`) and must implement `initialize`, `shutdown`, `get_tools`, `execute_tool`, `health_check`. Data-source plugins inherit `DataPlugin` and add `search_datasets`, `get_dataset`, `query_data`.
+- **`PluginType` enum values** (`core/interfaces.py`): `OPEN_DATA`, `CUSTOM_API`, `DATABASE`, `ANALYTICS`.
 
 ## Pointers
 
