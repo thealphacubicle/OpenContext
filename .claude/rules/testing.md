@@ -6,6 +6,19 @@ alwaysApply: false
 
 # Testing Conventions
 
+## Where tests live
+
+See [`tests/README.md`](../../tests/README.md). Summary:
+
+| Path | Purpose |
+|------|---------|
+| `tests/unit/` | Fast tests with mocks (`pytest.mark.unit`) |
+| `tests/integration/` | Hermetic cross-boundary flows (`pytest.mark.integration`) |
+| `tests/security/` | SSRF / SQL / SoQL guards (`pytest.mark.security`) |
+| `tests/smoke/` | Minimal CLI/protocol smoke (`pytest.mark.smoke`) |
+
+Markers are registered in `pyproject.toml` under `[tool.pytest.ini_options]`.
+
 ## asyncio
 `asyncio_mode = "auto"` is set in `pyproject.toml`. Do NOT add `@pytest.mark.asyncio` to individual async test methods — it's redundant.
 

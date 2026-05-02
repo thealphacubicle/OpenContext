@@ -26,7 +26,7 @@ opencontext serve
 opencontext test --url http://localhost:8000/mcp
 
 # Tests
-uv run pytest tests/ -n auto --cov=core --cov=plugins --cov-fail-under=80
+uv run pytest tests/ -n auto --cov=core --cov=plugins --cov=server --cov-fail-under=80
 
 # Lint + format (matches CI)
 uv run ruff check core/ plugins/ server/ tests/ --fix --unsafe-fixes
@@ -109,7 +109,7 @@ Replicate CI locally:
 ```bash
 uv run ruff check core/ plugins/ server/ tests/
 uv run pip-audit -r requirements.txt
-uv run pytest tests/ -n auto --cov=core --cov=plugins --cov-fail-under=80
+uv run pytest tests/ -n auto --cov=core --cov=plugins --cov=server --cov-fail-under=80
 ```
 
 ## Branching

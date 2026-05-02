@@ -89,11 +89,13 @@ class PluginManager:
             ImportError: If plugin cannot be imported
             ValueError: If plugin class not found or invalid
         """
-        # Determine module path
-        if "plugins" in str(plugin_path):
-            module_path = f"plugins.{plugin_name}.plugin"
-        elif "custom_plugins" in str(plugin_path):
+        # Determine module path — check custom_plugins before matching "plugins",
+        # since paths like ".../custom_plugins/foo" contain the substring "plugins".
+        resolved_parts = plugin_path.resolve().parts
+        if "custom_plugins" in resolved_parts:
             module_path = f"custom_plugins.{plugin_name}.plugin"
+        elif "plugins" in resolved_parts:
+            module_path = f"plugins.{plugin_name}.plugin"
         else:
             raise ValueError(f"Invalid plugin path: {plugin_path}")
 

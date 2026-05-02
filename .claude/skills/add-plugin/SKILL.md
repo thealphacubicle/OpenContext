@@ -67,18 +67,18 @@ uv run opencontext test --url http://localhost:8000/mcp
 ```
 
 ### 5. Write tests
-Create `tests/test_{name}_plugin.py` following the structure in `tests/test_ckan_plugin.py`:
+Create `tests/unit/plugins/{name}/test_{name}_plugin.py` following the structure in `tests/unit/plugins/ckan/test_ckan_plugin.py`:
 - Group by `TestXxx` classes
 - Use `AsyncMock` for httpx calls (see mock pattern in `.claude/rules/testing.md`)
 - Fixtures return dicts, not Pydantic models
 
 ```bash
-uv run pytest tests/test_{name}_plugin.py -v --cov=custom_plugins --cov-report=term-missing
+uv run pytest tests/unit/plugins/{name}/test_{name}_plugin.py -v --cov=custom_plugins --cov-report=term-missing
 ```
 
 ### 6. Verify coverage gate still passes
 ```bash
-uv run pytest tests/ -n auto --cov=core --cov=plugins --cov-fail-under=80
+uv run pytest tests/ -n auto --cov=core --cov=plugins --cov=server --cov-fail-under=80
 ```
 
 ## Common Mistakes
