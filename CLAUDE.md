@@ -1,132 +1,24 @@
-# OpenContext — Claude Code Guide
+@AI.md
 
-Extensible MCP (Model Context Protocol) framework for civic data platforms. Connects AI assistants to public open data sources (CKAN, ArcGIS, Socrata) via a plugin system, deployed as AWS Lambda.
+## Workflow
 
-## Key Architectural Rule: One Fork = One MCP Server
+- Treat `@AI.md` as the source of truth; do not restate project facts here.
+- Honor `@.claude/settings.json` permissions: deny rules cover `config.yaml`, `.env*`, `terraform/**/*.tfvars`, `terraform/**/*.tfstate*`, `terraform apply|destroy`, `opencontext deploy|destroy|configure`, and destructive `git`. Surface blocked work to the user; do not route around denials.
+- Expect the `PostToolUse` hook to run `uv run ruff format` on any `.py` file you `Edit`/`Write`; do not fight that formatting.
+- Load matching glob rules from `@.claude/rules/` (`plugin-development.md`, `infrastructure.md`, `testing.md`, `code-style.md`) before editing files in their scope.
+- Use `@.claude/skills/` (`add-plugin`, `deploy-aws`, `debug-lambda`, `fix-coverage`) and `@.claude/agents/` (`test-writer`, `plugin-validator`) for the workflows they cover instead of improvising.
+- Before declaring a task done: CI-equivalent `ruff check` and the full `pytest --cov-fail-under=80` must pass; PRs target `develop`.
 
-Each repo fork runs **exactly one** plugin. `core/validators.py` and `core/plugin_manager.py` will hard-fail if 0 or 2+ plugins are enabled in `config.yaml`. This is intentional — don't work around it.
+## Memory
 
-## Setup
+Propose appending to `@AI.md` only when you discover a durable, repo-wide constraint that is missing there — never for ephemeral task notes.
 
-```bash
-uv sync --all-extras        # install all deps including cli + dev
-cp config-example.yaml config.yaml   # then edit for your data source
-uv run pre-commit install          # set up git hooks
-```
+## Context Hygiene
 
-`requirements.txt` pins dependencies for Lambda bundles and `pip-audit` in CI; local development uses `uv sync`, not `pip install -r requirements.txt`.
-
-## Common Commands
-
-```bash
-# Run local dev server (http://localhost:8000/mcp)
-opencontext serve
-
-# Test the running server
-opencontext test --url http://localhost:8000/mcp
-
-# Tests
-uv run pytest tests/ -n auto --cov=core --cov=plugins --cov=server --cov-fail-under=80
-
-# Lint + format (matches CI)
-uv run ruff check core/ plugins/ server/ tests/ --fix --unsafe-fixes
-uv run ruff format core/ plugins/ server/ tests/
-
-# CLI
-opencontext validate --env staging    # validate config + Terraform before deploy
-opencontext deploy --env staging
-opencontext status --env staging
-opencontext logs --env staging
-opencontext plugin list               # list enabled/disabled plugins
-opencontext security                  # pip-audit vulnerability scan
-opencontext architecture              # print AWS infra diagram in terminal
-```
-
-## Project Layout
-
-```
-core/           # Framework kernel — interfaces, MCP server, plugin manager, validators
-plugins/        # Built-in plugins: ckan/, arcgis/, socrata/
-custom_plugins/ # Drop user plugins here — auto-discovered at startup
-cli/            # Typer CLI (opencontext command)
-server/adapters/ # local aiohttp dev server + AWS Lambda entry point
-tests/          # pytest suite (80% coverage required)
-terraform/aws/  # Lambda + API Gateway + IAM IaC
-docs/           # Architecture, deployment, plugin authoring guides
-```
-
-Key files:
-- `core/interfaces.py` — `MCPPlugin` base class; implement this for any new plugin
-- `core/mcp_server.py` — JSON-RPC handler (initialize / tools/list / tools/call)
-- `core/plugin_manager.py` — discovery, loading, one-plugin enforcement
-- `core/validators.py` — config validation; enforces the one-plugin rule
-- `server/adapters/aws_lambda.py` — Lambda entry point
-- `cli/commands/serve.py` — aiohttp dev server (started via `opencontext serve`)
-
-## Plugin System
-
-Tools are auto-discovered and namespaced: `plugin_name__tool_name` (e.g. `ckan__search_datasets`).
-
-To add a custom plugin:
-1. Create `custom_plugins/my_plugin/plugin.py` inheriting `MCPPlugin`
-2. Implement: `initialize`, `shutdown`, `get_tools`, `execute_tool`, `health_check`
-3. Enable in `config.yaml` under `plugins.my_plugin.enabled: true`
-
-See `docs/CUSTOM_PLUGINS.md` for the interface contract and `.claude/skills/add-plugin/SKILL.md` for the step-by-step workflow.
-
-## Config (`config.yaml`)
-
-```yaml
-server_name: "My City OpenData MCP"
-organization: "City of X"
-
-plugins:
-  ckan:                        # exactly ONE plugin enabled
-    enabled: true
-    base_url: "https://data.example.gov/"
-    city_name: "Example City"
-    timeout: 120
-
-aws:
-  region: "us-east-1"
-  lambda_memory: 512
-  lambda_timeout: 120
-
-logging:
-  level: "INFO"    # DEBUG for local dev
-  format: "json"
-```
-
-`config.yaml` is gitignored. Never commit it — use `config-example.yaml` as the template.
-
-## CI (GitHub Actions)
-
-- **`ci.yml`**: ruff lint, pip-audit CVE scan, gofmt, pytest (80% coverage gate)
-- **`infra.yml`**: terraform fmt/validate, tflint, tfsec — triggers on `terraform/**` changes
-- **`release.yml`**: builds Go binaries (macOS/Linux/Windows) + Lambda ZIP on version tags
-
-Replicate CI locally:
-```bash
-uv run ruff check core/ plugins/ server/ tests/
-uv run pip-audit -r requirements.txt
-uv run pytest tests/ -n auto --cov=core --cov=plugins --cov=server --cov-fail-under=80
-```
-
-## Branching
-
-Branch off `develop`: `feature/`, `bugfix/`, `docs/`, `chore/`. PRs target `develop`, not `main`.
-Terraform workspace naming: `{city}-{env}` (e.g., `chicago-staging`) — created by `opencontext configure`.
-
-## Conventions
-
-Coding style, test patterns, plugin authoring, and infrastructure rules live in `.claude/rules/` and load automatically for relevant file types.
-
-## Gotchas
-
-- **Multiple plugins enabled** → hard crash at startup. Only one `enabled: true` allowed.
-- **Tool prefix required** → call `ckan__search_datasets`, not `search_datasets`.
-- **`config.yaml` is gitignored** → changes to it won't be committed. Use `config-example.yaml` for template changes.
-- **Coverage < 80%** → CI fails. New code needs tests; check gaps with `--cov-report=html`.
-- **Lambda size limit** → 250 MB max. `opencontext deploy` validates package size before uploading.
-- **Python 3.11+ required** → match this in any new tooling or containers.
-- **Go client** (`client/`) is an optional stdio-to-HTTP bridge for tools that only speak stdio MCP.
+- As the final step of any agentic task, after tests pass and before closing the task, scan for anything non-obvious you discovered: architectural decisions made, constraints encountered, non-obvious file relationships, gotchas debugged, commands that only work a certain way.
+- If any such discovery would have saved you time had it been in `AI.md` at the start of the session, add it there.
+- Add to `AI.md` only — never bloat this file with project facts.
+- Write additions as pointers or single-line facts, not paragraphs.
+- Do not add things that are obvious from the code, already documented in `docs/`, generic best practices, or specific to just the current task.
+- If nothing non-obvious was discovered, make no changes — do not add placeholder or "session notes" content.
+- Never restructure or reformat existing `AI.md` content during an update — append only, to the most relevant existing section.

@@ -1,0 +1,22 @@
+---
+description: Binds Cursor agents to repo-specific context via AI.md.
+alwaysApply: true
+---
+
+@../../AI.md
+
+## Cursor specifics
+
+- Repo-wide facts live in `@../../AI.md`. Claude Code permissions, hooks, and bundled prompts live in `CLAUDE.md` and `.claude/`; do not load `CLAUDE.md` as the primary context unless the user opens it.
+- The repo ships `.vscode/tasks.json` (Cursor-compatible). On folder open it runs `git pull` then `uv sync --all-extras`. The `Test: run all` and `Lint: ruff fix + format` tasks mirror the CI commands in `AI.md` if you prefer the task UI.
+- The `@../../AI.md` include resolves relative to this file; if this rule is moved, update the path.
+
+## Context Hygiene
+
+- As the final step of any agentic task, after tests pass and before closing the task, scan for anything non-obvious you discovered: architectural decisions made, constraints encountered, non-obvious file relationships, gotchas debugged, commands that only work a certain way.
+- If any such discovery would have saved you time had it been in `AI.md` at the start of the session, add it there.
+- Add to `AI.md` only — never bloat this file with project facts.
+- Write additions as pointers or single-line facts, not paragraphs.
+- Do not add things that are obvious from the code, already documented in `docs/`, generic best practices, or specific to just the current task.
+- If nothing non-obvious was discovered, make no changes — do not add placeholder or "session notes" content.
+- Never restructure or reformat existing `AI.md` content during an update — append only, to the most relevant existing section.
