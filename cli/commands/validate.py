@@ -37,7 +37,7 @@ def _parse_tfvars_file(path: Path) -> dict[str, str]:
     return result
 
 
-def run_checks(env: str) -> bool:
+def run_checks(env: str, include_artifact_checks: bool = True) -> bool:
     """Run all validation checks. Returns True if all pass."""
     project_root = get_project_root()
     terraform_dir = get_terraform_dir()
@@ -48,11 +48,13 @@ def run_checks(env: str) -> bool:
     # 1. config.yaml exists
     config_path = project_root / "config.yaml"
     config_exists = config_path.exists()
-    checks.append((
-        "config.yaml exists",
-        config_exists,
-        "Found" if config_exists else "Not found — run: opencontext configure",
-    ))
+    checks.append(
+        (
+            "config.yaml exists",
+            config_exists,
+            "Found" if config_exists else "Not found — run: opencontext configure",
+        )
+    )
 
     config: dict = {}
     if config_exists:
@@ -62,19 +64,24 @@ def run_checks(env: str) -> bool:
     # 2. Exactly one plugin enabled
     plugins = config.get("plugins", {})
     enabled_plugins = [
-        name for name, cfg in plugins.items()
+        name
+        for name, cfg in plugins.items()
         if isinstance(cfg, dict) and cfg.get("enabled", False)
     ]
     if len(enabled_plugins) == 1:
         checks.append(("Exactly one plugin enabled", True, enabled_plugins[0]))
     elif len(enabled_plugins) == 0:
-        checks.append(("Exactly one plugin enabled", False, "No plugins enabled in config.yaml"))
+        checks.append(
+            ("Exactly one plugin enabled", False, "No plugins enabled in config.yaml")
+        )
     else:
-        checks.append((
-            "Exactly one plugin enabled",
-            False,
-            f"Multiple enabled: {', '.join(enabled_plugins)}",
-        ))
+        checks.append(
+            (
+                "Exactly one plugin enabled",
+                False,
+                f"Multiple enabled: {', '.join(enabled_plugins)}",
+            )
+        )
 
     # 3. Plugin config valid (required fields present)
     if len(enabled_plugins) == 1:
@@ -83,20 +90,32 @@ def run_checks(env: str) -> bool:
         required = PLUGIN_REQUIRED_FIELDS.get(plugin_name, [])
         missing = [f for f in required if not plugin_cfg.get(f)]
         if missing:
-            checks.append(("Plugin config valid", False, f"Missing fields: {', '.join(missing)}"))
+            checks.append(
+                ("Plugin config valid", False, f"Missing fields: {', '.join(missing)}")
+            )
         else:
-            checks.append(("Plugin config valid", True, f"{plugin_name} — required fields present"))
+            checks.append(
+                (
+                    "Plugin config valid",
+                    True,
+                    f"{plugin_name} — required fields present",
+                )
+            )
     else:
-        checks.append(("Plugin config valid", False, "Skipped — fix plugin selection first"))
+        checks.append(
+            ("Plugin config valid", False, "Skipped — fix plugin selection first")
+        )
 
     # 4. terraform/aws/{env}.tfvars exists
     tfvars_path = terraform_dir / f"{env}.tfvars"
     tfvars_exists = tfvars_path.exists()
-    checks.append((
-        f"terraform/aws/{env}.tfvars exists",
-        tfvars_exists,
-        "Found" if tfvars_exists else "Run: opencontext configure",
-    ))
+    checks.append(
+        (
+            f"terraform/aws/{env}.tfvars exists",
+            tfvars_exists,
+            "Found" if tfvars_exists else "Run: opencontext configure",
+        )
+    )
 
     tfvars: dict[str, str] = {}
     if tfvars_exists:
@@ -109,69 +128,113 @@ def run_checks(env: str) -> bool:
     try:
         result = subprocess.run(
             ["terraform", "--version"],
-            capture_output=True, text=True, timeout=10,
+            capture_output=True,
+            text=True,
+            timeout=10,
         )
         if result.returncode == 0:
             version_line = result.stdout.strip().splitlines()[0]
             checks.append(("Terraform installed", True, version_line))
             tf_installed = True
         else:
-            checks.append(("Terraform installed", False, "terraform --version returned non-zero"))
+            checks.append(
+                ("Terraform installed", False, "terraform --version returned non-zero")
+            )
     except FileNotFoundError:
-        checks.append(("Terraform installed", False, "Not found — install: https://www.terraform.io/downloads"))
+        checks.append(
+            (
+                "Terraform installed",
+                False,
+                "Not found — install: https://www.terraform.io/downloads",
+            )
+        )
     except subprocess.TimeoutExpired:
-        checks.append(("Terraform installed", False, "Timeout running terraform --version"))
+        checks.append(
+            ("Terraform installed", False, "Timeout running terraform --version")
+        )
 
     # 6. terraform/aws/.terraform directory exists (init has been run)
     tf_initialized = (terraform_dir / ".terraform").exists()
-    checks.append((
-        "Terraform initialized",
-        tf_initialized,
-        ".terraform directory found" if tf_initialized else "Run: opencontext configure",
-    ))
+    checks.append(
+        (
+            "Terraform initialized",
+            tf_initialized,
+            ".terraform directory found"
+            if tf_initialized
+            else "Run: opencontext configure",
+        )
+    )
 
-    # 7. terraform validate
-    if tf_installed and tf_initialized:
-        try:
-            result = subprocess.run(
-                ["terraform", "validate", "-json"],
-                cwd=terraform_dir,
-                capture_output=True, text=True, timeout=30,
+    # 7. terraform validate (artifact-dependent)
+    if include_artifact_checks:
+        if tf_installed and tf_initialized:
+            try:
+                result = subprocess.run(
+                    ["terraform", "validate", "-json"],
+                    cwd=terraform_dir,
+                    capture_output=True,
+                    text=True,
+                    timeout=30,
+                )
+                if result.returncode == 0:
+                    checks.append(("terraform validate", True, "Configuration valid"))
+                else:
+                    error_msg = ""
+                    try:
+                        data = json.loads(result.stdout)
+                        error_msg = data.get("error_message", "")
+                        if not error_msg:
+                            diagnostics = data.get("diagnostics", [])
+                            if diagnostics:
+                                first = diagnostics[0]
+                                summary = first.get("summary", "")
+                                detail = first.get("detail", "")
+                                error_msg = " — ".join(
+                                    [m for m in [summary, detail] if m]
+                                )
+                    except Exception:
+                        pass
+                    if not error_msg:
+                        error_msg = (
+                            result.stderr or result.stdout or "Validation failed"
+                        ).strip()
+                    checks.append(("terraform validate", False, error_msg[:160]))
+            except (FileNotFoundError, subprocess.TimeoutExpired) as e:
+                checks.append(("terraform validate", False, str(e)[:80]))
+        else:
+            checks.append(
+                (
+                    "terraform validate",
+                    False,
+                    "Skipped — terraform not installed or not initialized",
+                )
             )
-            if result.returncode == 0:
-                checks.append(("terraform validate", True, "Configuration valid"))
-            else:
-                error_msg = ""
-                try:
-                    data = json.loads(result.stdout)
-                    error_msg = data.get("error_message", "")
-                except Exception:
-                    pass
-                if not error_msg:
-                    error_msg = (result.stderr or result.stdout or "Validation failed").strip()
-                checks.append(("terraform validate", False, error_msg[:100]))
-        except (FileNotFoundError, subprocess.TimeoutExpired) as e:
-            checks.append(("terraform validate", False, str(e)[:80]))
     else:
-        checks.append((
-            "terraform validate",
-            False,
-            "Skipped — terraform not installed or not initialized",
-        ))
+        checks.append(
+            (
+                "terraform validate",
+                True,
+                "Skipped in pre-package validation",
+            )
+        )
 
     # 8. AWS credentials valid
     try:
         result = subprocess.run(
             ["aws", "sts", "get-caller-identity", "--output", "json"],
-            capture_output=True, text=True, timeout=15,
+            capture_output=True,
+            text=True,
+            timeout=15,
         )
         if result.returncode == 0:
             identity = json.loads(result.stdout)
-            checks.append((
-                "AWS credentials valid",
-                True,
-                f"Account: {identity.get('Account', 'unknown')}",
-            ))
+            checks.append(
+                (
+                    "AWS credentials valid",
+                    True,
+                    f"Account: {identity.get('Account', 'unknown')}",
+                )
+            )
         else:
             checks.append(("AWS credentials valid", False, "Run: aws configure"))
     except FileNotFoundError:
@@ -184,7 +247,9 @@ def run_checks(env: str) -> bool:
         try:
             result = subprocess.run(
                 ["aws", "acm", "list-certificates", "--output", "json"],
-                capture_output=True, text=True, timeout=15,
+                capture_output=True,
+                text=True,
+                timeout=15,
             )
             if result.returncode == 0:
                 certs = json.loads(result.stdout).get("CertificateSummaryList", [])
@@ -193,29 +258,41 @@ def run_checks(env: str) -> bool:
                 )
                 if cert:
                     status = cert.get("Status", "UNKNOWN")
-                    checks.append((
-                        f"ACM cert exists for {custom_domain}",
-                        True,
-                        f"Status: {status}",
-                    ))
+                    checks.append(
+                        (
+                            f"ACM cert exists for {custom_domain}",
+                            True,
+                            f"Status: {status}",
+                        )
+                    )
                 else:
-                    checks.append((
+                    checks.append(
+                        (
+                            f"ACM cert exists for {custom_domain}",
+                            False,
+                            "No certificate found — deploy first to request one",
+                        )
+                    )
+            else:
+                checks.append(
+                    (
                         f"ACM cert exists for {custom_domain}",
                         False,
-                        "No certificate found — deploy first to request one",
-                    ))
-            else:
-                checks.append((
+                        "Could not list ACM certificates",
+                    )
+                )
+        except (
+            FileNotFoundError,
+            subprocess.TimeoutExpired,
+            json.JSONDecodeError,
+        ) as e:
+            checks.append(
+                (
                     f"ACM cert exists for {custom_domain}",
                     False,
-                    "Could not list ACM certificates",
-                ))
-        except (FileNotFoundError, subprocess.TimeoutExpired, json.JSONDecodeError) as e:
-            checks.append((
-                f"ACM cert exists for {custom_domain}",
-                False,
-                f"Error: {str(e)[:60]}",
-            ))
+                    f"Error: {str(e)[:60]}",
+                )
+            )
 
     # Print results table
     table = Table(title=f"OpenContext Validation — {env}", show_lines=True)

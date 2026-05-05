@@ -10,7 +10,9 @@ from rich.table import Table
 from cli.utils import console, friendly_exit
 
 
-def _is_available(cmd: list[str], timeout: int = 10) -> subprocess.CompletedProcess | None:
+def _is_available(
+    cmd: list[str], timeout: int = 10
+) -> subprocess.CompletedProcess | None:
     """Run a command and return the result if successful, None otherwise."""
     try:
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
@@ -55,12 +57,15 @@ def authenticate() -> None:
     if (major, minor) >= (3, 11):
         checks.append(("Python >= 3.11", True, f"Python {py_version}"))
     else:
-        checks.append((
-            "Python >= 3.11", False,
-            f"Found {py_version}. Install 3.11+: https://www.python.org/downloads/",
-        ))
+        checks.append(
+            (
+                "Python >= 3.11",
+                False,
+                f"Found {py_version}. Install 3.11+: https://www.python.org/downloads/",
+            )
+        )
 
-    # --- 2. uv (auto-install via pip if missing) ---
+    # --- 2. uv (pip fallback auto-install if missing) ---
     result = _is_available(["uv", "--version"])
     if result:
         checks.append(("uv", True, result.stdout.strip()))
@@ -68,56 +73,84 @@ def authenticate() -> None:
         pip_cmd = _find_pip()
         installed = False
         if pip_cmd:
-            installed = _auto_install("uv", [*pip_cmd, "install", "uv"], "uv")
+            installed = _auto_install(
+                "uv", [*pip_cmd, "install", "uv"], "uv via pip fallback"
+            )
             if installed:
                 result = _is_available(["uv", "--version"])
                 if result:
-                    checks.append(("uv", True, f"{result.stdout.strip()} (auto-installed)"))
+                    checks.append(
+                        ("uv", True, f"{result.stdout.strip()} (auto-installed)")
+                    )
                 else:
                     installed = False
 
         if not installed:
-            checks.append((
-                "uv", False,
-                "Install: https://docs.astral.sh/uv/getting-started/installation/",
-            ))
+            checks.append(
+                (
+                    "uv",
+                    False,
+                    "Install: https://docs.astral.sh/uv/getting-started/installation/",
+                )
+            )
 
     uv_available = shutil.which("uv") is not None
 
     # --- 3. AWS CLI (auto-install via uv/pip if missing) ---
     result = _is_available(["aws", "--version"])
     if result:
-        version = result.stdout.strip().split()[0] if result.stdout.strip() else "installed"
+        version = (
+            result.stdout.strip().split()[0] if result.stdout.strip() else "installed"
+        )
         checks.append(("AWS CLI", True, version))
     else:
         installed = False
         if uv_available:
-            installed = _auto_install("awscli", ["uv", "pip", "install", "awscli"], "AWS CLI via uv")
+            installed = _auto_install(
+                "awscli", ["uv", "pip", "install", "awscli"], "AWS CLI via uv"
+            )
         if not installed:
             pip_cmd = _find_pip()
             if pip_cmd:
-                installed = _auto_install("awscli", [*pip_cmd, "install", "awscli"], "AWS CLI via pip")
+                installed = _auto_install(
+                    "awscli",
+                    [*pip_cmd, "install", "awscli"],
+                    "AWS CLI via pip fallback",
+                )
 
         if installed:
             result = _is_available(["aws", "--version"])
             if result:
-                version = result.stdout.strip().split()[0] if result.stdout.strip() else "installed"
+                version = (
+                    result.stdout.strip().split()[0]
+                    if result.stdout.strip()
+                    else "installed"
+                )
                 checks.append(("AWS CLI", True, f"{version} (auto-installed)"))
             else:
                 installed = False
 
         if not installed:
-            checks.append((
-                "AWS CLI", False,
-                "Install: https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2.html",
-            ))
+            checks.append(
+                (
+                    "AWS CLI",
+                    False,
+                    "Install: https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2.html",
+                )
+            )
 
     # --- 4. AWS credentials (cannot auto-install) ---
     result = _is_available(["aws", "sts", "get-caller-identity"], timeout=15)
     if result:
         try:
             identity = json.loads(result.stdout)
-            checks.append(("AWS Credentials", True, f"Account: {identity.get('Account', 'unknown')}"))
+            checks.append(
+                (
+                    "AWS Credentials",
+                    True,
+                    f"Account: {identity.get('Account', 'unknown')}",
+                )
+            )
         except json.JSONDecodeError:
             checks.append(("AWS Credentials", False, "Run: aws configure"))
     else:
@@ -126,10 +159,16 @@ def authenticate() -> None:
     # --- 5. Terraform (cannot auto-install — binary download required) ---
     result = _is_available(["terraform", "--version"])
     if result:
-        version_line = result.stdout.strip().splitlines()[0] if result.stdout.strip() else "installed"
+        version_line = (
+            result.stdout.strip().splitlines()[0]
+            if result.stdout.strip()
+            else "installed"
+        )
         checks.append(("Terraform", True, version_line))
     else:
-        checks.append(("Terraform", False, "Install: https://www.terraform.io/downloads"))
+        checks.append(
+            ("Terraform", False, "Install: https://www.terraform.io/downloads")
+        )
 
     # --- Print results ---
     table = Table(title="OpenContext Prerequisites")
@@ -151,5 +190,7 @@ def authenticate() -> None:
     if all_passed:
         console.print("[green bold]All checks passed![/green bold] You're ready to go.")
     else:
-        console.print("[yellow]Some checks failed.[/yellow] Fix the issues above, then re-run [bold]opencontext authenticate[/bold].")
+        console.print(
+            "[yellow]Some checks failed.[/yellow] Fix the issues above, then re-run [bold]opencontext authenticate[/bold]."
+        )
         raise SystemExit(1)

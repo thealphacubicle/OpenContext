@@ -108,12 +108,15 @@ asyncio.run(t())
 
 ## Unit Tests
 
+With dev dependencies installed (`uv sync --all-extras`):
+
 ```bash
-pip install pytest pytest-asyncio sqlparse
-pytest
-pytest tests/test_plugin_manager.py -v
-pytest --cov=core --cov=plugins
+uv run pytest
+uv run pytest tests/test_plugin_manager.py -v
+uv run pytest --cov=core --cov=plugins
 ```
+
+`sqlparse` and other test-related packages are pulled in via `pyproject.toml`; you do not need a separate `pip install` for them when using `uv sync`.
 
 ---
 

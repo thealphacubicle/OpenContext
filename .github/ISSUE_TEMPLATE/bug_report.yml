@@ -1,0 +1,100 @@
+---
+name: Bug Report
+description: Something isn't working as expected
+title: "[Bug]: "
+labels: ["bug", "needs triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug. Please fill out as much detail as you can — it helps us reproduce and fix the issue faster.
+
+  - type: dropdown
+    id: plugin
+    attributes:
+      label: Plugin
+      description: Which plugin are you using?
+      options:
+        - CKAN
+        - ArcGIS Hub
+        - Socrata
+        - Custom plugin
+        - CLI / core framework
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: environment
+    attributes:
+      label: Deployment environment
+      options:
+        - Local dev server (`opencontext serve`)
+        - AWS Lambda
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: python-version
+    attributes:
+      label: Python version
+      placeholder: "e.g. 3.11.9"
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: OpenContext version / commit
+      description: Run `git rev-parse --short HEAD` or check your release tag.
+      placeholder: "e.g. v1.2.0 or abc1234"
+    validations:
+      required: false
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: A minimal, numbered list of steps that triggers the bug.
+      placeholder: |
+        1. Set config.yaml with plugin X enabled
+        2. Run `opencontext serve`
+        3. Call tool `ckan__search_datasets` with query "parks"
+        4. See error
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      placeholder: What did you expect to happen?
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: Paste the full error message or unexpected output here.
+      render: shell
+    validations:
+      required: true
+
+  - type: textarea
+    id: config
+    attributes:
+      label: Relevant config (sanitized)
+      description: Paste your `config.yaml` with secrets replaced by placeholders.
+      render: yaml
+    validations:
+      required: false
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Anything else that might be relevant — logs, screenshots, related issues.
+    validations:
+      required: false

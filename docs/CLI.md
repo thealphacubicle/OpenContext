@@ -4,16 +4,20 @@ The `opencontext` CLI manages the full lifecycle of an OpenContext MCP server â€
 
 ## Installation
 
+Install [uv](https://docs.astral.sh/uv/getting-started/installation/) first.
+
 ```bash
 git clone https://github.com/thealphacubicle/OpenContext.git
 cd OpenContext
-pip install -e ".[cli]"
+uv sync --extra cli
 ```
+
+For development tooling (tests, linters, pip-audit), use `uv sync --all-extras`.
 
 Verify:
 
 ```bash
-opencontext --help
+uv run opencontext --help
 ```
 
 ## Global behavior
@@ -28,12 +32,12 @@ opencontext --help
 
 ### `opencontext authenticate`
 
-Check all prerequisites and print a status table. Auto-installs `uv` and `awscli` if missing.
+Check all prerequisites and print a status table. Auto-installs `uv` and `awscli` when possible (`uv` first; pip only as a fallback for `uv` if neither is installed).
 
 **Checks:**
 1. Python >= 3.11
-2. `uv` (auto-installs via pip if missing)
-3. AWS CLI (auto-installs via uv/pip if missing)
+2. `uv` (if missing: auto-install attempted via pip; preferred: install from [docs.astral.sh/uv](https://docs.astral.sh/uv/getting-started/installation/))
+3. AWS CLI (if missing: auto-install via `uv pip install awscli`, then pip as fallback)
 4. AWS credentials (`aws sts get-caller-identity`)
 5. Terraform >= 1.0
 
@@ -100,7 +104,7 @@ opencontext deploy --env prod
 
 **What it does:**
 1. Runs all validation checks (same as `opencontext validate`)
-2. Installs Python dependencies into `.deploy/` using `uv pip install`
+2. Installs Python dependencies into `.deploy/` using `uv pip install -r requirements.txt` (pinned list for Lambda size and reproducibility)
 3. Copies `core/`, `plugins/`, `server/`, and `custom_plugins/` into the zip
 4. Copies the zip and `config.yaml` into `terraform/aws/`
 5. Runs `terraform plan` and shows add/change/destroy counts

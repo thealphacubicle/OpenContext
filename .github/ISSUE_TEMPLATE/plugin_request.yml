@@ -1,0 +1,102 @@
+---
+name: Plugin Request
+description: Request support for a new open data portal or data source
+title: "[Plugin]: "
+labels: ["enhancement", "plugin"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Requesting a new built-in plugin? Tell us about the portal and why it'd be a good addition for the civic data community.
+
+        > **Note:** OpenContext is designed for one plugin per deployment.
+        > New built-in plugins are added to `plugins/` and must cover a
+        > portal type used by multiple cities. For single-city or private data
+        > sources, a [custom plugin](https://github.com/thealphacubicle/OpenContext/blob/main/docs/CUSTOM_PLUGINS.md)
+        > is usually the right path.
+
+  - type: input
+    id: portal-url
+    attributes:
+      label: Portal URL
+      description: Public URL of the open data portal.
+      placeholder: "https://data.example.gov"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: portal-software
+    attributes:
+      label: Portal software / platform
+      description: What platform does the portal run on? Check the portal's "About" page or footer if unsure.
+      options:
+        - CKAN (variant or fork)
+        - ArcGIS Hub
+        - Socrata (variant or fork)
+        - OpenDataSoft
+        - Esri ArcGIS Online
+        - DKAN
+        - Junar
+        - Other (describe below)
+        - Unknown
+    validations:
+      required: true
+
+  - type: input
+    id: city-org
+    attributes:
+      label: City / organization
+      placeholder: "e.g. City of Austin, TX"
+    validations:
+      required: true
+
+  - type: textarea
+    id: use-case
+    attributes:
+      label: Use case
+      description: What would you do with this plugin? What datasets are you trying to access?
+      placeholder: |
+        Austin publishes 311 service requests and budget data here.
+        I want to use Claude to query permit data for a civic dashboard...
+    validations:
+      required: true
+
+  - type: textarea
+    id: api-docs
+    attributes:
+      label: API documentation
+      description: Link to the portal's developer / API docs if available.
+      placeholder: "https://developer.example.gov/api-docs"
+    validations:
+      required: false
+
+  - type: dropdown
+    id: adoption
+    attributes:
+      label: How many cities / portals use this platform?
+      description: Built-in plugins are most useful when they cover many portals.
+      options:
+        - Just this one portal
+        - A handful (2–10)
+        - Many cities / widespread adoption
+        - Not sure
+    validations:
+      required: true
+
+  - type: dropdown
+    id: contribution
+    attributes:
+      label: Would you be willing to help build it?
+      options:
+        - "Yes — I can write the plugin"
+        - "Yes — I can help with testing / feedback"
+        - "No"
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+    validations:
+      required: false

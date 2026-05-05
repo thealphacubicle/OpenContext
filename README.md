@@ -12,23 +12,25 @@
 
 ## Quick Start
 
+Install [uv](https://docs.astral.sh/uv/getting-started/installation/) first, then:
+
 ```bash
-# 0. Install the CLI
+# 0. Install the CLI (project + CLI extras into .venv)
 git clone https://github.com/thealphacubicle/OpenContext.git
 cd OpenContext
-pip install -e ".[cli]"
+uv sync --extra cli
 
 # 1. Check prerequisites (Python 3.11+, uv, AWS CLI, Terraform)
-opencontext authenticate
+uv run opencontext authenticate
 
 # 2. Configure interactively (creates config.yaml + Terraform workspace)
-opencontext configure
+uv run opencontext configure
 
 # 3. Test locally (optional)
-opencontext serve
+uv run opencontext serve
 
 # 4. Deploy
-opencontext deploy --env staging
+uv run opencontext deploy --env staging
 ```
 
 Connect via **Claude Connectors** (same steps on both Claude.ai and Claude Desktop):
@@ -38,6 +40,15 @@ Connect via **Claude Connectors** (same steps on both Claude.ai and Claude Deskt
 3. Enter a name (e.g. "Your City OpenData") and your API Gateway URL (printed at the end of `opencontext deploy`)
 
 See [Getting Started](docs/GETTING_STARTED.md) for full setup.
+
+---
+
+## Using uv and `requirements.txt`
+
+- **Default workflow:** `uv sync --extra cli` (or `uv sync --all-extras` for development) installs from `pyproject.toml` and the lockfile into `.venv`. Run CLI and tools with `uv run …` when you want to use the project environment without activating the venv.
+- **`requirements.txt`** is kept for **Lambda packaging** ( `opencontext deploy` installs with `uv pip install … -r requirements.txt` ) and **security scans** in CI (e.g. `uv run pip-audit -r requirements.txt`). You usually do not install from `requirements.txt` by hand unless debugging those flows.
+
+Details: [Getting Started — full walkthrough](docs/GETTING_STARTED.md) (section *Using uv with requirements.txt*).
 
 ---
 
@@ -57,22 +68,16 @@ See [Getting Started](docs/GETTING_STARTED.md) for full setup.
 
 ---
 
-## Examples
-
-See the [examples/](examples/) directory for per-city configuration samples (Boston, Chicago, Seattle, and more).
-
----
-
 ## Contributing
 
 Pre-commit hooks (optional):
 
 ```bash
-pip install pre-commit
-pre-commit install
+uv sync --all-extras   # includes pre-commit; use --extra cli if you only need the CLI
+uv run pre-commit install
 ```
 
-Hooks: Ruff, yamllint, gofmt. Run manually: `pre-commit run --all-files`.
+Hooks: Ruff, yamllint, gofmt. Run manually: `uv run pre-commit run --all-files`.
 
 ---
 

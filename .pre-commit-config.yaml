@@ -1,6 +1,6 @@
 # Pre-commit hooks for OpenContext
-# Install: pre-commit install
-# Run manually: pre-commit run --all-files
+# Install: uv run pre-commit install
+# Run manually: uv run pre-commit run --all-files
 # See https://pre-commit.com for more
 
 repos:
@@ -44,4 +44,4 @@ repos:
         types: [go]
         files: ^client/
 
-  # pip-audit runs in CI; run manually: pip-audit -r requirements.txt
+  # pip-audit runs in CI; run manually: uv run pip-audit -r requirements.txt

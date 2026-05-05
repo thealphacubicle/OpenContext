@@ -1,0 +1,74 @@
+---
+name: Feature Request
+description: Suggest an improvement or new capability
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Have an idea to make OpenContext better? We'd love to hear it.
+        Before opening, please search existing issues to avoid duplicates.
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Feature area
+      description: Which part of the project does this affect?
+      options:
+        - Built-in plugin (CKAN / ArcGIS / Socrata)
+        - Plugin system / custom plugin support
+        - CLI (`opencontext` commands)
+        - Core framework (MCP server, plugin manager)
+        - Deployment / Terraform / AWS
+        - Documentation
+        - Testing / CI
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or motivation
+      description: What pain point does this solve? What are you trying to do that you can't today?
+      placeholder: |
+        When I try to query a CKAN resource with more than 10,000 rows,
+        the tool returns a timeout and there's no way to paginate...
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+      description: Describe what you'd like to see. Be as specific as you can.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Any other approaches you've thought about or tried?
+    validations:
+      required: false
+
+  - type: dropdown
+    id: contribution
+    attributes:
+      label: Would you be willing to contribute a PR?
+      options:
+        - "Yes"
+        - "Yes, with guidance"
+        - "No"
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Screenshots, links, related issues, or anything else useful.
+    validations:
+      required: false

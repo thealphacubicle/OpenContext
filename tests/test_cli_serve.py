@@ -149,7 +149,7 @@ class TestServeDefaultConfigPath:
 
         with (
             patch("cli.commands.serve._load_config", side_effect=_fake_load),
-            patch("asyncio.run"),
+            patch("cli.commands.serve._run_server", AsyncMock()),
         ):
             ctx = MagicMock()
             ctx.invoked_subcommand = None
