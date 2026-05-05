@@ -25,12 +25,16 @@ uv run opencontext authenticate
 
 # 2. Configure interactively (creates config.yaml + Terraform workspace)
 uv run opencontext configure
+# or for GCP:
+uv run opencontext configure --cloud gcp
 
 # 3. Test locally (optional)
 uv run opencontext serve
 
 # 4. Deploy
 uv run opencontext deploy --env staging
+# or for GCP:
+uv run opencontext deploy --cloud gcp --env staging
 ```
 
 Connect via **Claude Connectors** (same steps on both Claude.ai and Claude Desktop):

@@ -84,6 +84,8 @@ gcp:
   function_name: "your-opendata-mcp" # Optional; defaults from server_name slug
   function_memory_mb: 512 # MiB for the function
   function_timeout_sec: 120 # Seconds (max 3600 for gen2)
+  min_instance_count: 0 # Minimum warm instances
+  max_instance_count: 100 # Maximum autoscaled instances
 
 # Logging configuration
 logging:
