@@ -9,4 +9,4 @@ pygments>=2.20.0
 requests>=2.33.0
 pre-commit>=4.5.1
 functions-framework>=3.4.0
-typing-extensions>=4.12.2
+typing-extensions<4.6.0
