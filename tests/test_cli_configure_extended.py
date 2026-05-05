@@ -395,3 +395,108 @@ class TestPromptPluginConfigCancellation:
 
             with pytest.raises((SystemExit, TypeError, Exception)):
                 _prompt_plugin_config("Socrata", {})
+
+
+class TestConfigureWizardGCP:
+    @patch("cli.commands.configure.subprocess.run")
+    @patch("cli.commands.configure.run_cmd")
+    @patch("cli.commands.configure.get_project_root")
+    @patch("cli.commands.configure.get_terraform_dir")
+    @patch("cli.commands.configure.questionary")
+    def test_gcp_wizard_writes_tfvars_with_autoscaling(
+        self,
+        mock_q,
+        mock_tf_dir,
+        mock_root,
+        mock_run_cmd,
+        mock_subproc,
+        tmp_path,
+    ):
+        from cli.commands.configure import configure
+
+        tf_dir = tmp_path / "terraform" / "gcp"
+        tf_dir.mkdir(parents=True)
+        mock_root.return_value = tmp_path
+        mock_tf_dir.return_value = tf_dir
+
+        mock_q.select.side_effect = _mock_q(["Start from scratch", "staging", "CKAN"])
+        mock_q.text.side_effect = _mock_q(
+            [
+                "City of Boston",  # org_name
+                "Boston",  # city_name
+                "https://data.boston.gov",  # ckan base_url
+                "https://data.boston.gov",  # ckan portal_url
+                "Boston",  # plugin city_name
+                "120",  # plugin timeout
+                "us-central1",  # gcp region
+                "my-gcp-project",  # gcp project id
+                "boston-mcp-staging",  # function name
+                "512",  # memory
+                "120",  # timeout
+                "2",  # min instances
+                "25",  # max instances
+                "boston-opencontext-artifacts",  # artifact bucket
+            ]
+        )
+
+        mock_subproc.return_value = subprocess.CompletedProcess(
+            args=[], returncode=0, stdout="  default\n", stderr=""
+        )
+        mock_run_cmd.return_value = MagicMock(returncode=0)
+
+        configure(cloud="gcp")
+
+        tfvars_file = tf_dir / "staging.tfvars"
+        content = tfvars_file.read_text()
+        assert 'project_id           = "my-gcp-project"' in content
+        assert "min_instance_count   = 2" in content
+        assert "max_instance_count   = 25" in content
+
+    @patch("cli.commands.configure.subprocess.run")
+    @patch("cli.commands.configure.run_cmd")
+    @patch("cli.commands.configure.get_project_root")
+    @patch("cli.commands.configure.get_terraform_dir")
+    @patch("cli.commands.configure.questionary")
+    def test_gcp_min_greater_than_max_exits(
+        self,
+        mock_q,
+        mock_tf_dir,
+        mock_root,
+        mock_run_cmd,
+        mock_subproc,
+        tmp_path,
+    ):
+        from cli.commands.configure import configure
+
+        tf_dir = tmp_path / "terraform" / "gcp"
+        tf_dir.mkdir(parents=True)
+        mock_root.return_value = tmp_path
+        mock_tf_dir.return_value = tf_dir
+
+        mock_q.select.side_effect = _mock_q(["Start from scratch", "staging", "CKAN"])
+        mock_q.text.side_effect = _mock_q(
+            [
+                "City of Boston",
+                "Boston",
+                "https://data.boston.gov",
+                "https://data.boston.gov",
+                "Boston",
+                "120",
+                "us-central1",
+                "my-gcp-project",
+                "boston-mcp-staging",
+                "512",
+                "120",
+                "10",  # min
+                "2",  # max
+                "",  # artifact bucket
+            ]
+        )
+
+        mock_subproc.return_value = subprocess.CompletedProcess(
+            args=[], returncode=0, stdout="  default\n", stderr=""
+        )
+        mock_run_cmd.return_value = MagicMock(returncode=0)
+
+        with pytest.raises((SystemExit, click.exceptions.Exit)):
+            configure(cloud="gcp")

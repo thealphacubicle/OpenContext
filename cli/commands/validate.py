@@ -9,7 +9,7 @@ import typer
 import yaml
 from rich.table import Table
 
-from cli.utils import console, get_project_root, get_terraform_dir
+from cli.utils import console, get_project_root, get_terraform_dir, normalize_cloud
 
 app = typer.Typer()
 
@@ -37,10 +37,17 @@ def _parse_tfvars_file(path: Path) -> dict[str, str]:
     return result
 
 
-def run_checks(env: str, include_artifact_checks: bool = True) -> bool:
+def run_checks(
+    env: str,
+    include_artifact_checks: bool = True,
+    cloud: str = "aws",
+) -> bool:
     """Run all validation checks. Returns True if all pass."""
+    if not isinstance(cloud, str):
+        cloud = "aws"
+    cloud = normalize_cloud(cloud)
     project_root = get_project_root()
-    terraform_dir = get_terraform_dir()
+    terraform_dir = get_terraform_dir(cloud)
 
     # (check_name, passed, detail)
     checks: list[tuple[str, bool, str]] = []
@@ -106,12 +113,12 @@ def run_checks(env: str, include_artifact_checks: bool = True) -> bool:
             ("Plugin config valid", False, "Skipped — fix plugin selection first")
         )
 
-    # 4. terraform/aws/{env}.tfvars exists
+    # 4. terraform/<cloud>/{env}.tfvars exists
     tfvars_path = terraform_dir / f"{env}.tfvars"
     tfvars_exists = tfvars_path.exists()
     checks.append(
         (
-            f"terraform/aws/{env}.tfvars exists",
+            f"terraform/{cloud}/{env}.tfvars exists",
             tfvars_exists,
             "Found" if tfvars_exists else "Run: opencontext configure",
         )
@@ -218,32 +225,63 @@ def run_checks(env: str, include_artifact_checks: bool = True) -> bool:
             )
         )
 
-    # 8. AWS credentials valid
-    try:
-        result = subprocess.run(
-            ["aws", "sts", "get-caller-identity", "--output", "json"],
-            capture_output=True,
-            text=True,
-            timeout=15,
-        )
-        if result.returncode == 0:
-            identity = json.loads(result.stdout)
-            checks.append(
-                (
-                    "AWS credentials valid",
-                    True,
-                    f"Account: {identity.get('Account', 'unknown')}",
-                )
+    # 8. Cloud provider credentials valid
+    if cloud == "aws":
+        try:
+            result = subprocess.run(
+                ["aws", "sts", "get-caller-identity", "--output", "json"],
+                capture_output=True,
+                text=True,
+                timeout=15,
             )
-        else:
+            if result.returncode == 0:
+                identity = json.loads(result.stdout)
+                checks.append(
+                    (
+                        "AWS credentials valid",
+                        True,
+                        f"Account: {identity.get('Account', 'unknown')}",
+                    )
+                )
+            else:
+                checks.append(("AWS credentials valid", False, "Run: aws configure"))
+        except FileNotFoundError:
+            checks.append(("AWS credentials valid", False, "AWS CLI not found"))
+        except (subprocess.TimeoutExpired, json.JSONDecodeError):
             checks.append(("AWS credentials valid", False, "Run: aws configure"))
-    except FileNotFoundError:
-        checks.append(("AWS credentials valid", False, "AWS CLI not found"))
-    except (subprocess.TimeoutExpired, json.JSONDecodeError):
-        checks.append(("AWS credentials valid", False, "Run: aws configure"))
+    else:
+        try:
+            result = subprocess.run(
+                ["gcloud", "auth", "application-default", "print-access-token"],
+                capture_output=True,
+                text=True,
+                timeout=15,
+            )
+            if result.returncode == 0 and result.stdout.strip():
+                checks.append(
+                    (
+                        "GCP credentials valid",
+                        True,
+                        "Application Default Credentials available",
+                    )
+                )
+            else:
+                checks.append(
+                    (
+                        "GCP credentials valid",
+                        False,
+                        "Run: gcloud auth application-default login",
+                    )
+                )
+        except FileNotFoundError:
+            checks.append(("GCP credentials valid", False, "gcloud CLI not found"))
+        except subprocess.TimeoutExpired:
+            checks.append(
+                ("GCP credentials valid", False, "Timeout checking ADC credentials")
+            )
 
-    # 9. ACM cert exists for custom domain (only if custom_domain is set)
-    if custom_domain:
+    # 9. Provider-specific checks
+    if cloud == "aws" and custom_domain:
         try:
             result = subprocess.run(
                 ["aws", "acm", "list-certificates", "--output", "json"],
@@ -293,6 +331,19 @@ def run_checks(env: str, include_artifact_checks: bool = True) -> bool:
                     f"Error: {str(e)[:60]}",
                 )
             )
+    if cloud == "gcp":
+        if tfvars.get("project_id"):
+            checks.append(
+                ("GCP project_id set", True, f"project_id={tfvars.get('project_id')}")
+            )
+        else:
+            checks.append(
+                (
+                    "GCP project_id set",
+                    False,
+                    f"Missing in terraform/{cloud}/{env}.tfvars",
+                )
+            )
 
     # Print results table
     table = Table(title=f"OpenContext Validation — {env}", show_lines=True)
@@ -324,10 +375,13 @@ def run_checks(env: str, include_artifact_checks: bool = True) -> bool:
 def validate(
     ctx: typer.Context,
     env: str = typer.Option("staging", help="Environment: staging or prod"),
+    cloud: str = typer.Option("aws", "--cloud", help="Cloud provider: aws or gcp"),
 ) -> None:
     """Run pre-deployment validation checks."""
     if ctx.invoked_subcommand is not None:
         return
-    passed = run_checks(env)
+    if not isinstance(cloud, str):
+        cloud = "aws"
+    passed = run_checks(env, cloud=cloud)
     if not passed:
         raise typer.Exit(1)

@@ -9,15 +9,19 @@ locals {
     )
   )
 
-  memory_mb   = try(local.gcp_cfg.function_memory_mb, null) != null ? local.gcp_cfg.function_memory_mb : var.function_memory_mb
-  timeout_sec = try(local.gcp_cfg.function_timeout_sec, null) != null ? local.gcp_cfg.function_timeout_sec : var.function_timeout_sec
+  memory_mb     = try(local.gcp_cfg.function_memory_mb, null) != null ? local.gcp_cfg.function_memory_mb : var.function_memory_mb
+  timeout_sec   = try(local.gcp_cfg.function_timeout_sec, null) != null ? local.gcp_cfg.function_timeout_sec : var.function_timeout_sec
+  min_instances = try(local.gcp_cfg.min_instance_count, null) != null ? local.gcp_cfg.min_instance_count : var.min_instance_count
+  max_instances = try(local.gcp_cfg.max_instance_count, null) != null ? local.gcp_cfg.max_instance_count : var.max_instance_count
 
   config_json = jsonencode(local.config)
 
   artifact_bucket = var.artifact_bucket_name != "" ? var.artifact_bucket_name : "${var.project_id}-opencontext-fn-${var.stage_name}"
 
-  zip_path        = "${path.module}/gcf-deployment.zip"
-  zip_object_name = "source-${filebase64sha256(local.zip_path)}.zip"
+  zip_path = "${path.module}/gcf-deployment.zip"
+  # Include the function name in the source object so deployed artifacts are
+  # easy to map back to a specific Cloud Function/environment.
+  zip_object_name = "${local.function_name}-source-${filebase64sha256(local.zip_path)}.zip"
 }
 
 resource "google_project_service" "required_apis" {
@@ -38,6 +42,7 @@ resource "google_storage_bucket" "function_source" {
   name                        = local.artifact_bucket
   location                    = var.gcp_region
   uniform_bucket_level_access = true
+  force_destroy               = true
 
   versioning {
     enabled = true
@@ -84,8 +89,8 @@ resource "google_cloudfunctions2_function" "mcp" {
   }
 
   service_config {
-    max_instance_count    = 100
-    min_instance_count    = 0
+    max_instance_count    = local.max_instances
+    min_instance_count    = local.min_instances
     available_memory      = "${local.memory_mb}Mi"
     timeout_seconds       = local.timeout_sec
     service_account_email = google_service_account.function.email
@@ -116,9 +121,9 @@ resource "google_cloudfunctions2_function" "mcp" {
 
 # Gen2 functions run on Cloud Run — public HTTPS requires run.invoker on the service
 resource "google_cloud_run_v2_service_iam_member" "public_invoker" {
-  project = var.project_id
+  project  = var.project_id
   location = var.gcp_region
-  name    = google_cloudfunctions2_function.mcp.name
-  role    = "roles/run.invoker"
-  member  = "allUsers"
+  name     = google_cloudfunctions2_function.mcp.name
+  role     = "roles/run.invoker"
+  member   = "allUsers"
 }

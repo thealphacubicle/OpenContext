@@ -2,7 +2,7 @@
 
 Deploy OpenContext to **Google Cloud Functions (2nd gen)** with Terraform. Runtime behavior matches AWS: configuration is injected as **`OPENCONTEXT_CONFIG`** (JSON), same as Lambda.
 
-This module does **not** use the `opencontext` CLI yet — package the app, copy artifacts, then run Terraform manually (see below).
+This module is supported by the `opencontext` CLI (`configure`, `validate`, `deploy`, `status`, `logs`, `destroy`) via `--cloud gcp`.
 
 ## Architecture
 
@@ -29,20 +29,47 @@ terraform apply -var="project_id=YOUR_PROJECT_ID"
 
 Use a **globally unique** bucket name if the default is taken (`-var="state_bucket_name=..."`). Align [`backend.tf`](backend.tf) or pass `-backend-config="bucket=..."` when initializing the main module.
 
-## 2. Configure the app
+## 2. Configure with CLI (recommended)
 
-- Copy `config-example.yaml` to `config.yaml` at the repo root and enable exactly one plugin (same rule as AWS).
-- Optional `gcp:` block in `config.yaml` for region, `function_name`, `function_memory_mb`, `function_timeout_sec` (see `config-example.yaml`).
+```bash
+opencontext configure --cloud gcp
+```
 
-## 3. Build the deployment zip
+This writes:
+- `config.yaml` (plugin + `gcp` settings)
+- `terraform/gcp/<env>.tfvars`
+- Terraform workspace `<city-slug>-<env>`
 
-Mirror the Lambda packaging idea: install dependencies and app code into a flat directory, include **`main.py`** at the **root** of the zip (re-exports `mcp_http` for Cloud Functions).
+GCP wizard prompts include:
+- `project_id`, `region`, `function_name`
+- `function_memory_mb`, `function_timeout_sec`
+- `min_instance_count`, `max_instance_count` (autoscaling)
+- optional `artifact_bucket_name`
 
-Example (from repo root, after `uv sync`):
+## 3. Validate and deploy with CLI
+
+```bash
+opencontext validate --cloud gcp --env staging
+opencontext deploy --cloud gcp --env staging
+```
+
+The deploy command packages `gcf-deployment.zip`, copies it into `terraform/gcp/`, runs `terraform plan`, prompts for confirmation, then applies.
+
+## 4. Day-2 operations
+
+```bash
+opencontext status --cloud gcp --env staging
+opencontext logs --cloud gcp --env staging
+opencontext destroy --cloud gcp --env staging
+```
+
+## Manual packaging/deploy (advanced)
+
+If you need a fully manual flow, you can still package and apply Terraform yourself.
 
 ```bash
 rm -rf .deploy && mkdir .deploy
-uv pip install -r requirements.txt --target .deploy --python-platform linux_x86_64 --python-version 3.11 --no-compile
+uv pip install -r requirements.txt --target .deploy --python-platform x86_64-manylinux2014 --python-version 3.11 --no-compile
 cp -R core plugins server custom_plugins .deploy/ 2>/dev/null || true
 mkdir -p .deploy/custom_plugins
 cp main.py .deploy/
@@ -51,7 +78,7 @@ cd .deploy && zip -r ../terraform/gcp/gcf-deployment.zip . && cd ..
 
 Adjust `--python-platform` if Google’s build uses a different arch; Cloud Build runs on Google’s infrastructure and installs from your zip layout.
 
-## 4. Deploy with Terraform
+Deploy manually:
 
 ```bash
 cd terraform/gcp

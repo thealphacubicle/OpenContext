@@ -5,9 +5,10 @@ import shutil
 import subprocess
 import sys
 
+import typer
 from rich.table import Table
 
-from cli.utils import console, friendly_exit
+from cli.utils import console, friendly_exit, normalize_cloud
 
 
 def _is_available(
@@ -47,8 +48,14 @@ def _find_pip() -> list[str] | None:
 
 
 @friendly_exit
-def authenticate() -> None:
+def authenticate(
+    cloud: str = typer.Option("aws", "--cloud", help="Cloud provider: aws or gcp"),
+) -> None:
     """Check all prerequisites and print a status table."""
+    if not isinstance(cloud, str):
+        cloud = "aws"
+    cloud = normalize_cloud(cloud)
+
     checks: list[tuple[str, bool, str]] = []
 
     # --- 1. Python >= 3.11 (cannot auto-install) ---
@@ -96,65 +103,97 @@ def authenticate() -> None:
 
     uv_available = shutil.which("uv") is not None
 
-    # --- 3. AWS CLI (auto-install via uv/pip if missing) ---
-    result = _is_available(["aws", "--version"])
-    if result:
-        version = (
-            result.stdout.strip().split()[0] if result.stdout.strip() else "installed"
-        )
-        checks.append(("AWS CLI", True, version))
-    else:
-        installed = False
-        if uv_available:
-            installed = _auto_install(
-                "awscli", ["uv", "pip", "install", "awscli"], "AWS CLI via uv"
+    # --- 3/4. Cloud CLI + credentials ---
+    if cloud == "aws":
+        # --- 3. AWS CLI (auto-install via uv/pip if missing) ---
+        result = _is_available(["aws", "--version"])
+        if result:
+            version = (
+                result.stdout.strip().split()[0] if result.stdout.strip() else "installed"
             )
-        if not installed:
-            pip_cmd = _find_pip()
-            if pip_cmd:
+            checks.append(("AWS CLI", True, version))
+        else:
+            installed = False
+            if uv_available:
                 installed = _auto_install(
-                    "awscli",
-                    [*pip_cmd, "install", "awscli"],
-                    "AWS CLI via pip fallback",
+                    "awscli", ["uv", "pip", "install", "awscli"], "AWS CLI via uv"
+                )
+            if not installed:
+                pip_cmd = _find_pip()
+                if pip_cmd:
+                    installed = _auto_install(
+                        "awscli",
+                        [*pip_cmd, "install", "awscli"],
+                        "AWS CLI via pip fallback",
+                    )
+
+            if installed:
+                result = _is_available(["aws", "--version"])
+                if result:
+                    version = (
+                        result.stdout.strip().split()[0]
+                        if result.stdout.strip()
+                        else "installed"
+                    )
+                    checks.append(("AWS CLI", True, f"{version} (auto-installed)"))
+                else:
+                    installed = False
+
+            if not installed:
+                checks.append(
+                    (
+                        "AWS CLI",
+                        False,
+                        "Install: https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2.html",
+                    )
                 )
 
-        if installed:
-            result = _is_available(["aws", "--version"])
-            if result:
-                version = (
-                    result.stdout.strip().split()[0]
-                    if result.stdout.strip()
-                    else "installed"
+        # --- 4. AWS credentials (cannot auto-install) ---
+        result = _is_available(["aws", "sts", "get-caller-identity"], timeout=15)
+        if result:
+            try:
+                identity = json.loads(result.stdout)
+                checks.append(
+                    (
+                        "AWS Credentials",
+                        True,
+                        f"Account: {identity.get('Account', 'unknown')}",
+                    )
                 )
-                checks.append(("AWS CLI", True, f"{version} (auto-installed)"))
-            else:
-                installed = False
-
-        if not installed:
-            checks.append(
-                (
-                    "AWS CLI",
-                    False,
-                    "Install: https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2.html",
-                )
-            )
-
-    # --- 4. AWS credentials (cannot auto-install) ---
-    result = _is_available(["aws", "sts", "get-caller-identity"], timeout=15)
-    if result:
-        try:
-            identity = json.loads(result.stdout)
-            checks.append(
-                (
-                    "AWS Credentials",
-                    True,
-                    f"Account: {identity.get('Account', 'unknown')}",
-                )
-            )
-        except json.JSONDecodeError:
+            except json.JSONDecodeError:
+                checks.append(("AWS Credentials", False, "Run: aws configure"))
+        else:
             checks.append(("AWS Credentials", False, "Run: aws configure"))
     else:
-        checks.append(("AWS Credentials", False, "Run: aws configure"))
+        # --- 3. gcloud CLI ---
+        result = _is_available(["gcloud", "--version"])
+        if result:
+            first_line = result.stdout.strip().splitlines()[0] if result.stdout.strip() else "installed"
+            checks.append(("gcloud CLI", True, first_line))
+        else:
+            checks.append(
+                (
+                    "gcloud CLI",
+                    False,
+                    "Install: https://cloud.google.com/sdk/docs/install",
+                )
+            )
+
+        # --- 4. GCP ADC credentials ---
+        result = _is_available(
+            ["gcloud", "auth", "application-default", "print-access-token"],
+            timeout=15,
+        )
+        if result and result.stdout.strip():
+            checks.append(("GCP Credentials (ADC)", True, "Application Default Credentials available"))
+        else:
+            checks.append(
+                (
+                    "GCP Credentials (ADC)",
+                    False,
+                    "Run: gcloud auth application-default login",
+                )
+            )
 
     # --- 5. Terraform (cannot auto-install — binary download required) ---
     result = _is_available(["terraform", "--version"])

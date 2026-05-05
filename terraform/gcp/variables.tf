@@ -33,6 +33,18 @@ variable "function_timeout_sec" {
   default     = 120
 }
 
+variable "min_instance_count" {
+  description = "Minimum warm instances for Cloud Functions gen2 autoscaling"
+  type        = number
+  default     = 0
+}
+
+variable "max_instance_count" {
+  description = "Maximum instances for Cloud Functions gen2 autoscaling"
+  type        = number
+  default     = 10
+}
+
 variable "stage_name" {
   description = "Environment label (e.g. staging, prod) — used in labels and resource names"
   type        = string
