@@ -20,12 +20,36 @@ from cli.utils import (
 
 PLUGINS = ["CKAN", "Socrata", "ArcGIS"]
 
-# Bucket name must match the `backend "s3"` block in terraform/aws/main.tf.
+# Default suggested bucket name shown in the wizard prompt.
+# Users should change this to a unique name for their deployment.
 TERRAFORM_STATE_BUCKET = "opencontext-terraform-state"
 
 
+def _check_state_bucket(bucket_name: str, region: str) -> str:
+    """Check whether the S3 bucket is available for use as Terraform state.
+
+    Returns one of:
+      "ok"      — bucket exists and belongs to this account
+      "missing" — bucket does not exist (will be created later)
+      "taken"   — bucket exists but belongs to another account (403)
+
+    Any other ClientError is re-raised unchanged.
+    """
+    s3 = boto3.client("s3", region_name=region)
+    try:
+        s3.head_bucket(Bucket=bucket_name)
+        return "ok"
+    except botocore.exceptions.ClientError as e:
+        error_code = e.response["Error"]["Code"]
+        if error_code in ("403", "AccessDenied"):
+            return "taken"
+        if error_code in ("404", "NoSuchBucket"):
+            return "missing"
+        raise
+
+
 def _ensure_state_bucket(bucket_name: str, region: str) -> None:
-    """Check that the Terraform S3 state bucket exists; create it if not.
+    """Create the Terraform S3 state bucket if it does not already exist.
 
     Versioning and server-side encryption are enabled on newly created buckets.
     No DynamoDB table is created — the Terraform backend does not use state
@@ -273,6 +297,27 @@ def configure(
     if region is None:
         raise typer.Exit(0)
 
+    # Prompt for state bucket name and validate immediately.
+    # Re-prompt if the bucket is owned by another AWS account (403).
+    # The --state-bucket CLI flag skips this prompt when a non-default value
+    # is passed, allowing automation and re-runs against existing state.
+    if state_bucket == TERRAFORM_STATE_BUCKET:
+        while True:
+            state_bucket = questionary.text(
+                "Terraform state bucket name:",
+                default=TERRAFORM_STATE_BUCKET,
+            ).ask()
+            if state_bucket is None:
+                raise typer.Exit(0)
+            status = _check_state_bucket(state_bucket, region)
+            if status == "taken":
+                console.print(
+                    f"[red]Bucket [bold]{state_bucket}[/bold] is owned by another "
+                    f"AWS account. Please choose a different name.[/red]"
+                )
+                continue
+            break
+
     city_slug = city_name.lower().replace(" ", "-")
     suggested_lambda = f"{city_slug}-opencontext-mcp-{env}"
 
@@ -350,20 +395,20 @@ def configure(
 
     _ensure_state_bucket(state_bucket, region)
 
-    # Override the backend config at init time so Terraform uses the correct
-    # bucket and region instead of the defaults hard-coded in main.tf.
-    if not (terraform_dir / ".terraform").exists():
-        init_cmd = [
-            "terraform",
-            "init",
-            f"-backend-config=bucket={state_bucket}",
-            f"-backend-config=region={region}",
-        ]
-        run_cmd(
-            init_cmd,
-            cwd=terraform_dir,
-            spinner_msg="Initializing Terraform",
-        )
+    # Always reinitialize with -reconfigure to ensure the backend config is
+    # up to date, even if .terraform already exists from a previous run.
+    init_cmd = [
+        "terraform",
+        "init",
+        "-reconfigure",
+        f"-backend-config=bucket={state_bucket}",
+        f"-backend-config=region={region}",
+    ]
+    run_cmd(
+        init_cmd,
+        cwd=terraform_dir,
+        spinner_msg="Initializing Terraform",
+    )
 
     result = subprocess.run(
         ["terraform", "workspace", "list"],

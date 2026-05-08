@@ -525,6 +525,7 @@ class TestEnsureStateBucket:
                 "City",
                 "120",
                 "us-east-1",
+                "opencontext-terraform-state",  # state bucket name prompt
                 "city-mcp-staging",
                 "512",
                 "120",
@@ -602,6 +603,10 @@ def _run_configure_wizard(tmp_path, extra_kwargs: dict | None = None):
     mock_s3 = MagicMock()
     mock_s3.head_bucket.return_value = {}
 
+    # Only include bucket name response if not passing --state-bucket explicitly
+    skip_bucket_prompt = extra_kwargs and "state_bucket" in extra_kwargs
+    bucket_responses = [] if skip_bucket_prompt else ["opencontext-terraform-state"]
+
     with (
         patch("cli.commands.configure.get_project_root", return_value=tmp_path),
         patch("cli.commands.configure.get_terraform_dir", return_value=tf_dir),
@@ -622,6 +627,7 @@ def _run_configure_wizard(tmp_path, extra_kwargs: dict | None = None):
                 "City",
                 "120",
                 "us-east-1",
+                *bucket_responses,
                 "city-mcp-staging",
                 "512",
                 "120",
@@ -636,7 +642,7 @@ def _run_configure_wizard(tmp_path, extra_kwargs: dict | None = None):
         configure(**(extra_kwargs or {}))
 
         return mock_run_cmd.call_args_list, mock_s3
-
+    
 
 class TestStateBucketFlag:
     """Tests for the --state-bucket CLI option on configure()."""
@@ -647,12 +653,14 @@ class TestStateBucketFlag:
 
         _, mock_s3 = _run_configure_wizard(tmp_path)
 
-        # boto3.client is called inside _ensure_state_bucket; head_bucket receives
-        # the bucket name via the Bucket kwarg.
-        mock_s3.head_bucket.assert_called_once_with(Bucket=TERRAFORM_STATE_BUCKET)
+        # head_bucket is called twice: once in _check_state_bucket (validation prompt)
+        # and once in _ensure_state_bucket (creation check). Verify at least one call
+        # used the default bucket name.
+        mock_s3.head_bucket.assert_any_call(Bucket=TERRAFORM_STATE_BUCKET)
 
     def test_custom_bucket_passed_to_ensure_state_bucket(self, tmp_path):
-        """When --state-bucket is provided, _ensure_state_bucket receives the custom name."""
+        """When --state-bucket is provided, the prompt is skipped and _ensure_state_bucket
+        receives the custom name directly."""
         custom = "my-custom-tf-state"
         _, mock_s3 = _run_configure_wizard(tmp_path, {"state_bucket": custom})
 
