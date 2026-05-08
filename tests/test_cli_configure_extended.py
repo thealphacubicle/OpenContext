@@ -35,10 +35,12 @@ class TestConfigureWizardCKAN:
     @patch("cli.commands.configure.run_cmd")
     @patch("cli.commands.configure.get_project_root")
     @patch("cli.commands.configure.get_terraform_dir")
+    @patch("cli.commands.configure.boto3.client")
     @patch("cli.commands.configure.questionary")
     def test_ckan_wizard_writes_config_and_tfvars(
         self,
         mock_q,
+        mock_boto3,
         mock_tf_dir,
         mock_root,
         mock_run_cmd,
@@ -52,6 +54,10 @@ class TestConfigureWizardCKAN:
         mock_root.return_value = tmp_path
         mock_tf_dir.return_value = tf_dir
 
+        mock_s3 = MagicMock()
+        mock_s3.head_bucket.return_value = {}
+        mock_boto3.return_value = mock_s3
+
         responses = [
             "Use example config as template",  # starting_point
             "City of Boston",  # org_name
@@ -63,6 +69,7 @@ class TestConfigureWizardCKAN:
             "Boston",  # city_name (plugin)
             "120",  # timeout
             "us-east-1",  # region
+            "opencontext-terraform-state",  # state bucket name prompt
             "boston-opencontext-mcp-staging",  # lambda_name
             "512",  # lambda_memory
             "120",  # lambda_timeout
@@ -82,9 +89,10 @@ class TestConfigureWizardCKAN:
                 responses[10],
                 responses[11],
                 responses[12],
+                responses[13],
             ]
         )
-        mock_q.confirm.side_effect = _mock_q([responses[13]])
+        mock_q.confirm.side_effect = _mock_q([responses[14]])
 
         # terraform workspace list returns empty
         mock_subproc.return_value = subprocess.CompletedProcess(
@@ -105,10 +113,12 @@ class TestConfigureWizardCKAN:
     @patch("cli.commands.configure.run_cmd")
     @patch("cli.commands.configure.get_project_root")
     @patch("cli.commands.configure.get_terraform_dir")
+    @patch("cli.commands.configure.boto3.client")
     @patch("cli.commands.configure.questionary")
     def test_socrata_wizard_without_app_token(
         self,
         mock_q,
+        mock_boto3,
         mock_tf_dir,
         mock_root,
         mock_run_cmd,
@@ -122,6 +132,10 @@ class TestConfigureWizardCKAN:
         mock_root.return_value = tmp_path
         mock_tf_dir.return_value = tf_dir
 
+        mock_s3 = MagicMock()
+        mock_s3.head_bucket.return_value = {}
+        mock_boto3.return_value = mock_s3
+
         mock_q.select.side_effect = _mock_q(
             ["Start from scratch", "staging", "Socrata"]
         )
@@ -133,6 +147,7 @@ class TestConfigureWizardCKAN:
                 "",  # app_token (empty → omitted)
                 "120",  # timeout
                 "us-east-1",  # region
+                "opencontext-terraform-state",  # state bucket name prompt
                 "chicago-mcp-staging",  # lambda_name
                 "512",  # lambda_memory
                 "120",  # lambda_timeout
@@ -155,10 +170,12 @@ class TestConfigureWizardCKAN:
     @patch("cli.commands.configure.run_cmd")
     @patch("cli.commands.configure.get_project_root")
     @patch("cli.commands.configure.get_terraform_dir")
+    @patch("cli.commands.configure.boto3.client")
     @patch("cli.commands.configure.questionary")
     def test_arcgis_wizard_with_custom_domain(
         self,
         mock_q,
+        mock_boto3,
         mock_tf_dir,
         mock_root,
         mock_run_cmd,
@@ -172,6 +189,10 @@ class TestConfigureWizardCKAN:
         mock_root.return_value = tmp_path
         mock_tf_dir.return_value = tf_dir
 
+        mock_s3 = MagicMock()
+        mock_s3.head_bucket.return_value = {}
+        mock_boto3.return_value = mock_s3
+
         mock_q.select.side_effect = _mock_q(["Start from scratch", "prod", "ArcGIS"])
         mock_q.text.side_effect = _mock_q(
             [
@@ -181,6 +202,7 @@ class TestConfigureWizardCKAN:
                 "Seattle",  # city_name (plugin)
                 "120",  # timeout
                 "us-west-2",  # region
+                "opencontext-terraform-state",  # state bucket name prompt
                 "seattle-mcp-prod",  # lambda_name
                 "512",  # lambda_memory
                 "120",  # lambda_timeout
@@ -209,10 +231,12 @@ class TestConfigureWizardCKAN:
     @patch("cli.commands.configure.run_cmd")
     @patch("cli.commands.configure.get_project_root")
     @patch("cli.commands.configure.get_terraform_dir")
+    @patch("cli.commands.configure.boto3.client")
     @patch("cli.commands.configure.questionary")
     def test_wizard_selects_existing_workspace(
         self,
         mock_q,
+        mock_boto3,
         mock_tf_dir,
         mock_root,
         mock_run_cmd,
@@ -227,6 +251,10 @@ class TestConfigureWizardCKAN:
         mock_root.return_value = tmp_path
         mock_tf_dir.return_value = tf_dir
 
+        mock_s3 = MagicMock()
+        mock_s3.head_bucket.return_value = {}
+        mock_boto3.return_value = mock_s3
+
         mock_q.select.side_effect = _mock_q(["Start from scratch", "staging", "CKAN"])
         mock_q.text.side_effect = _mock_q(
             [
@@ -237,6 +265,7 @@ class TestConfigureWizardCKAN:
                 "Boston",
                 "120",
                 "us-east-1",
+                "opencontext-terraform-state",  # state bucket name prompt
                 "boston-mcp-staging",
                 "512",
                 "120",
@@ -260,10 +289,12 @@ class TestConfigureWizardCKAN:
     @patch("cli.commands.configure.run_cmd")
     @patch("cli.commands.configure.get_project_root")
     @patch("cli.commands.configure.get_terraform_dir")
+    @patch("cli.commands.configure.boto3.client")
     @patch("cli.commands.configure.questionary")
     def test_wizard_runs_terraform_init_if_needed(
         self,
         mock_q,
+        mock_boto3,
         mock_tf_dir,
         mock_root,
         mock_run_cmd,
@@ -279,6 +310,10 @@ class TestConfigureWizardCKAN:
         mock_root.return_value = tmp_path
         mock_tf_dir.return_value = tf_dir
 
+        mock_s3 = MagicMock()
+        mock_s3.head_bucket.return_value = {}
+        mock_boto3.return_value = mock_s3
+
         mock_q.select.side_effect = _mock_q(["Start from scratch", "staging", "CKAN"])
         mock_q.text.side_effect = _mock_q(
             [
@@ -289,6 +324,7 @@ class TestConfigureWizardCKAN:
                 "City",
                 "120",
                 "us-east-1",
+                "opencontext-terraform-state",  # state bucket name prompt
                 "city-mcp-staging",
                 "512",
                 "120",
