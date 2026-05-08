@@ -27,9 +27,16 @@ provider "aws" {
   region = var.aws_region
 }
 
+data "aws_caller_identity" "current" {}
+
+locals {
+  state_bucket_name = var.state_bucket_name != "" ? var.state_bucket_name : "opencontext-terraform-state-${data.aws_caller_identity.current.account_id}"
+}
+
+
 # S3 bucket for Terraform state
 resource "aws_s3_bucket" "terraform_state" {
-  bucket = var.state_bucket_name
+  bucket = local.state_bucket_name
 
   lifecycle {
     prevent_destroy = true

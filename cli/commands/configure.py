@@ -21,7 +21,9 @@ from cli.utils import (
 PLUGINS = ["CKAN", "Socrata", "ArcGIS"]
 
 # Bucket name must match the `backend "s3"` block in terraform/aws/main.tf.
-TERRAFORM_STATE_BUCKET = "opencontext-terraform-state"
+def _default_state_bucket() -> str:
+    account_id = boto3.client("sts").get_caller_identity()["Account"]
+    return f"opencontext-terraform-state-{account_id}"
 
 
 def _ensure_state_bucket(bucket_name: str, region: str) -> None:
@@ -41,8 +43,15 @@ def _ensure_state_bucket(bucket_name: str, region: str) -> None:
         return
     except botocore.exceptions.ClientError as e:
         error_code = e.response["Error"]["Code"]
+        if error_code in ("403", "AccessDenied"):
+            console.print(
+                f"[red]Bucket [bold]{bucket_name}[/bold] exists but is owned by "
+                f"another AWS account. Use --state-bucket to specify a unique name.[/red]"
+            )
+            raise typer.Exit(1)
         if error_code not in ("404", "NoSuchBucket"):
-            raise
+            console.print(f"[red]Unexpected S3 error {error_code} for bucket {bucket_name}[/red]")
+            raise typer.Exit(1)
 
     # Bucket does not exist — create it.
     console.print(
@@ -200,16 +209,16 @@ def _write_tfvars(
 @friendly_exit
 def configure(
     state_bucket: str = typer.Option(
-        TERRAFORM_STATE_BUCKET,
+        "",
         "--state-bucket",
-        help="S3 bucket name for Terraform state (default: opencontext-terraform-state)",
+        help="S3 bucket name for Terraform state (default: opencontext-terraform-state-<account-id>)",
     ),
 ) -> None:
     """Interactive wizard to configure your OpenContext MCP server."""
     # When called programmatically (e.g. in tests), Typer does not resolve
     # Option defaults — guard against receiving the raw OptionInfo sentinel.
-    if not isinstance(state_bucket, str):
-        state_bucket = TERRAFORM_STATE_BUCKET
+    if not isinstance(state_bucket, str) or not state_bucket:
+        state_bucket = _default_state_bucket()
 
     project_root = get_project_root()
     terraform_dir = get_terraform_dir()
@@ -350,20 +359,20 @@ def configure(
 
     _ensure_state_bucket(state_bucket, region)
 
-    # Override the backend config at init time so Terraform uses the correct
-    # bucket and region instead of the defaults hard-coded in main.tf.
-    if not (terraform_dir / ".terraform").exists():
-        init_cmd = [
-            "terraform",
-            "init",
-            f"-backend-config=bucket={state_bucket}",
-            f"-backend-config=region={region}",
-        ]
-        run_cmd(
-            init_cmd,
-            cwd=terraform_dir,
-            spinner_msg="Initializing Terraform",
-        )
+    # Always reinitialize with -reconfigure to ensure the backend config is
+    # up to date, even if .terraform already exists from a previous run.
+    init_cmd = [
+        "terraform",
+        "init",
+        "-reconfigure",
+        f"-backend-config=bucket={state_bucket}",
+        f"-backend-config=region={region}",
+    ]
+    run_cmd(
+        init_cmd,
+        cwd=terraform_dir,
+        spinner_msg="Initializing Terraform",
+    )
 
     result = subprocess.run(
         ["terraform", "workspace", "list"],
