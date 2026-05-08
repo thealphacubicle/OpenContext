@@ -177,23 +177,21 @@ async def _run_server(config: dict, port: int) -> None:
     console.print("=" * 50)
     console.print(f"URL: {base_url}")
     console.print("\n" + "=" * 50)
-    console.print("Connect via Claude Connectors")
+    console.print("Test with:")
     console.print("=" * 50)
-    console.print(
-        "\n1. Go to Settings -> Connectors (or Customize -> Connectors on claude.ai)"
-    )
-    console.print("2. Click 'Add custom connector'")
-    console.print(f"3. Enter a name ({server_name}) and URL: {base_url}")
-    console.print(
-        "\nNote: Localhost works with Claude Desktop only (web needs a deployed URL)."
-    )
-    console.print("\n" + "=" * 50)
-    console.print("\nTest with:")
-    console.print(f"  opencontext test --url {base_url}")
+    console.print(f"\n  opencontext test --url {base_url}")
     console.print(
         f"  or curl -X POST {base_url}"
         " -H 'Content-Type: application/json'"
         ' -d \'{"jsonrpc":"2.0","id":1,"method":"ping"}\''
+    )
+    console.print("\n" + "=" * 50)
+    console.print("Connect via Claude Connectors")
+    console.print("=" * 50)
+    console.print(
+        "\nTo connect to Claude, a public https:// URL is required."
+        "\nRun 'opencontext deploy --env staging' to get a deployed URL,"
+        "\nthen add it as a custom connector in Claude settings."
     )
     console.print("\nPress Ctrl+C to stop")
     console.print("=" * 50 + "\n")
