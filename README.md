@@ -25,7 +25,7 @@ uv run opencontext authenticate
 
 # 2. Configure interactively (creates config.yaml + Terraform workspace)
 uv run opencontext configure
-# or for GCP:
+# or for GCP -- note: you must have a GCP project set up; you will be prompted for the project ID when you run this command
 uv run opencontext configure --cloud gcp
 
 # 3. Test locally (optional)
