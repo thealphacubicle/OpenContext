@@ -360,7 +360,7 @@ class ArcGISPlugin(DataPlugin):
         out_fields = filters.get("out_fields", "*") if filters else "*"
 
         service_url = self._ensure_layer_url(service_url)
-        self._validate_feature_url(service_url, self.plugin_config.portal_url)
+        self._validate_feature_url(service_url, self.plugin_config.portal_url, self.plugin_config.allowed_hosts)
         query_url = f"{service_url}/query"
         record_count = min(limit, 1000)
         params = {
@@ -467,7 +467,7 @@ class ArcGISPlugin(DataPlugin):
         return stripped
 
     @staticmethod
-    def _validate_feature_url(service_url: str, portal_url: str) -> str:
+    def _validate_feature_url(service_url: str, portal_url: str, allowed_hosts: list | None = None) -> str:
         parsed = urlparse(service_url)
         portal_netloc = urlparse(portal_url).netloc
 
@@ -477,7 +477,9 @@ class ArcGISPlugin(DataPlugin):
             )
 
         host = parsed.netloc.lower()
-        if not (host.endswith(".arcgis.com") or host == portal_netloc.lower()):
+        extra = [h.lower() for h in (allowed_hosts or [])]
+
+        if not (host.endswith(".arcgis.com") or host == portal_netloc.lower() or host in extra):
             raise ValueError(
                 f"Feature service URL host {host!r} is not within allowed domains "
                 f"(*.arcgis.com or {portal_netloc})"

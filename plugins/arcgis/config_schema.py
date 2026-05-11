@@ -1,6 +1,6 @@
 """Pydantic configuration schema for ArcGIS Hub plugin."""
 
-from typing import Optional
+from typing import List, Optional
 from urllib.parse import urlparse
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -23,6 +23,10 @@ class ArcGISPluginConfig(BaseModel):
     )
     token: Optional[str] = Field(
         None, description="Optional Bearer token for authenticated requests"
+    )
+    allowed_hosts: List[str] = Field(
+        default_factory=list,
+        description="Additional Feature Service hostnames to trust (e.g. maps2.dcgis.dc.gov)",
     )
 
     @field_validator("portal_url")

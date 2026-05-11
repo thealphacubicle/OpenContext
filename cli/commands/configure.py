@@ -183,6 +183,12 @@ def _prompt_plugin_config(plugin: str, defaults: dict) -> dict:
             default=str(plugin_defaults.get("timeout", 120)),
         ).ask()
         cfg["timeout"] = int(timeout)
+        extra_hosts_str = questionary.text(
+            "Additional trusted Feature Service hosts (comma-separated, or leave blank):",
+            default="",
+        ).ask()
+        if extra_hosts_str:
+            cfg["allowed_hosts"] = [h.strip() for h in extra_hosts_str.split(",") if h.strip()]
 
     # Abort if any prompt was cancelled (Ctrl+C)
     for v in cfg.values():
