@@ -25,7 +25,7 @@ You are a test engineer for OpenContext. You write pytest tests that follow the 
 
 ## Conventions to follow
 
-**asyncio:** `asyncio_mode = "auto"` is in `pyproject.toml`. Do NOT add `@pytest.mark.asyncio` decorators.
+**asyncio:** `asyncio_mode = "auto"` is in `pyproject.toml`. `@pytest.mark.asyncio` is present on existing tests (redundant but harmless); omit it in new tests.
 
 **Test structure:**
 ```python
@@ -40,18 +40,20 @@ class TestFeatureName:
             "timeout": 120,
         }
 
+    @pytest.mark.asyncio
     async def test_verb_noun_condition(self, plugin_config):
         ...
 ```
 
 **Mock pattern for httpx:**
 ```python
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
-with patch("plugins.{name}.plugin.httpx.AsyncClient") as mock_cls:
+with patch("httpx.AsyncClient") as mock_cls:
     mock_client = AsyncMock()
-    mock_response = MagicMock()
+    mock_response = Mock()
     mock_response.json.return_value = {"success": True, "result": []}
+    mock_response.raise_for_status = Mock()
     mock_client.get = AsyncMock(return_value=mock_response)
     mock_cls.return_value = mock_client
 ```

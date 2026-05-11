@@ -21,7 +21,7 @@ uv run pre-commit install            # set up lint/format hooks
 **PR checklist:**
 
 - [ ] `uv run ruff check core/ plugins/ server/ tests/` passes
-- [ ] `uv run pytest tests/ -n auto --cov=core --cov=plugins --cov-fail-under=80` passes
+- [ ] `uv run pytest tests/ -n auto --cov=core --cov=plugins --cov=server --cov-fail-under=80` passes
 - [ ] New code has tests; coverage gate is enforced in CI
 
 ## Code Style
@@ -40,16 +40,21 @@ Hooks: Ruff (Python), yamllint, gofmt. Type hints are expected on all public met
 ## Testing
 
 ```bash
-uv run pytest tests/ -n auto --cov=core --cov=plugins --cov-fail-under=80
+uv run pytest tests/ -n auto --cov=core --cov=plugins --cov=server --cov-fail-under=80
+
+# Targeted suites (markers defined in pyproject.toml)
+uv run pytest tests/integration -m integration -v
+uv run pytest tests/unit -m unit -v
+uv run pytest tests/security -m security -v
 
 # HTML coverage report (find gaps)
-uv run pytest tests/ --cov=core --cov=plugins --cov-report=html
+uv run pytest tests/ --cov=core --cov=plugins --cov=server --cov-report=html
 open htmlcov/index.html
 ```
 
 - Coverage gate is 80% — enforced in CI. New code needs tests.
-- Built-in plugin tests: `tests/plugins/{plugin_name}/`
-- Custom plugin tests: `tests/custom_plugins/{plugin_name}/`
+- See [`tests/README.md`](tests/README.md) for the layout: `tests/unit/`, `tests/integration/` (hermetic cross-boundary), `tests/security/`, `tests/smoke/`.
+- Built-in plugin unit tests: `tests/unit/plugins/{ckan,arcgis,socrata}/`
 - Mock external HTTP (use `httpx`'s mock transport or `pytest-httpx`) — do not hit live APIs in unit tests.
 
 ## Plugin Development

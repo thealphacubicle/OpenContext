@@ -106,17 +106,36 @@ asyncio.run(t())
 
 ---
 
-## Unit Tests
+## Automated tests (pytest)
 
-With dev dependencies installed (`uv sync --all-extras`):
+With dev dependencies (`uv sync --all-extras`). Layout: [`tests/README.md`](../tests/README.md).
+
+**Full suite + CI-equivalent coverage:**
 
 ```bash
-uv run pytest
-uv run pytest tests/test_plugin_manager.py -v
-uv run pytest --cov=core --cov=plugins
+uv run pytest tests/ -n auto \
+  --cov=core --cov=plugins --cov=server \
+  --cov-report=term-missing \
+  --cov-fail-under=80
 ```
 
-`sqlparse` and other test-related packages are pulled in via `pyproject.toml`; you do not need a separate `pip install` for them when using `uv sync`.
+**Targeted suites** (markers are defined in `pyproject.toml`):
+
+```bash
+uv run pytest tests/integration -m integration -v
+uv run pytest tests/unit -m unit -v
+uv run pytest tests/security -m security -v
+uv run pytest tests/smoke -m smoke -v
+```
+
+Single-file examples:
+
+```bash
+uv run pytest tests/unit/core/test_plugin_manager.py -v
+uv run pytest tests/unit/plugins/ckan/test_ckan_plugin.py -v
+```
+
+`sqlparse` and other test-related packages come from `pyproject.toml`; no extra `pip install` when using `uv sync`.
 
 ---
 

@@ -12,7 +12,7 @@ command: /fix-coverage
 ## 1. Find the gaps
 ```bash
 uv run pytest tests/ -n auto \
-  --cov=core --cov=plugins \
+  --cov=core --cov=plugins --cov=server \
   --cov-report=term-missing \
   --cov-report=html
 ```
@@ -33,7 +33,7 @@ Don't add tests for these unless you're actually fixing a bug there.
 4. New code you just wrote
 
 ## 4. Write targeted tests
-Follow patterns in `tests/test_ckan_plugin.py`:
+Follow patterns in `tests/unit/plugins/ckan/test_ckan_plugin.py`:
 - Group by `TestXxx` class
 - `AsyncMock` for httpx, `MagicMock` for sync
 - Patch at the import location: `patch("plugins.arcgis.plugin.httpx.AsyncClient")`
@@ -44,7 +44,7 @@ Focus on uncovered branches (the `term-missing` output shows which lines). One t
 ## 5. Verify
 ```bash
 uv run pytest tests/ -n auto \
-  --cov=core --cov=plugins \
+  --cov=core --cov=plugins --cov=server \
   --cov-fail-under=80
 ```
 CI gate: must pass with `--cov-fail-under=80`.

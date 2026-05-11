@@ -6,8 +6,21 @@ alwaysApply: false
 
 # Testing Conventions
 
+## Where tests live
+
+See [`tests/README.md`](../../tests/README.md). Summary:
+
+| Path | Purpose |
+|------|---------|
+| `tests/unit/` | Fast tests with mocks (`pytest.mark.unit`) |
+| `tests/integration/` | Hermetic cross-boundary flows (`pytest.mark.integration`) |
+| `tests/security/` | SSRF / SQL / SoQL guards (`pytest.mark.security`) |
+| `tests/smoke/` | Minimal CLI/protocol smoke (`pytest.mark.smoke`) |
+
+Markers are registered in `pyproject.toml` under `[tool.pytest.ini_options]`.
+
 ## asyncio
-`asyncio_mode = "auto"` is set in `pyproject.toml`. Do NOT add `@pytest.mark.asyncio` to individual async test methods — it's redundant.
+`asyncio_mode = "auto"` is set in `pyproject.toml`. `@pytest.mark.asyncio` is present on many existing tests (redundant but harmless); omit it in new tests.
 
 ## Test Structure
 ```python
@@ -23,21 +36,22 @@ class TestPluginInitialization:
             "timeout": 120,
         }
 
+    @pytest.mark.asyncio
     async def test_initialize_succeeds_on_valid_config(self, plugin_config):
         """test_verb_noun_condition naming."""
 ```
 
 ## Mock Pattern
 ```python
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
-# Patch at the import location, not the definition location
-with patch("plugins.ckan.plugin.httpx.AsyncClient") as mock_client_class:
+with patch("httpx.AsyncClient") as mock_client_class:
     mock_client = AsyncMock()
-    mock_response = MagicMock()
+    mock_response = Mock()
     mock_response.json.return_value = {"success": True, "result": []}
+    mock_response.raise_for_status = Mock()
     mock_client.get = AsyncMock(return_value=mock_response)
-    mock_client_class.return_value.__aenter__ = AsyncMock(return_value=mock_client)
+    mock_client_class.return_value = mock_client
 ```
 
 ## AWS / boto3

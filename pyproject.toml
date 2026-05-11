@@ -58,6 +58,12 @@ include = ["core*", "server*", "plugins*", "custom_plugins*", "cli*"]
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
+markers = [
+    "unit: fast isolated unit tests",
+    "integration: hermetic cross-component integration tests",
+    "security: security and validation guardrail tests",
+    "smoke: lightweight smoke checks",
+]
 
 [tool.coverage.run]
 # Exclude hard-to-test modules from coverage (formatters, integration-heavy plugin code)

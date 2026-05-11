@@ -49,7 +49,7 @@
     {
       "label": "Test: run all",
       "type": "shell",
-      "command": "uv run pytest tests/ -n auto --cov=core --cov=plugins --cov-fail-under=80",
+      "command": "uv run pytest tests/ -n auto --cov=core --cov=plugins --cov=server --cov-fail-under=80",
       "presentation": {
         "reveal": "always",
         "panel": "shared"

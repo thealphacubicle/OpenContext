@@ -655,3 +655,31 @@ class TestLoadPluginClass:
             assert "does not define a class" in str(exc_info.value).lower()
             mock_import.assert_called_once_with("plugins.test_plugin.plugin")
             # Clean up any imported modules
+
+
+class TestCustomPluginsModulePath:
+    """Regression: custom_plugins/ paths must not match the builtin plugins/ rule."""
+
+    def test_load_plugin_class_imports_custom_plugins_package(self) -> None:
+        from types import ModuleType
+
+        from core.interfaces import MCPPlugin
+
+        config = {"plugins": {"my_custom": {"enabled": True}}}
+        manager = PluginManager(config)
+        plugin_dir = Path("/repo/OpenContext/custom_plugins/my_custom")
+
+        mock_module = ModuleType("custom_plugins.my_custom.plugin")
+
+        class DummyPlugin(MCPPlugin):
+            plugin_name = "my_custom"
+
+        DummyPlugin.__module__ = mock_module.__name__
+        mock_module.DummyPlugin = DummyPlugin
+
+        with patch("core.plugin_manager.importlib.import_module") as mock_import:
+            mock_import.return_value = mock_module
+            loaded = manager._load_plugin_class("my_custom", plugin_dir)
+
+        assert loaded is DummyPlugin
+        mock_import.assert_called_once_with("custom_plugins.my_custom.plugin")

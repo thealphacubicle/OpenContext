@@ -51,6 +51,7 @@ jobs:
             -n auto \
             --cov=core \
             --cov=plugins \
+            --cov=server \
             --cov-report=term-missing \
             --cov-fail-under=80
 
