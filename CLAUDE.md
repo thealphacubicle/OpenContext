@@ -52,7 +52,6 @@ server/adapters/ # local aiohttp dev server + AWS Lambda entry point
 tests/          # pytest suite (80% coverage required)
 terraform/aws/  # Lambda + API Gateway + IAM IaC
 terraform/gcp/  # Cloud Functions gen2 + GCS + IAM IaC (see terraform/gcp/README.md)
-examples/       # Per-city config.yaml examples (Boston, Chicago, Seattle, etc.)
 docs/           # Architecture, deployment, plugin authoring guides
 ```
 
