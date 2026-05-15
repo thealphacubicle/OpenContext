@@ -66,7 +66,7 @@ Details: [Getting Started — full walkthrough](docs/GETTING_STARTED.md) (sectio
 | [Architecture](docs/ARCHITECTURE.md)       | System design and plugins                       |
 | [Built-in Plugins](docs/BUILT_IN_PLUGINS.md) | CKAN, ArcGIS Hub, Socrata plugin details      |
 | [Custom Plugins](docs/CUSTOM_PLUGINS.md)   | How to write your own plugin                    |
-| [Deployment](docs/DEPLOYMENT.md)           | AWS, Terraform, monitoring                      |
+| [Deployment](docs/DEPLOYMENT.md)           | AWS & GCP (`--cloud`), Terraform, monitoring    |
 | [Testing](docs/TESTING.md)                 | Local testing (Terminal, Claude, MCP Inspector) |
 
 

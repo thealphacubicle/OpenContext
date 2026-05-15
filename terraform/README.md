@@ -1,8 +1,10 @@
 # Terraform Configurations
 
-## AWS (Primary)
+OpenContext supports **AWS** and **GCP** via `opencontext deploy --cloud aws|gcp`. See [Deployment Guide](../docs/DEPLOYMENT.md).
 
-Deploy OpenContext to AWS Lambda. See [Deployment Guide](../docs/DEPLOYMENT.md).
+## AWS
+
+Deploy OpenContext to AWS Lambda + API Gateway.
 
 ### First-time setup: Bootstrap backend
 

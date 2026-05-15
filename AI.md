@@ -3,7 +3,7 @@
 OpenContext is an extensible MCP (Model Context Protocol) framework that exposes
 public open-data portals (CKAN, ArcGIS Hub, Socrata) to AI assistants. Stack:
 Python 3.11+ managed with `uv`, Typer CLI, aiohttp dev server, deployed to AWS
-Lambda behind API Gateway via Terraform.
+(Lambda + API Gateway) or GCP (Cloud Functions gen2) via Terraform (`--cloud`).
 
 ## Directory map (non-obvious only)
 
@@ -33,6 +33,7 @@ Self-evident dirs (`core/`, `plugins/`, `cli/`, `tests/`, `docs/`, `terraform/`)
 - Deploy: `uv run opencontext deploy --env staging` (requires TTY; prompts for confirmation)
 
 `--env` defaults to `staging` on every command that accepts it.
+`--cloud` defaults to `aws` on every command that accepts it.
 
 ## Hard constraints
 

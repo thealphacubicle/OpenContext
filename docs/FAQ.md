@@ -36,7 +36,7 @@ Yes, but they must be resolved before deployment. Terraform will set the final c
 
 ### What if I need to change configuration after deployment?
 
-Edit `config.yaml` and run `opencontext deploy --env staging` again. Terraform will update the Lambda environment variable.
+Edit `config.yaml` and run `opencontext deploy --env staging` again (add `--cloud gcp` if you deployed to GCP). Terraform updates the runtime configuration (`OPENCONTEXT_CONFIG`).
 
 ## Plugins
 
@@ -60,12 +60,21 @@ No. Built-in plugins are part of the core framework. Create a custom plugin inst
 
 ## Deployment
 
-### What AWS resources are created?
+### What cloud resources are created?
+
+**AWS (`--cloud aws`, default):**
 
 - Lambda function
-- Lambda Function URL
+- API Gateway (REST)
 - IAM role and policies
 - CloudWatch Log Group
+- SQS dead-letter queue (async failures)
+
+**GCP (`--cloud gcp`):**
+
+- Cloud Functions gen2 (HTTP)
+- GCS bucket for deployment artifacts
+- IAM for public HTTPS invoke (Cloud Run invoker)
 
 ### How much does it cost?
 
@@ -73,7 +82,7 @@ Typical costs: ~$1/month for 100K requests. See [Deployment Guide](DEPLOYMENT.md
 
 ### Can I deploy to a different cloud provider?
 
-The current implementation is AWS-specific. Contributions for other providers are welcome!
+**AWS** and **GCP** are supported via `--cloud aws` (default) or `--cloud gcp` on `authenticate`, `configure`, `validate`, `deploy`, `status`, `logs`, and `destroy`. See [Deployment Guide](DEPLOYMENT.md) and [terraform/gcp/README.md](../terraform/gcp/README.md). Azure Terraform is a placeholder only.
 
 ### How do I update an existing deployment?
 
