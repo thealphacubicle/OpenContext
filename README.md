@@ -25,12 +25,16 @@ uv run opencontext authenticate
 
 # 2. Configure interactively (creates config.yaml + Terraform workspace)
 uv run opencontext configure
+# or for GCP -- note: you must have a GCP project set up; you will be prompted for the project ID when you run this command
+uv run opencontext configure --cloud gcp
 
 # 3. Test locally (optional)
 uv run opencontext serve
 
 # 4. Deploy
 uv run opencontext deploy --env staging
+# or for GCP:
+uv run opencontext deploy --cloud gcp --env staging
 ```
 
 Connect via **Claude Connectors** (same steps on both Claude.ai and Claude Desktop):
@@ -62,7 +66,7 @@ Details: [Getting Started — full walkthrough](docs/GETTING_STARTED.md) (sectio
 | [Architecture](docs/ARCHITECTURE.md)       | System design and plugins                       |
 | [Built-in Plugins](docs/BUILT_IN_PLUGINS.md) | CKAN, ArcGIS Hub, Socrata plugin details      |
 | [Custom Plugins](docs/CUSTOM_PLUGINS.md)   | How to write your own plugin                    |
-| [Deployment](docs/DEPLOYMENT.md)           | AWS, Terraform, monitoring                      |
+| [Deployment](docs/DEPLOYMENT.md)           | AWS & GCP (`--cloud`), Terraform, monitoring    |
 | [Testing](docs/TESTING.md)                 | Local testing (Terminal, Claude, MCP Inspector) |
 
 

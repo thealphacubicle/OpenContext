@@ -16,11 +16,15 @@ PROTECTED_FILES = {
     "config.yaml",
     "terraform/aws/staging.tfvars",
     "terraform/aws/prod.tfvars",
+    "terraform/gcp/staging.tfvars",
+    "terraform/gcp/prod.tfvars",
 }
 PROTECTED_PREFIXES = ("examples/",)
 
 
-def _run_git(args: list[str], cwd=None, check: bool = False, timeout: int = 30) -> subprocess.CompletedProcess:
+def _run_git(
+    args: list[str], cwd=None, check: bool = False, timeout: int = 30
+) -> subprocess.CompletedProcess:
     return subprocess.run(
         ["git", *args],
         cwd=cwd,
@@ -68,7 +72,9 @@ def upgrade(
 
         result = _run_git(["remote", "add", "upstream", upstream_url], cwd=project_root)
         if result.returncode != 0:
-            console.print(f"[red]Failed to add upstream remote:[/red] {result.stderr.strip()}")
+            console.print(
+                f"[red]Failed to add upstream remote:[/red] {result.stderr.strip()}"
+            )
             raise typer.Exit(1)
         console.print(f"[green]Added upstream remote:[/green] {upstream_url}")
     else:
@@ -88,7 +94,9 @@ def upgrade(
         cwd=project_root,
     )
     if result.returncode != 0:
-        console.print(f"[red]Could not compare with upstream/main:[/red] {result.stderr.strip()}")
+        console.print(
+            f"[red]Could not compare with upstream/main:[/red] {result.stderr.strip()}"
+        )
         raise typer.Exit(1)
 
     new_commits = [line for line in result.stdout.strip().splitlines() if line.strip()]
@@ -108,15 +116,21 @@ def upgrade(
     changed_files = [f for f in result.stdout.strip().splitlines() if f.strip()]
 
     if changed_files:
-        console.print(f"\n[bold]Files that will be affected ({len(changed_files)}):[/bold]")
+        console.print(
+            f"\n[bold]Files that will be affected ({len(changed_files)}):[/bold]"
+        )
         for f in changed_files:
             console.print(f"  {f}")
 
     # 5. Warn about protected files
     protected_changes = [f for f in changed_files if _is_protected(f)]
     if protected_changes:
-        console.print("\n[yellow bold]⚠️  The following city-specific files have upstream changes[/yellow bold]")
-        console.print("[yellow]These will NOT be overwritten — your local versions will be kept:[/yellow]")
+        console.print(
+            "\n[yellow bold]⚠️  The following city-specific files have upstream changes[/yellow bold]"
+        )
+        console.print(
+            "[yellow]These will NOT be overwritten — your local versions will be kept:[/yellow]"
+        )
         for f in protected_changes:
             console.print(f"  [yellow]{f}[/yellow]")
 
@@ -138,7 +152,6 @@ def upgrade(
             timeout=120,
         )
 
-
     # 8. Handle conflicts
     conflict_result = _run_git(
         ["diff", "--name-only", "--diff-filter=U"],
@@ -149,7 +162,9 @@ def upgrade(
     ]
 
     if conflicted_files:
-        console.print(f"\n[yellow bold]Merge conflicts in {len(conflicted_files)} file(s):[/yellow bold]")
+        console.print(
+            f"\n[yellow bold]Merge conflicts in {len(conflicted_files)} file(s):[/yellow bold]"
+        )
 
         auto_resolved = []
         needs_manual = []
@@ -171,18 +186,26 @@ def upgrade(
 
         if needs_manual:
             console.print("\n[yellow]Manual steps to complete the merge:[/yellow]")
-            console.print("  1. Edit each conflicted file and resolve the <<<<<<< markers")
+            console.print(
+                "  1. Edit each conflicted file and resolve the <<<<<<< markers"
+            )
             for f in needs_manual:
                 console.print(f"     git add {f}")
             console.print("  2. Once all conflicts are resolved:")
             console.print("     git commit")
-            console.print("\nThe merge is currently staged (--no-commit). "
-                          "Run [bold]git merge --abort[/bold] to cancel entirely.")
+            console.print(
+                "\nThe merge is currently staged (--no-commit). "
+                "Run [bold]git merge --abort[/bold] to cancel entirely."
+            )
             raise typer.Exit(1)
 
     # 9. Print summary
     console.print("\n[green bold]Merge complete![/green bold]")
     console.print(f"  {len(new_commits)} commit(s) merged from upstream/main")
     if protected_changes:
-        console.print(f"  {len(protected_changes)} city-specific file(s) kept unchanged")
-    console.print("\nRun [bold]git commit[/bold] to finalize the merge, or [bold]git merge --abort[/bold] to cancel.")
+        console.print(
+            f"  {len(protected_changes)} city-specific file(s) kept unchanged"
+        )
+    console.print(
+        "\nRun [bold]git commit[/bold] to finalize the merge, or [bold]git merge --abort[/bold] to cancel."
+    )

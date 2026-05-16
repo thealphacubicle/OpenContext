@@ -32,6 +32,16 @@ class TestIsProtected:
 
         assert _is_protected("terraform/aws/prod.tfvars") is True
 
+    def test_gcp_staging_tfvars_is_protected(self):
+        from cli.commands.upgrade import _is_protected
+
+        assert _is_protected("terraform/gcp/staging.tfvars") is True
+
+    def test_gcp_prod_tfvars_is_protected(self):
+        from cli.commands.upgrade import _is_protected
+
+        assert _is_protected("terraform/gcp/prod.tfvars") is True
+
     def test_examples_prefix_is_protected(self):
         from cli.commands.upgrade import _is_protected
 

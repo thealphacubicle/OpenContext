@@ -23,7 +23,8 @@ uv run opencontext --help
 ## Global behavior
 
 - Commands that modify infrastructure (`deploy`, `destroy`) require a TTY and prompt for confirmation.
-- All commands that interact with AWS or Terraform respect the environment set by `--env`.
+- Multi-cloud commands support `--cloud aws|gcp` (default: `aws`).
+- All commands that interact with Terraform respect the environment set by `--env`.
 - `--env` defaults to `staging` on every command that accepts it.
 
 ---
@@ -32,18 +33,26 @@ uv run opencontext --help
 
 ### `opencontext authenticate`
 
-Check all prerequisites and print a status table. Auto-installs `uv` and `awscli` when possible (`uv` first; pip only as a fallback for `uv` if neither is installed).
+Check all prerequisites and print a status table. Supports cloud-specific checks via `--cloud`.
+
+- AWS mode auto-installs `uv` and `awscli` when possible (`uv` first; pip fallback for missing tools).
+- GCP mode checks for `gcloud` and Application Default Credentials (ADC).
 
 **Checks:**
 1. Python >= 3.11
 2. `uv` (if missing: auto-install attempted via pip; preferred: install from [docs.astral.sh/uv](https://docs.astral.sh/uv/getting-started/installation/))
-3. AWS CLI (if missing: auto-install via `uv pip install awscli`, then pip as fallback)
-4. AWS credentials (`aws sts get-caller-identity`)
+3. Cloud CLI (`aws` in AWS mode, `gcloud` in GCP mode)
+4. Cloud credentials (`aws sts get-caller-identity` in AWS mode, ADC token in GCP mode)
 5. Terraform >= 1.0
 
 ```bash
 opencontext authenticate
+opencontext authenticate --cloud gcp
 ```
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--cloud` | `aws` | Cloud provider (`aws` or `gcp`) |
 
 ---
 
@@ -56,16 +65,18 @@ Interactive wizard that creates `config.yaml`, the Terraform `.tfvars` file, and
 - Organization name and city
 - Environment (`staging` or `prod`)
 - Plugin (CKAN, ArcGIS, or Socrata) and connection settings
-- AWS region, Lambda name, memory (MB), and timeout (seconds)
-- Optional custom domain
+- Cloud-specific settings:
+  - AWS: region, Lambda name, memory (MB), timeout (seconds), optional custom domain
+  - GCP: project ID, region, function name, memory (MiB), timeout (seconds), autoscaling min/max instances, optional artifact bucket
 
 **Outputs:**
-- `config.yaml` — plugin and Lambda settings
-- `terraform/aws/<env>.tfvars` — Terraform variables
+- `config.yaml` — plugin + cloud settings
+- `terraform/<cloud>/<env>.tfvars` — Terraform variables
 - Terraform workspace `<city-slug>-<env>` (created or selected)
 
 ```bash
 opencontext configure
+opencontext configure --cloud gcp
 ```
 
 ---
@@ -91,43 +102,47 @@ The server starts at `http://localhost:<port>/mcp`. Use it with Claude Desktop (
 
 ### `opencontext deploy`
 
-Package the Lambda deployment zip, run `terraform plan`, show a summary, prompt for confirmation, then apply.
+Package the deployment artifact, run `terraform plan`, show a summary, prompt for confirmation, then apply.
 
 ```bash
 opencontext deploy --env staging
 opencontext deploy --env prod
+opencontext deploy --cloud gcp --env staging
 ```
 
 | Flag | Default | Description |
 |------|---------|-------------|
 | `--env` | `staging` | Environment to deploy to |
+| `--cloud` | `aws` | Cloud provider (`aws` or `gcp`) |
 
 **What it does:**
 1. Runs all validation checks (same as `opencontext validate`)
-2. Installs Python dependencies into `.deploy/` using `uv pip install -r requirements.txt` (pinned list for Lambda size and reproducibility)
+2. Installs Python dependencies into `.deploy/` using `uv pip install -r requirements.txt`
 3. Copies `core/`, `plugins/`, `server/`, and `custom_plugins/` into the zip
-4. Copies the zip and `config.yaml` into `terraform/aws/`
+4. Copies deployment artifacts into `terraform/<cloud>/`
 5. Runs `terraform plan` and shows add/change/destroy counts
 6. Prompts for confirmation (defaults to No)
 7. Runs `terraform apply`
-8. Prints API Gateway URL, CloudWatch log group, and custom domain details
+8. Prints provider-specific outputs (`api_gateway_url` / `mcp_endpoint_url`, logs/resources)
 
-After deployment, the API Gateway URL includes `/mcp` and is ready to use with Claude Connectors.
+After deployment, use the printed connector URL with Claude Connectors.
 
 ---
 
 ### `opencontext status`
 
-Show deployment status for an environment: Lambda info, API Gateway URL, custom domain, and certificate status.
+Show deployment status for an environment with provider-specific runtime and endpoint details.
 
 ```bash
 opencontext status --env staging
 opencontext status --env prod
+opencontext status --cloud gcp --env staging
 ```
 
 | Flag | Default | Description |
 |------|---------|-------------|
 | `--env` | `staging` | Environment to query |
+| `--cloud` | `aws` | Cloud provider (`aws` or `gcp`) |
 
 ---
 
@@ -137,22 +152,24 @@ Run pre-deployment validation checks without deploying. Useful for CI or before 
 
 ```bash
 opencontext validate --env staging
+opencontext validate --cloud gcp --env staging
 ```
 
 | Flag | Default | Description |
 |------|---------|-------------|
 | `--env` | `staging` | Environment to validate against |
+| `--cloud` | `aws` | Cloud provider (`aws` or `gcp`) |
 
 **Checks:**
 1. `config.yaml` exists
 2. Exactly one plugin enabled
 3. Plugin required fields present
-4. `terraform/aws/<env>.tfvars` exists
+4. `terraform/<cloud>/<env>.tfvars` exists
 5. Terraform installed
 6. Terraform initialized (`.terraform/` directory present)
 7. `terraform validate` passes
-8. AWS credentials valid
-9. ACM certificate exists (only if `custom_domain` is set in tfvars)
+8. Provider credentials valid (`aws sts ...` for AWS, ADC token for GCP)
+9. Provider-specific checks (ACM/domain checks for AWS, `project_id` for GCP)
 
 Exits with code 1 if any check fails.
 
@@ -184,23 +201,25 @@ If a custom domain is configured and its certificate is `ISSUED`, the command al
 
 ### `opencontext logs`
 
-Tail CloudWatch logs for the deployed Lambda.
+Tail runtime logs for the deployed function.
 
 ```bash
 opencontext logs --env staging
 opencontext logs --env staging --follow
 opencontext logs --env staging --verbose
 opencontext logs --env staging --since 30m
+opencontext logs --cloud gcp --env staging
 ```
 
 | Flag | Default | Description |
 |------|---------|-------------|
 | `--env` | `staging` | Environment to fetch logs for |
+| `--cloud` | `aws` | Cloud provider (`aws` or `gcp`) |
 | `--follow`, `-f` | False | Stream new log entries as they arrive |
 | `--verbose`, `-v` | False | Show structured per-invocation view with duration and error highlighting |
 | `--since` | `1h` | How far back to fetch (e.g., `30m`, `2h`, `24h`) |
 
-Without `--verbose`, log lines are printed with START entries highlighted in cyan and ERROR lines highlighted in red. With `--verbose`, invocations are grouped with request ID, duration, and status.
+AWS supports `--verbose` parsing/highlights for CloudWatch logs. GCP uses `gcloud functions logs read` output.
 
 ---
 
@@ -304,15 +323,17 @@ opencontext upgrade --upstream-url https://github.com/thealphacubicle/OpenContex
 
 ### `opencontext destroy`
 
-Tear down all AWS resources for an environment. Requires typing the environment name to confirm.
+Tear down all resources for an environment in the selected cloud. Requires typing the environment name to confirm.
 
 ```bash
 opencontext destroy --env staging
 opencontext destroy --env prod
+opencontext destroy --cloud gcp --env staging
 ```
 
 | Flag | Default | Description |
 |------|---------|-------------|
 | `--env` | `staging` | Environment to destroy |
+| `--cloud` | `aws` | Cloud provider (`aws` or `gcp`) |
 
-Runs `terraform destroy -auto-approve` after confirmation. This is irreversible — all Lambda, API Gateway, IAM, and CloudWatch resources for the workspace are removed.
+Runs `terraform destroy -auto-approve` after confirmation. This is irreversible.

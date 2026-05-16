@@ -4,6 +4,7 @@ import re
 import subprocess
 import sys
 from pathlib import Path
+from typing import Literal
 
 import click
 import typer
@@ -11,6 +12,7 @@ import yaml
 from rich.console import Console
 
 console = Console()
+CloudProvider = Literal["aws", "gcp"]
 
 
 def get_project_root() -> Path:
@@ -24,8 +26,17 @@ def get_project_root() -> Path:
     raise typer.Exit(1)
 
 
-def get_terraform_dir() -> Path:
-    return get_project_root() / "terraform" / "aws"
+def normalize_cloud(cloud: str) -> CloudProvider:
+    value = cloud.lower().strip()
+    if value not in {"aws", "gcp"}:
+        console.print("[red]Unsupported cloud provider.[/red] Use 'aws' or 'gcp'.")
+        raise typer.Exit(1)
+    return value  # type: ignore[return-value]
+
+
+def get_terraform_dir(cloud: str = "aws") -> Path:
+    provider = normalize_cloud(cloud)
+    return get_project_root() / "terraform" / provider
 
 
 def load_config() -> dict:
@@ -41,12 +52,13 @@ def load_config() -> dict:
         return yaml.safe_load(f)
 
 
-def load_tfvars(env: str) -> dict[str, str]:
-    """Parse terraform/aws/{env}.tfvars into a dict of key=value pairs."""
-    tfvars_path = get_terraform_dir() / f"{env}.tfvars"
+def load_tfvars(env: str, cloud: str = "aws") -> dict[str, str]:
+    """Parse terraform/<cloud>/{env}.tfvars into a dict of key=value pairs."""
+    provider = normalize_cloud(cloud)
+    tfvars_path = get_terraform_dir(provider) / f"{env}.tfvars"
     if not tfvars_path.exists():
         console.print(
-            f"[red]{env}.tfvars not found in terraform/aws/.[/red]\n"
+            f"[red]{env}.tfvars not found in terraform/{provider}/.[/red]\n"
             "Run [bold]opencontext configure[/bold] to generate it."
         )
         raise typer.Exit(1)
@@ -76,8 +88,9 @@ def ensure_config_exists() -> None:
         raise typer.Exit(1)
 
 
-def ensure_terraform_init() -> None:
-    tf_dir = get_terraform_dir()
+def ensure_terraform_init(cloud: str = "aws") -> None:
+    provider = normalize_cloud(cloud)
+    tf_dir = get_terraform_dir(provider)
     if not (tf_dir / ".terraform").exists():
         console.print(
             "[red]Terraform has not been initialized.[/red]\n"
@@ -114,9 +127,13 @@ def workspace_name(env: str) -> str:
     return f"{city}-{env}"
 
 
-def select_workspace(env: str, terraform_dir: Path | None = None) -> None:
+def select_workspace(
+    env: str,
+    terraform_dir: Path | None = None,
+    cloud: str = "aws",
+) -> None:
     """Select (or create) the Terraform workspace for the given environment."""
-    tf_dir = terraform_dir or get_terraform_dir()
+    tf_dir = terraform_dir or get_terraform_dir(cloud)
     ws = workspace_name(env)
 
     result = subprocess.run(
@@ -215,6 +232,7 @@ def run_cmd_stream_capture(
 
 def friendly_exit(func):
     """Decorator that catches exceptions and prints a user-friendly error."""
+
     def wrapper(*args, **kwargs):
         try:
             return func(*args, **kwargs)
@@ -223,6 +241,7 @@ def friendly_exit(func):
         except Exception as exc:
             console.print(f"\n[red bold]Error:[/red bold] {exc}")
             raise typer.Exit(1) from None
+
     wrapper.__name__ = func.__name__
     wrapper.__doc__ = func.__doc__
     wrapper.__module__ = func.__module__

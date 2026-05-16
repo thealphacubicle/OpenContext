@@ -78,6 +78,15 @@ aws:
   lambda_memory: 512 # Lambda memory in MB (128-10240)
   lambda_timeout: 120 # Lambda timeout in seconds (max 900)
 
+# GCP deployment settings (terraform/gcp — Cloud Functions gen2)
+gcp:
+  region: "us-central1" # GCP region for Cloud Functions
+  function_name: "your-opendata-mcp" # Optional; defaults from server_name slug
+  function_memory_mb: 512 # MiB for the function
+  function_timeout_sec: 120 # Seconds (max 3600 for gen2)
+  min_instance_count: 0 # Minimum warm instances
+  max_instance_count: 100 # Maximum autoscaled instances
+
 # Logging configuration
 logging:
   level: "INFO" # Log level: DEBUG, INFO, WARNING, ERROR

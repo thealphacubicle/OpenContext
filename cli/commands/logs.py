@@ -16,6 +16,7 @@ from cli.utils import (
     friendly_exit,
     get_terraform_dir,
     load_tfvars,
+    normalize_cloud,
     select_workspace,
 )
 
@@ -108,7 +109,9 @@ def _print_verbose(invocations: list[Invocation], log_group: str) -> None:
 
     for inv in invocations:
         status_markup = "[red]ERROR[/red]" if inv.has_error else "[green]OK[/green]"
-        duration_str = f"{inv.duration_ms:.1f} ms" if inv.duration_ms is not None else "—"
+        duration_str = (
+            f"{inv.duration_ms:.1f} ms" if inv.duration_ms is not None else "—"
+        )
         ts = inv.timestamp[:19].replace("T", " ") if inv.timestamp else "—"
 
         header = Text.assemble(
@@ -157,16 +160,64 @@ def run_cmd_stream(cmd: list[str]) -> int:
 @friendly_exit
 def logs(
     env: str = typer.Option("staging", help="Environment: staging or prod"),
+    cloud: str = typer.Option("aws", "--cloud", help="Cloud provider: aws or gcp"),
     follow: bool = typer.Option(False, "--follow", "-f", help="Follow log output"),
-    verbose: bool = typer.Option(False, "--verbose", "-v", help="Show formatted log entries"),
-    since: str = typer.Option("1h", "--since", help="How far back to fetch logs (e.g. 1h, 30m, 24h)"),
+    verbose: bool = typer.Option(
+        False, "--verbose", "-v", help="Show formatted log entries"
+    ),
+    since: str = typer.Option(
+        "1h", "--since", help="How far back to fetch logs (e.g. 1h, 30m, 24h)"
+    ),
 ) -> None:
-    """Show CloudWatch logs for the deployed Lambda."""
+    """Show runtime logs for the deployed function."""
+    if not isinstance(cloud, str):
+        cloud = "aws"
+    cloud = normalize_cloud(cloud)
     ensure_config_exists()
-    ensure_terraform_init()
+    ensure_terraform_init(cloud)
 
-    terraform_dir = get_terraform_dir()
-    select_workspace(env, terraform_dir)
+    terraform_dir = get_terraform_dir(cloud)
+    select_workspace(env, terraform_dir, cloud=cloud)
+
+    if cloud == "gcp":
+        tfvars = load_tfvars(env, cloud=cloud)
+        function_name = tfvars.get("function_name", "")
+        if not function_name:
+            out = subprocess.run(
+                ["terraform", "output", "-raw", "function_name"],
+                cwd=terraform_dir,
+                capture_output=True,
+                text=True,
+                timeout=15,
+            )
+            if out.returncode == 0 and out.stdout.strip():
+                function_name = out.stdout.strip()
+        if not function_name:
+            console.print(
+                "[red]Could not determine function name.[/red]\n"
+                "Ensure the Cloud Function has been deployed with [bold]opencontext deploy --cloud gcp[/bold]."
+            )
+            raise typer.Exit(1)
+
+        cmd = [
+            "gcloud",
+            "functions",
+            "logs",
+            "read",
+            function_name,
+            "--region",
+            tfvars.get("gcp_region", "us-central1"),
+            "--gen2",
+            "--limit",
+            "100",
+        ]
+        if follow:
+            cmd.append("--follow")
+        exit_code = run_cmd_stream(cmd)
+        if exit_code != 0:
+            console.print("[red]Failed to fetch Cloud Function logs.[/red]")
+            raise typer.Exit(1)
+        return
 
     log_group = ""
     result = subprocess.run(
@@ -180,7 +231,7 @@ def logs(
         log_group = result.stdout.strip()
 
     if not log_group:
-        tfvars = load_tfvars(env)
+        tfvars = load_tfvars(env, cloud=cloud)
         lambda_name = tfvars.get("lambda_name", "")
         if not lambda_name:
             console.print(
@@ -199,7 +250,10 @@ def logs(
         # Capture output for structured display
         with console.status("Fetching logs…"):
             result = subprocess.run(
-                cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
                 timeout=30,
             )
         if result.returncode != 0:

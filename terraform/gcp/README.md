@@ -1,7 +1,111 @@
-# GCP Terraform Configuration
+# GCP Terraform (Cloud Functions gen2)
 
-This directory contains Terraform configurations for deploying OpenContext to Google Cloud Platform.
+Deploy OpenContext to **Google Cloud Functions (2nd gen)** with Terraform. Runtime behavior matches AWS: configuration is injected as **`OPENCONTEXT_CONFIG`** (JSON), same as Lambda.
 
-## Status
+This module is supported by the `opencontext` CLI (`configure`, `validate`, `deploy`, `status`, `logs`, `destroy`) via `--cloud gcp`.
 
-🚧 **Coming Soon** - GCP deployment configurations will be added here.
+## Architecture
+
+- **Cloud Functions gen2** (Python 3.11) — HTTP trigger; MCP endpoint is **`{function_url}/mcp`** (same path as AWS API Gateway).
+- **GCS** — Source zip uploaded to a bucket; the function build reads from `gcf-deployment.zip` in this directory (or update the path in `main.tf` locals).
+- **Cloud Run IAM** — `roles/run.invoker` for `allUsers` so the HTTPS URL is publicly invokable (equivalent to open API Gateway invoke in the AWS template).
+- **Optional Phase 2** — [Google Cloud API Gateway](API_GATEWAY_PHASE2.md) + custom domain for API-management–style features.
+- **Failure / DLQ** — AWS Lambda uses an SQS dead-letter queue for async failures. HTTP Cloud Functions gen2 does not mirror that; you can add an optional Pub/Sub topic and custom handling later if you introduce async triggers.
+
+## Prerequisites
+
+- GCP project, billing enabled if required by your org
+- [gcloud](https://cloud.google.com/sdk/docs/install) and Application Default Credentials (`gcloud auth application-default login`)
+- Terraform >= 1.0
+- APIs enabled (Terraform enables common ones; you may need org approval)
+
+## 1. Bootstrap remote state (once)
+
+```bash
+cd terraform/gcp/bootstrap
+terraform init
+terraform apply -var="project_id=YOUR_PROJECT_ID"
+```
+
+Use a **globally unique** bucket name if the default is taken (`-var="state_bucket_name=..."`). Align [`backend.tf`](backend.tf) or pass `-backend-config="bucket=..."` when initializing the main module.
+
+## 2. Configure with CLI (recommended)
+
+```bash
+opencontext configure --cloud gcp
+```
+
+This writes:
+- `config.yaml` (plugin + `gcp` settings)
+- `terraform/gcp/<env>.tfvars`
+- Terraform workspace `<city-slug>-<env>`
+
+GCP wizard prompts include:
+- `project_id`, `region`, `function_name`
+- `function_memory_mb`, `function_timeout_sec`
+- `min_instance_count`, `max_instance_count` (autoscaling)
+- optional `artifact_bucket_name`
+
+## 3. Validate and deploy with CLI
+
+```bash
+opencontext validate --cloud gcp --env staging
+opencontext deploy --cloud gcp --env staging
+```
+
+The deploy command packages `gcf-deployment.zip`, copies it into `terraform/gcp/`, runs `terraform plan`, prompts for confirmation, then applies.
+
+## 4. Day-2 operations
+
+```bash
+opencontext status --cloud gcp --env staging
+opencontext logs --cloud gcp --env staging
+opencontext destroy --cloud gcp --env staging
+```
+
+## Manual packaging/deploy (advanced)
+
+If you need a fully manual flow, you can still package and apply Terraform yourself.
+
+```bash
+rm -rf .deploy && mkdir .deploy
+uv pip install -r requirements.txt --target .deploy --python-platform x86_64-manylinux2014 --python-version 3.11 --no-compile
+cp -R core plugins server custom_plugins .deploy/ 2>/dev/null || true
+mkdir -p .deploy/custom_plugins
+cp main.py .deploy/
+cd .deploy && zip -r ../terraform/gcp/gcf-deployment.zip . && cd ..
+```
+
+Adjust `--python-platform` if Google’s build uses a different arch; Cloud Build runs on Google’s infrastructure and installs from your zip layout.
+
+Deploy manually:
+
+```bash
+cd terraform/gcp
+terraform init   # add -backend-config if your state bucket name differs
+terraform plan -var="project_id=YOUR_PROJECT_ID" -var="gcp_region=us-central1" -var="stage_name=staging"
+terraform apply
+```
+
+Use `-var="config_file=../../config.yaml"` if you run from another working directory.
+
+## Outputs
+
+- `mcp_endpoint_url` — MCP JSON-RPC URL (`…/mcp`).
+- `function_uri` — Base URL of the function.
+- `source_bucket` — Bucket storing the uploaded zip.
+
+## Files
+
+| File | Purpose |
+|------|---------|
+| [`main.tf`](main.tf) | Config parse, GCS object, Cloud Function, public invoker |
+| [`variables.tf`](variables.tf) | `project_id`, region, stage, overrides |
+| [`outputs.tf`](outputs.tf) | URLs and bucket |
+| [`backend.tf`](backend.tf) | GCS backend for state |
+| [`versions.tf`](versions.tf) | Provider pins |
+| `gcf-deployment.zip` | **You** build and refresh before `apply` (CI uses an empty placeholder for `validate` only) |
+
+## CI
+
+Repository CI runs `terraform fmt` / `validate` on all `terraform/*/` directories. A minimal empty `gcf-deployment.zip` must exist so `filebase64sha256` and `validate` succeed locally and in GitHub Actions.

@@ -24,8 +24,9 @@ core/
 
 server/
 ├── adapters/
-│   └── aws_lambda.py   # Lambda handler entry point
-└── http_handler.py     # HTTP request handling
+│   ├── aws_lambda.py      # AWS Lambda entry point
+│   └── gcp_functions.py   # GCP Cloud Functions gen2 entry point
+└── http_handler.py        # HTTP request handling
 
 plugins/                # Built-in plugins
 ├── ckan/               # CKAN open data portals
@@ -62,6 +63,8 @@ tests/                  # Unit tests
 
 ### Request Flow
 
+**AWS (`--cloud aws`):**
+
 ```
 Claude / MCP Client
     → Claude Connectors (HTTPS) or Go stdio client
@@ -77,6 +80,20 @@ Logs & traces:
     Lambda → X-Ray (active tracing)
     Failed async invocations → SQS Dead Letter Queue
 ```
+
+**GCP (`--cloud gcp`):**
+
+```
+Claude / MCP Client
+    → Claude Connectors (HTTPS)
+HTTPS (Cloud Functions gen2 / Cloud Run)
+    → server.adapters.gcp_functions.mcp_http
+    → MCP Server → Plugin Manager → Plugin → External API
+
+Logs: Cloud Logging (gcloud / opencontext logs --cloud gcp)
+```
+
+Local dev uses `opencontext serve` (aiohttp) with the same MCP handler stack; no cloud ingress.
 
 ## Plugins
 

@@ -216,3 +216,48 @@ class TestAuthenticateAutoInstall:
             authenticate()
 
         mock_auto.assert_called_once()
+
+
+class TestAuthenticateGcp:
+    @patch("cli.commands.authenticate._is_available")
+    def test_gcp_all_pass(self, mock_avail):
+        def side_effect(cmd, timeout=10):
+            if cmd == ["uv", "--version"]:
+                return _ok("uv 0.9.0")
+            if cmd == ["gcloud", "--version"]:
+                return _ok("Google Cloud SDK 500.0.0\nalpha 2026.01.01")
+            if cmd == ["gcloud", "auth", "application-default", "print-access-token"]:
+                return _ok("ya29.sample-token")
+            if cmd == ["terraform", "--version"]:
+                return _ok("Terraform v1.5.0")
+            return None
+
+        mock_avail.side_effect = side_effect
+
+        from cli.commands.authenticate import authenticate
+
+        with patch("cli.commands.authenticate.sys") as mock_sys:
+            mock_sys.version_info = (3, 11, 5, "final", 0)
+            authenticate(cloud="gcp")
+
+    @patch("cli.commands.authenticate._is_available")
+    def test_gcp_missing_adc_fails(self, mock_avail):
+        def side_effect(cmd, timeout=10):
+            if cmd == ["uv", "--version"]:
+                return _ok("uv 0.9.0")
+            if cmd == ["gcloud", "--version"]:
+                return _ok("Google Cloud SDK 500.0.0")
+            if cmd == ["gcloud", "auth", "application-default", "print-access-token"]:
+                return None
+            if cmd == ["terraform", "--version"]:
+                return _ok("Terraform v1.5.0")
+            return None
+
+        mock_avail.side_effect = side_effect
+
+        from cli.commands.authenticate import authenticate
+
+        with patch("cli.commands.authenticate.sys") as mock_sys:
+            mock_sys.version_info = (3, 11, 5, "final", 0)
+            with pytest.raises((SystemExit, click.exceptions.Exit)):
+                authenticate(cloud="gcp")

@@ -22,6 +22,7 @@ from cli.utils import (
     get_terraform_dir,
     load_config,
     load_tfvars,
+    normalize_cloud,
     require_tty,
     run_cmd,
     run_cmd_stream,
@@ -110,6 +111,68 @@ def _package_lambda(project_root: Path) -> Path:
     return zip_path
 
 
+def _package_cloud_function(project_root: Path, terraform_dir: Path) -> Path:
+    """Build .deploy/ directory and create gcf-deployment.zip."""
+    deploy_dir = project_root / ".deploy"
+
+    if deploy_dir.exists():
+        shutil.rmtree(deploy_dir)
+    deploy_dir.mkdir()
+
+    req_file = project_root / "requirements.txt"
+    if req_file.exists():
+        run_cmd(
+            [
+                "uv",
+                "pip",
+                "install",
+                "-r",
+                str(req_file),
+                "--target",
+                str(deploy_dir),
+                "--python-platform",
+                "x86_64-manylinux2014",
+                "--python-version",
+                "3.11",
+                "--no-compile",
+            ],
+            cwd=project_root,
+            spinner_msg="Installing dependencies into .deploy/",
+        )
+
+    for src_dir in ["core", "plugins", "server"]:
+        src = project_root / src_dir
+        dst = deploy_dir / src_dir
+        if src.exists():
+            shutil.copytree(src, dst, dirs_exist_ok=True)
+
+    custom_plugins = project_root / "custom_plugins"
+    custom_dst = deploy_dir / "custom_plugins"
+    if custom_plugins.exists():
+        shutil.copytree(custom_plugins, custom_dst, dirs_exist_ok=True)
+    else:
+        custom_dst.mkdir(exist_ok=True)
+
+    main_py = project_root / "main.py"
+    if not main_py.exists():
+        console.print(
+            "[red]main.py not found at project root.[/red]\n"
+            "Cloud Functions deployment requires this entrypoint file."
+        )
+        raise typer.Exit(1)
+    shutil.copy2(main_py, deploy_dir / "main.py")
+
+    zip_path = terraform_dir / "gcf-deployment.zip"
+    with ZipFile(zip_path, "w") as zf:
+        for root, _dirs, files in os.walk(deploy_dir):
+            for file in files:
+                file_path = Path(root) / file
+                arcname = file_path.relative_to(deploy_dir)
+                zf.write(file_path, arcname)
+
+    return zip_path
+
+
 def _parse_plan_summary(output: str) -> tuple[int, int, int]:
     """Extract add/change/destroy counts from terraform plan output."""
     match = re.search(r"(\d+) to add, (\d+) to change, (\d+) to destroy", output)
@@ -121,13 +184,17 @@ def _parse_plan_summary(output: str) -> tuple[int, int, int]:
 @friendly_exit
 def deploy(
     env: str = typer.Option("staging", help="Environment: staging or prod"),
+    cloud: str = typer.Option("aws", "--cloud", help="Cloud provider: aws or gcp"),
 ) -> None:
-    """Package and deploy the MCP server to AWS Lambda."""
+    """Package and deploy the MCP server with Terraform."""
     require_tty()
+    if not isinstance(cloud, str):
+        cloud = "aws"
+    cloud = normalize_cloud(cloud)
 
     # Validate configuration before doing any work
     console.print("\n[bold]Validating configuration before deploy...[/bold]")
-    if not _run_validate_checks(env, include_artifact_checks=False):
+    if not _run_validate_checks(env, include_artifact_checks=False, cloud=cloud):
         console.print(
             "\n[red bold]Validation failed.[/red bold] "
             "Fix the issues above before redeploying."
@@ -135,27 +202,37 @@ def deploy(
         raise typer.Exit(1)
 
     project_root = get_project_root()
-    terraform_dir = get_terraform_dir()
+    terraform_dir = get_terraform_dir(cloud)
 
     ensure_config_exists()
-    ensure_terraform_init()
+    ensure_terraform_init(cloud)
 
     config = load_config()
     plugin_name = _validate_single_plugin(config)
-    console.print(f"[green]Plugin:[/green] {plugin_name}")
+    console.print(
+        f"[green]Plugin:[/green] {plugin_name}   [green]Cloud:[/green] {cloud}"
+    )
 
-    # Package
-    console.print("\n[bold]Packaging Lambda deployment...[/bold]")
-    zip_path = _package_lambda(project_root)
+    # Package artifact
+    if cloud == "aws":
+        console.print("\n[bold]Packaging Lambda deployment...[/bold]")
+        zip_path = _package_lambda(project_root)
+    else:
+        console.print("\n[bold]Packaging Cloud Function deployment...[/bold]")
+        zip_path = _package_cloud_function(project_root, terraform_dir)
     console.print(f"[green]Created:[/green] {zip_path.name}")
 
     # Copy artifacts to terraform directory
-    shutil.copy2(zip_path, terraform_dir / "lambda-deployment.zip")
-    shutil.copy2(project_root / "config.yaml", terraform_dir / "config.yaml")
+    terraform_zip_name = (
+        "lambda-deployment.zip" if cloud == "aws" else "gcf-deployment.zip"
+    )
+    if cloud == "aws":
+        shutil.copy2(zip_path, terraform_dir / terraform_zip_name)
+        shutil.copy2(project_root / "config.yaml", terraform_dir / "config.yaml")
 
     # Re-run full validation once deployment artifact exists.
     console.print("\n[bold]Running full validation with deployment artifact...[/bold]")
-    if not _run_validate_checks(env, include_artifact_checks=True):
+    if not _run_validate_checks(env, include_artifact_checks=True, cloud=cloud):
         console.print(
             "\n[red bold]Validation failed after packaging.[/red bold] "
             "Fix the issues above before redeploying."
@@ -163,14 +240,14 @@ def deploy(
         raise typer.Exit(1)
 
     # Select workspace
-    select_workspace(env, terraform_dir)
+    select_workspace(env, terraform_dir, cloud=cloud)
 
     # Terraform plan
     tfvars_file = terraform_dir / f"{env}.tfvars"
     if not tfvars_file.exists():
         console.print(
             f"[red]{env}.tfvars not found.[/red]\n"
-            "Run [bold]opencontext configure[/bold] to generate it."
+            f"Create terraform/{cloud}/{env}.tfvars then try again."
         )
         raise typer.Exit(1)
 
@@ -246,56 +323,75 @@ def deploy(
     output_table.add_column("Value")
 
     api_gw = outputs.get("api_gateway_url")
+    mcp_endpoint = outputs.get("mcp_endpoint_url")
     log_group = outputs.get("cloudwatch_log_group")
 
-    if api_gw:
-        output_table.add_row("API Gateway URL", str(api_gw))
-    if log_group:
-        output_table.add_row("CloudWatch Log Group", str(log_group))
+    if cloud == "aws":
+        if api_gw:
+            output_table.add_row("API Gateway URL", str(api_gw))
+        if log_group:
+            output_table.add_row("CloudWatch Log Group", str(log_group))
 
-    # Custom domain outputs (populated when custom_domain != "")
-    tfvars = load_tfvars(env)
-    custom_domain = tfvars.get("custom_domain", "")
-    if custom_domain:
-        regional = outputs.get("custom_domain_target")
-        outputs.get("acm_certificate_arn")
-        val_name = outputs.get("acm_validation_cname_name")
-        val_value = outputs.get("acm_validation_cname_value")
+        # Custom domain outputs (populated when custom_domain != "")
+        tfvars = load_tfvars(env, cloud=cloud)
+        custom_domain = tfvars.get("custom_domain", "")
+        if custom_domain:
+            regional = outputs.get("custom_domain_target")
+            outputs.get("acm_certificate_arn")
+            val_name = outputs.get("acm_validation_cname_name")
+            val_value = outputs.get("acm_validation_cname_value")
 
-        output_table.add_row("Custom Domain", custom_domain)
-        if regional:
-            output_table.add_row("Regional Domain (CNAME target)", str(regional))
-            if not str(regional).startswith("d-"):
-                console.print(
-                    "[yellow]Warning: regionalDomainName doesn't start with 'd-' — "
-                    "verify this is the correct value.[/yellow]"
-                )
-        if val_name:
-            output_table.add_row("ACM Validation CNAME Name", str(val_name))
-        if val_value:
-            output_table.add_row("ACM Validation CNAME Value", str(val_value))
+            output_table.add_row("Custom Domain", custom_domain)
+            if regional:
+                output_table.add_row("Regional Domain (CNAME target)", str(regional))
+                if not str(regional).startswith("d-"):
+                    console.print(
+                        "[yellow]Warning: regionalDomainName doesn't start with 'd-' — "
+                        "verify this is the correct value.[/yellow]"
+                    )
+            if val_name:
+                output_table.add_row("ACM Validation CNAME Name", str(val_name))
+            if val_value:
+                output_table.add_row("ACM Validation CNAME Value", str(val_value))
+    else:
+        if mcp_endpoint:
+            output_table.add_row("MCP Endpoint URL", str(mcp_endpoint))
+        if outputs.get("function_uri"):
+            output_table.add_row("Function URL", str(outputs.get("function_uri")))
+        if outputs.get("source_bucket"):
+            output_table.add_row("Artifact Bucket", str(outputs.get("source_bucket")))
 
     console.print()
     console.print(output_table)
 
-    # Print cert status if custom domain is configured
-    if custom_domain:
-        _print_cert_status(custom_domain, env)
+    # Print cert status if AWS custom domain is configured
+    if cloud == "aws":
+        tfvars = load_tfvars(env, cloud=cloud)
+        custom_domain = tfvars.get("custom_domain", "")
+        if custom_domain:
+            _print_cert_status(custom_domain, env)
 
     console.print("\n[green bold]Deployment complete![/green bold]")
-    if api_gw:
+    if cloud == "aws" and api_gw:
         console.print(
             "\nConnect via Claude Connectors:\n"
             "  1. Go to Settings → Connectors\n"
             "  2. Click 'Add custom connector'\n"
             f"  3. Enter URL: {api_gw}"
         )
-
-    console.print(
-        "\n[dim]To enable cost filtering in AWS Cost Explorer, activate the Project, "
-        "Environment, and ManagedBy tags at: "
-        "AWS Console \u2192 Billing \u2192 Cost allocation tags[/dim]"
-    )
+    if cloud == "gcp" and mcp_endpoint:
+        console.print(
+            "\nConnect via Claude Connectors:\n"
+            "  1. Go to Settings → Connectors\n"
+            "  2. Click 'Add custom connector'\n"
+            f"  3. Enter URL: {mcp_endpoint}"
+        )
+    if cloud == "aws":
+        console.print(
+            "\n[dim]To enable cost filtering in AWS Cost Explorer, activate the Project, "
+            "Environment, and ManagedBy tags at: "
+            "AWS Console \u2192 Billing \u2192 Cost allocation tags[/dim]"
+        )
 
 
 def _print_cert_status(domain: str, env: str) -> None:

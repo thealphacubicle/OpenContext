@@ -9,6 +9,7 @@ from cli.utils import (
     ensure_terraform_init,
     friendly_exit,
     get_terraform_dir,
+    normalize_cloud,
     require_tty,
     run_cmd_stream,
     select_workspace,
@@ -19,33 +20,37 @@ from cli.utils import (
 @friendly_exit
 def destroy(
     env: str = typer.Option("staging", help="Environment: staging or prod"),
+    cloud: str = typer.Option("aws", "--cloud", help="Cloud provider: aws or gcp"),
 ) -> None:
     """Destroy all deployed resources for an environment."""
     require_tty()
+    if not isinstance(cloud, str):
+        cloud = "aws"
+    cloud = normalize_cloud(cloud)
 
     ensure_config_exists()
-    ensure_terraform_init()
+    ensure_terraform_init(cloud)
 
-    terraform_dir = get_terraform_dir()
+    terraform_dir = get_terraform_dir(cloud)
     ws = workspace_name(env)
 
     tfvars_file = terraform_dir / f"{env}.tfvars"
     if not tfvars_file.exists():
         console.print(
-            f"[red]{env}.tfvars not found in terraform/aws/.[/red]\n"
+            f"[red]{env}.tfvars not found in terraform/{cloud}/.[/red]\n"
             "Nothing to destroy — this environment has not been configured."
         )
         raise typer.Exit(1)
 
-    select_workspace(env, terraform_dir)
+    select_workspace(env, terraform_dir, cloud=cloud)
 
-    console.print(f"\n[red bold]WARNING: This will destroy ALL resources in workspace '{ws}'.[/red bold]")
+    console.print(
+        f"\n[red bold]WARNING: This will destroy ALL resources in workspace '{ws}'.[/red bold]"
+    )
     console.print(f"Environment: [bold]{env}[/bold]")
     console.print(f"Var file:    [bold]{env}.tfvars[/bold]\n")
 
-    confirmation = questionary.text(
-        f'Type "{env}" to confirm destruction:'
-    ).ask()
+    confirmation = questionary.text(f'Type "{env}" to confirm destruction:').ask()
 
     if confirmation is None or confirmation != env:
         console.print("[yellow]Destruction cancelled.[/yellow]")
@@ -54,7 +59,8 @@ def destroy(
     console.print("\n[bold]Destroying resources...[/bold]\n")
     exit_code = run_cmd_stream(
         [
-            "terraform", "destroy",
+            "terraform",
+            "destroy",
             f"-var-file={env}.tfvars",
             "-input=false",
             "-auto-approve",
